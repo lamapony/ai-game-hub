@@ -21,6 +21,7 @@
 - Добавлены host controls для активной игры: pause/resume, skip phase, restart game, force back to hub.
 - Добавлен protected cleanup endpoint и GitHub scheduled workflow для старых комнат и uploads.
 - Добавлены понятные player-facing ошибки для camera, microphone, photo read и media upload failures.
+- Добавлен базовый `bun test` regression pack для host controls и player-facing media/upload errors.
 - Fast Refresh правило отключено только для `src/components/ui`, где shadcn/ui ожидаемо экспортирует variants рядом с компонентами.
 - Локальный `.codebase-memory/` исключен из публичного репозитория.
 
@@ -63,6 +64,7 @@
 - Локально перед каждым релизом:
   - `bun install --frozen-lockfile`;
   - `bun run lint`;
+  - `bun test`;
   - `bunx tsc --noEmit`;
   - `bun run build`;
   - `bun run preview`.
@@ -77,7 +79,7 @@
   - проверить, что host может вернуться в hub после игры.
 
 - Минимальный regression pack после live-теста:
-  - добавить unit-тесты для state transitions в `src/lib/room.ts`;
+  - расширить unit-тесты для state transitions в `src/lib/room.ts`;
   - добавить тесты для sanitization AI-ответов в `src/lib/ai/*`;
   - добавить browser smoke test для маршрутов `/`, `/play`, `/host/$code`, `/speaker/$code`.
 
@@ -105,7 +107,7 @@
 
 ## GitHub Actions
 
-- `CI` запускается на push и pull request в `main`: install, lint, typecheck, build.
+- `CI` запускается на push и pull request в `main`: install, lint, test, typecheck, build.
 - `Deploy Cloudflare` запускается вручную через GitHub Actions после настройки secrets.
 - Required repo variables:
   - `CLEANUP_URL`

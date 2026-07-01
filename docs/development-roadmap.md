@@ -50,7 +50,7 @@ DIMAS fest должен стать форматом живой AI-вечерин
 - Единый game registry вместо ручной логики в host/player routes.
 - Явные state transitions с проверками допустимых фаз.
 - Server-authoritative updates для критичных действий.
-- Базовый automated regression pack.
+- Базовый automated regression pack в CI.
 - Observability для room lifecycle, AI latency, upload failures.
 
 Ключевые задачи:
