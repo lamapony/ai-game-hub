@@ -5,6 +5,32 @@ import { z } from "zod";
 const HOST_VOICE_SYSTEM = `Ты — дух парка, ведущий вечеринки DIMAS fest. Голос: едкий, остроумный, как саркастичный конферансье.
 Всегда отвечай на русском. Всегда отвечай строгим валидным JSON, без markdown-обёрток.`;
 
+const FALLBACK_TASKS = [
+  {
+    task: "Изобразите заседание совета деревьев, которые только что узнали, что их назначили вай-фай роутерами.",
+    intro: "Дух парка включает аварийный театр.",
+  },
+  {
+    task: "Сыграйте сцену: вы команда спасателей, которая пытается реанимировать очень драматичный лист.",
+    intro: "Листу плохо. Вам тоже скоро будет.",
+  },
+  {
+    task: "Покажите, как выглядел бы парк, если бы все скамейки внезапно стали начальниками.",
+    intro: "Скамейки требуют уважения.",
+  },
+  {
+    task: "Изобразите спортивный финал по невидимому фрисби. Комментатор, травма и победный жест обязательны.",
+    intro: "Невидимый спорт, видимый позор.",
+  },
+];
+
+function fallbackChallengeTask(pastTasks: string[] = []) {
+  return (
+    FALLBACK_TASKS.find((task) => !pastTasks.includes(task.task)) ??
+    FALLBACK_TASKS[pastTasks.length % FALLBACK_TASKS.length]
+  );
+}
+
 export const generateChallengeTask = createServerFn({ method: "POST" })
   .validator((input: unknown) =>
     z
@@ -21,9 +47,10 @@ export const generateChallengeTask = createServerFn({ method: "POST" })
         .slice(-5)
         .map((t) => `- ${t}`)
         .join("\n") || "(пока ничего)";
-    const r = await chatJSON<{ task: string; intro: string }>({
-      system: HOST_VOICE_SYSTEM,
-      user: `Сейчас оператор — ${data.operatorName}. Он снимает видео остальных игроков 20 секунд.
+    try {
+      const r = await chatJSON<{ task: string; intro: string }>({
+        system: HOST_VOICE_SYSTEM,
+        user: `Сейчас оператор — ${data.operatorName}. Он снимает видео остальных игроков 20 секунд.
 Придумай ОДНО абсурдное физическое задание для остальных. Что-то такое, что заставит их встать, орать или строить рожи. Не больше 2 предложений. Без подсказок «как сделать».
 
 Примеры стиля (НЕ копируй):
@@ -36,9 +63,16 @@ ${avoid}
 Также напиши короткий intro (1 короткая фраза, до 12 слов), которую дух парка скажет голосом перед заданием. С характером.
 
 JSON: { "task": "...", "intro": "..." }`,
-      temperature: 0.95,
-    });
-    return r;
+        temperature: 0.95,
+      });
+      return {
+        task: r.task || fallbackChallengeTask(data.pastTasks).task,
+        intro: r.intro || fallbackChallengeTask(data.pastTasks).intro,
+      };
+    } catch (error) {
+      console.error("[AI fallback] generateChallengeTask", error);
+      return fallbackChallengeTask(data.pastTasks);
+    }
   });
 
 export const judgeChallenge = createServerFn({ method: "POST" })
@@ -87,14 +121,26 @@ export const judgeChallenge = createServerFn({ method: "POST" })
       ...data.frames.map((url) => ({ type: "image_url" as const, image_url: { url } })),
     ];
 
-    const r = await chatJSON<{ score: number; feedback: string; verdict: string }>({
-      system: HOST_VOICE_SYSTEM,
-      user: parts,
-      temperature: 0.7,
-    });
-    return {
-      score: Math.max(1, Math.min(10, Math.round(r.score || 5))),
-      feedback: r.feedback || "Молча принято.",
-      verdict: r.verdict || `${Math.round(r.score || 5)} из 10. Идём дальше.`,
-    };
+    try {
+      const r = await chatJSON<{ score: number; feedback: string; verdict: string }>({
+        system: HOST_VOICE_SYSTEM,
+        user: parts,
+        temperature: 0.7,
+      });
+      return {
+        score: Math.max(1, Math.min(10, Math.round(r.score || 5))),
+        feedback: r.feedback || "Молча принято.",
+        verdict: r.verdict || `${Math.round(r.score || 5)} из 10. Идём дальше.`,
+      };
+    } catch (error) {
+      console.error("[AI fallback] judgeChallenge", error);
+      const transcriptHint = data.transcript
+        ? "Судья видел расшифровку, но не смог дозвониться до своего хрустального шара."
+        : "Видео принято, но судья сегодня без зрения и без слуха.";
+      return {
+        score: 6,
+        feedback: `${transcriptHint} Засчитываю попытку и энергию команды.`,
+        verdict: "Шесть из десяти. Дух парка работает офлайн.",
+      };
+    }
   });

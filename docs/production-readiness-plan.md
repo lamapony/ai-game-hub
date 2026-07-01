@@ -17,6 +17,7 @@
 - Server functions переведены с deprecated `.inputValidator()` на `.validator()`.
 - В `Orchestra` устранен риск stale callback при срабатывании scheduled audio cues.
 - Media helpers вынесены из React-компонентов в отдельные utility-модули.
+- Добавлены fallback-задания, fallback-судейство и graceful STT fallback для AI outage.
 - Fast Refresh правило отключено только для `src/components/ui`, где shadcn/ui ожидаемо экспортирует variants рядом с компонентами.
 - Локальный `.codebase-memory/` исключен из публичного репозитория.
 

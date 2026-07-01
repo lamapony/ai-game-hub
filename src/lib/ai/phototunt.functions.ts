@@ -5,6 +5,32 @@ import { z } from "zod";
 const VOICE = `Ты — дух парка, ведущий вечеринки DIMAS fest. Голос: едкий, остроумный конферансье.
 Всегда отвечай на русском. Всегда возвращай строгий валидный JSON, без markdown-обёрток.`;
 
+const FALLBACK_TASKS = [
+  {
+    task: "Сфоткай предмет, который выглядит так, будто он устал от этой вечеринки сильнее всех.",
+    intro: "Ищем усталость в естественной среде.",
+  },
+  {
+    task: "Найди кадр, который мог бы называться «последний день нормальности».",
+    intro: "Красота закончилась, начинаем фотоохоту.",
+  },
+  {
+    task: "Сфоткай самый подозрительный объект в радиусе минуты бега.",
+    intro: "Парк что-то скрывает.",
+  },
+  {
+    task: "Сними фото, где обычная вещь выглядит как важная историческая улика.",
+    intro: "Следствие ведёт дух парка.",
+  },
+];
+
+function fallbackPhotoTask(pastTasks: string[] = []) {
+  return (
+    FALLBACK_TASKS.find((task) => !pastTasks.includes(task.task)) ??
+    FALLBACK_TASKS[pastTasks.length % FALLBACK_TASKS.length]
+  );
+}
+
 export const generatePhotoTask = createServerFn({ method: "POST" })
   .validator((input: unknown) =>
     z
@@ -20,9 +46,10 @@ export const generatePhotoTask = createServerFn({ method: "POST" })
         .slice(-6)
         .map((t) => `- ${t}`)
         .join("\n") || "(пока ничего)";
-    const r = await chatJSON<{ task: string; intro: string }>({
-      system: VOICE,
-      user: `Придумай ОДНО задание для фотоохоты. Все игроки одновременно бегут по парку и должны за 60 секунд сделать ОДИН снимок на телефон, который лучше других попадёт в задание.
+    try {
+      const r = await chatJSON<{ task: string; intro: string }>({
+        system: VOICE,
+        user: `Придумай ОДНО задание для фотоохоты. Все игроки одновременно бегут по парку и должны за 60 секунд сделать ОДИН снимок на телефон, который лучше других попадёт в задание.
 Задание должно быть:
 - абсурдным, но физически выполнимым в обычном городском парке;
 - ОДНОЗНАЧНЫМ для оценки (можно посмотреть фото и понять, насколько попал);
@@ -40,9 +67,16 @@ ${avoid}
 Также напиши короткий intro (1 фраза, до 12 слов) — её дух парка скажет голосом перед стартом.
 
 JSON: { "task": "...", "intro": "..." }`,
-      temperature: 0.95,
-    });
-    return r;
+        temperature: 0.95,
+      });
+      return {
+        task: r.task || fallbackPhotoTask(data.pastTasks).task,
+        intro: r.intro || fallbackPhotoTask(data.pastTasks).intro,
+      };
+    } catch (error) {
+      console.error("[AI fallback] generatePhotoTask", error);
+      return fallbackPhotoTask(data.pastTasks);
+    }
   });
 
 const PhotoInput = z.object({
@@ -100,14 +134,31 @@ ${data.photos.map((p, i) => `${i + 1}. ${p.playerName} (id: ${p.playerId})`).joi
         parts.push({ type: "image_url", image_url: { url: p.url } });
       });
 
-      const r = await chatJSON<{
+      let r: {
         ranking: Array<{ playerId: string; rank: number; comment: string }>;
         verdict: string;
-      }>({
-        system: VOICE,
-        user: parts,
-        temperature: 0.7,
-      });
+      };
+
+      try {
+        r = await chatJSON<{
+          ranking: Array<{ playerId: string; rank: number; comment: string }>;
+          verdict: string;
+        }>({
+          system: VOICE,
+          user: parts,
+          temperature: 0.7,
+        });
+      } catch (error) {
+        console.error("[AI fallback] judgePhotos", error);
+        r = {
+          ranking: data.photos.map((photo, index) => ({
+            playerId: photo.playerId,
+            rank: index + 1,
+            comment: "AI-судья не вышел на связь, поэтому решает порядок загрузки.",
+          })),
+          verdict: `${data.photos[0]?.playerName ?? "Первый загрузивший"} забирает аварийную победу.`,
+        };
+      }
 
       // Sanitize: ensure every player gets a rank, dedupe ranks.
       const seen = new Map<string, { rank: number; comment: string }>();

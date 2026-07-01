@@ -14,9 +14,8 @@ export const Route = createFileRoute("/api/transcribe")({
           const text = await transcribeAudio(file, filename);
           return Response.json({ text });
         } catch (e) {
-          return new Response(`Transcribe failed: ${e instanceof Error ? e.message : "error"}`, {
-            status: 502,
-          });
+          console.error("[AI fallback] transcribe", e);
+          return Response.json({ text: "", fallback: true });
         }
       },
     },

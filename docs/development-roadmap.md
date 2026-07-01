@@ -35,7 +35,7 @@ DIMAS fest должен стать форматом живой AI-вечерин
 Ключевые задачи:
 
 - Добавить cleanup job для комнат, записей и storage objects старше N часов.
-- Добавить ручные fallback-задания для каждой игры.
+- Расширить fallback-задания и fallback-судейство после первого field test.
 - Добавить host controls: pause, skip, restart round, force back to hub.
 - Улучшить сообщения ошибок для камеры, микрофона, upload, AI.
 - Провести field test на реальных телефонах и сети.
