@@ -36,6 +36,8 @@
   prefix, host persona и speaker slot names.
 - Добавлен production env preflight для deploy workflow: проверяет обязательные GitHub
   vars/secrets до build и пишет `.deploy.env` с defaults для optional OpenAI настроек.
+- Тяжелые Host/Player views для Soundscape, Challenge и Photo Hunt вынесены в lazy imports:
+  warning Vite про client chunk `index` выше 500 kB больше не воспроизводится в production build.
 - Fast Refresh правило отключено только для `src/components/ui`, где shadcn/ui ожидаемо экспортирует variants рядом с компонентами.
 - Локальный `.codebase-memory/` исключен из публичного репозитория.
 
@@ -167,6 +169,5 @@
 ## Риски, которые стоит закрыть до публичного мероприятия
 
 - Публичный party-mode без auth: добавить rate limiting или cleanup, если URL станет широко доступен.
-- Большой client chunk `index` выше 500 kB: после функциональной стабилизации вынести тяжелые игровые ветки в lazy imports.
 - Зависимость от внешнего AI-провайдера: подготовить понятное сообщение host-у при недоступности API и fallback для TTS/STT.
 - Синхронизация speaker playback зависит от устройств и сети: перед мероприятием провести тест с тем же Wi-Fi/мобильным интернетом и теми же колонками.

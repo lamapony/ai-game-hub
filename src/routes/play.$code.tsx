@@ -1,11 +1,25 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { useRoom, updateRoomState, getOrCreatePlayer, genId } from "@/lib/room";
 import { playerStorageKey } from "@/lib/event-profile";
 import { teamColorClasses } from "@/lib/team-style";
-import { SoundscapePlayer } from "@/games/soundscape/PlayerView";
-import { ChallengePlayer } from "@/games/challenge/PlayerView";
-import { PhotoHuntPlayer } from "@/games/phototunt/PlayerView";
+
+const SoundscapePlayer = lazy(() =>
+  import("@/games/soundscape/PlayerView").then((module) => ({
+    default: module.SoundscapePlayer,
+  })),
+);
+const ChallengePlayer = lazy(() =>
+  import("@/games/challenge/PlayerView").then((module) => ({
+    default: module.ChallengePlayer,
+  })),
+);
+const PhotoHuntPlayer = lazy(() =>
+  import("@/games/phototunt/PlayerView").then((module) => ({
+    default: module.PhotoHuntPlayer,
+  })),
+);
 
 export const Route = createFileRoute("/play/$code")({
   component: PlayPage,
@@ -172,19 +186,30 @@ function PlayerScreen({
           </div>
         </div>
 
-        {state.paused ? (
-          <PausedPanel />
-        ) : state.currentGame === "soundscape" && state.soundscape ? (
-          <SoundscapePlayer roomId={room.id} state={state} me={me} />
-        ) : state.currentGame === "challenge" && state.challenge ? (
-          <ChallengePlayer roomId={room.id} state={state} me={me} />
-        ) : state.currentGame === "phototunt" && state.phototunt ? (
-          <PhotoHuntPlayer roomId={room.id} state={state} me={me} />
-        ) : (
-          <WaitingPanel />
-        )}
+        <Suspense fallback={<PlayerGameLoading />}>
+          {state.paused ? (
+            <PausedPanel />
+          ) : state.currentGame === "soundscape" && state.soundscape ? (
+            <SoundscapePlayer roomId={room.id} state={state} me={me} />
+          ) : state.currentGame === "challenge" && state.challenge ? (
+            <ChallengePlayer roomId={room.id} state={state} me={me} />
+          ) : state.currentGame === "phototunt" && state.phototunt ? (
+            <PhotoHuntPlayer roomId={room.id} state={state} me={me} />
+          ) : (
+            <WaitingPanel />
+          )}
+        </Suspense>
       </div>
     </PlayShell>
+  );
+}
+
+function PlayerGameLoading() {
+  return (
+    <div className="rounded-3xl bg-black/40 backdrop-blur p-8 border border-white/10 text-center text-white">
+      <div className="font-display text-2xl">Готовим раунд…</div>
+      <p className="text-white/60 text-sm mt-2">Экран появится через пару секунд.</p>
+    </div>
   );
 }
 
@@ -218,7 +243,7 @@ function WaitingPanel() {
   );
 }
 
-function PlayShell({ children }: { children: React.ReactNode }) {
+function PlayShell({ children }: { children: ReactNode }) {
   return (
     <main className="min-h-dvh park-gradient flex items-start sm:items-center justify-center px-4 py-6">
       {children}

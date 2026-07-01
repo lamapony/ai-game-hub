@@ -1,11 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { useRoom, useBroadcast, updateRoomState, getHostSecret, genId } from "@/lib/room";
 import { supabase } from "@/integrations/supabase/client";
-import { SoundscapeHost } from "@/games/soundscape/HostView";
-import { ChallengeHost } from "@/games/challenge/HostView";
-import { PhotoHuntHost } from "@/games/phototunt/HostView";
 import { eventProfile } from "@/lib/event-profile";
 import {
   launchChallengeState,
@@ -21,6 +18,22 @@ import {
   skipCurrentPhaseState,
 } from "@/lib/host-controls";
 import type { RoomState } from "@/lib/types";
+
+const SoundscapeHost = lazy(() =>
+  import("@/games/soundscape/HostView").then((module) => ({
+    default: module.SoundscapeHost,
+  })),
+);
+const ChallengeHost = lazy(() =>
+  import("@/games/challenge/HostView").then((module) => ({
+    default: module.ChallengeHost,
+  })),
+);
+const PhotoHuntHost = lazy(() =>
+  import("@/games/phototunt/HostView").then((module) => ({
+    default: module.PhotoHuntHost,
+  })),
+);
 
 export const Route = createFileRoute("/host/$code")({
   component: HostPage,
@@ -157,12 +170,18 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
             />
           )}
 
-          {state.currentGame === "soundscape" && state.soundscape ? (
-            <SoundscapeHost roomId={roomId} code={code} state={state} />
-          ) : state.currentGame === "challenge" && state.challenge ? (
-            <ChallengeHost roomId={roomId} state={state} />
-          ) : state.currentGame === "phototunt" && state.phototunt ? (
-            <PhotoHuntHost roomId={roomId} state={state} />
+          {state.currentGame ? (
+            <Suspense fallback={<HostGameLoading />}>
+              {state.currentGame === "soundscape" && state.soundscape ? (
+                <SoundscapeHost roomId={roomId} code={code} state={state} />
+              ) : state.currentGame === "challenge" && state.challenge ? (
+                <ChallengeHost roomId={roomId} state={state} />
+              ) : state.currentGame === "phototunt" && state.phototunt ? (
+                <PhotoHuntHost roomId={roomId} state={state} />
+              ) : (
+                <HostGameLoading />
+              )}
+            </Suspense>
           ) : (
             <Lobby
               totalPlayers={totalPlayers}
@@ -190,6 +209,15 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
         </aside>
       </div>
     </main>
+  );
+}
+
+function HostGameLoading() {
+  return (
+    <div className="rounded-3xl border border-white/10 bg-card p-8 text-center">
+      <div className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Игра</div>
+      <div className="font-display mt-2 text-3xl">Готовим экран раунда…</div>
+    </div>
   );
 }
 
