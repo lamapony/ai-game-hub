@@ -53,6 +53,7 @@ bun run preview
 | `SUPABASE_URL`                  | только сервер    | URL Supabase для server functions      |
 | `SUPABASE_PUBLISHABLE_KEY`      | только сервер    | Publishable key для server functions   |
 | `SUPABASE_SERVICE_ROLE_KEY`     | только сервер    | Bypass RLS. **Никогда не в браузере.** |
+| `CLEANUP_SECRET`                | только сервер    | Secret для `POST /api/cleanup`         |
 | `OPENAI_API_KEY`                | только сервер    | AI calls: JSON, vision, TTS, STT       |
 | `OPENAI_BASE_URL`               | только сервер    | OpenAI-compatible base URL             |
 | `OPENAI_CHAT_MODEL`             | только сервер    | JSON/text model                        |
@@ -92,6 +93,21 @@ Bucket: `recordings` (private).
 
 RLS-политики намеренно открытые для party-mode без аутентификации. Для публичного постоянного деплоя нужно добавить rate limiting, cleanup старых комнат и более строгие политики.
 
+## Cleanup
+
+`POST /api/cleanup` удаляет комнаты, не обновлявшиеся дольше retention window, связанные строки
+`submissions`, `votes`, `challenges`, `photos` и storage objects из bucket `recordings` по префиксу
+`roomId/`.
+
+Запрос требует `Authorization: Bearer $CLEANUP_SECRET`. По умолчанию retention — 24 часа:
+
+```bash
+curl -X POST "$CLEANUP_URL/api/cleanup" \
+  -H "Authorization: Bearer $CLEANUP_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"retentionHours":24,"dryRun":true}'
+```
+
 ## Структура
 
 ```text
@@ -130,6 +146,7 @@ npx wrangler deploy --config wrangler.json --cwd dist/server --secrets-file .dep
 
 - `CI` — lint, typecheck, build на push/PR;
 - `Deploy Cloudflare` — ручной production deploy после настройки secrets.
+- `Cleanup old rooms` — scheduled/manual cleanup старых комнат и uploads.
 
 ## Документы
 

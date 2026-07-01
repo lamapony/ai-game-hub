@@ -14,6 +14,7 @@ jobs:
       SUPABASE_URL: ${{ vars.SUPABASE_URL }}
       SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      CLEANUP_SECRET: ${{ secrets.CLEANUP_SECRET }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL }}
       OPENAI_CHAT_MODEL: ${{ vars.OPENAI_CHAT_MODEL }}
@@ -40,6 +41,7 @@ jobs:
       - name: Validate deploy secrets
         run: |
           test -n "$SUPABASE_SERVICE_ROLE_KEY"
+          test -n "$CLEANUP_SECRET"
           test -n "$OPENAI_API_KEY"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           test -n "$CLOUDFLARE_API_TOKEN"
@@ -53,6 +55,7 @@ jobs:
             echo "SUPABASE_URL=$SUPABASE_URL"
             echo "SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY"
             echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY"
+            echo "CLEANUP_SECRET=$CLEANUP_SECRET"
             echo "OPENAI_API_KEY=$OPENAI_API_KEY"
             echo "OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}"
             echo "OPENAI_CHAT_MODEL=${OPENAI_CHAT_MODEL:-gpt-4o-mini}"

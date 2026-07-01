@@ -19,6 +19,7 @@
 - Media helpers вынесены из React-компонентов в отдельные utility-модули.
 - Добавлены fallback-задания, fallback-судейство и graceful STT fallback для AI outage.
 - Добавлены host controls для активной игры: pause/resume, skip phase, restart game, force back to hub.
+- Добавлен protected cleanup endpoint и GitHub scheduled workflow для старых комнат и uploads.
 - Fast Refresh правило отключено только для `src/components/ui`, где shadcn/ui ожидаемо экспортирует variants рядом с компонентами.
 - Локальный `.codebase-memory/` исключен из публичного репозитория.
 
@@ -54,7 +55,7 @@
    - применены все миграции;
    - bucket `recordings` создан и private;
    - RLS-политики соответствуют party-mode;
-   - retention/cleanup для старых комнат и записей.
+   - cleanup workflow проходит в dry-run и затем в реальном режиме на production.
 
 ## Тестирование
 
@@ -90,6 +91,7 @@
    - `SUPABASE_URL`;
    - `SUPABASE_PUBLISHABLE_KEY`;
    - `SUPABASE_SERVICE_ROLE_KEY`;
+   - `CLEANUP_SECRET`;
    - `OPENAI_API_KEY`;
    - `OPENAI_BASE_URL`;
    - `OPENAI_CHAT_MODEL`;
@@ -105,6 +107,7 @@
 - `CI` запускается на push и pull request в `main`: install, lint, typecheck, build.
 - `Deploy Cloudflare` запускается вручную через GitHub Actions после настройки secrets.
 - Required repo variables:
+  - `CLEANUP_URL`
   - `VITE_SUPABASE_URL`
   - `VITE_SUPABASE_PUBLISHABLE_KEY`
   - `VITE_SUPABASE_PROJECT_ID`
@@ -117,6 +120,7 @@
   - `OPENAI_TRANSCRIBE_MODEL`
 - Required repo secrets for deploy:
   - `SUPABASE_SERVICE_ROLE_KEY`
+  - `CLEANUP_SECRET`
   - `OPENAI_API_KEY`
   - `CLOUDFLARE_ACCOUNT_ID`
   - `CLOUDFLARE_API_TOKEN`

@@ -35,7 +35,7 @@ DIMAS fest должен стать форматом живой AI-вечерин
 
 Ключевые задачи:
 
-- Добавить cleanup job для комнат, записей и storage objects старше N часов.
+- Проверить cleanup job на production после первого deploy: dry-run, затем реальное удаление старых комнат.
 - Расширить fallback-задания и fallback-судейство после первого field test.
 - Проверить host controls на field test: pause, skip, restart round, force back to hub.
 - Улучшить сообщения ошибок для камеры, микрофона, upload, AI.
@@ -152,7 +152,7 @@ DIMAS fest должен стать форматом живой AI-вечерин
 3. Провести field test с 8+ игроками.
 4. Зафиксировать top 10 friction points после field test.
 5. Проверить fallback-задания и host controls на field test.
-6. Добавить cleanup старых комнат/uploads.
+6. Проверить cleanup старых комнат/uploads на production.
 7. Подготовить “event profile” как простой config, без dashboard.
 
 ## Ближайшие 90 дней

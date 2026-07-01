@@ -1,0 +1,59 @@
+name: Cleanup old rooms
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      retention_hours:
+        description: "Delete rooms inactive for at least this many hours"
+        required: false
+        default: "24"
+      dry_run:
+        description: "Count rows and storage objects without deleting"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+jobs:
+  cleanup:
+    name: Cleanup Supabase rooms and recordings
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate cleanup config
+        env:
+          CLEANUP_URL: ${{ vars.CLEANUP_URL }}
+          CLEANUP_SECRET: ${{ secrets.CLEANUP_SECRET }}
+        run: |
+          test -n "$CLEANUP_URL"
+          test -n "$CLEANUP_SECRET"
+
+      - name: Run cleanup
+        env:
+          CLEANUP_URL: ${{ vars.CLEANUP_URL }}
+          CLEANUP_SECRET: ${{ secrets.CLEANUP_SECRET }}
+          RETENTION_HOURS: ${{ github.event.inputs.retention_hours || '24' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        run: |
+          case "$RETENTION_HOURS" in
+            ''|*[!0-9]*)
+              echo "retention_hours must be an integer"
+              exit 1
+              ;;
+          esac
+          case "$DRY_RUN" in
+            true|false) ;;
+            *)
+              echo "dry_run must be true or false"
+              exit 1
+              ;;
+          esac
+
+          curl --fail-with-body --show-error --silent \
+            --request POST "$CLEANUP_URL/api/cleanup" \
+            --header "Authorization: Bearer $CLEANUP_SECRET" \
+            --header "Content-Type: application/json" \
+            --data "{\"retentionHours\":${RETENTION_HOURS},\"dryRun\":${DRY_RUN}}"
