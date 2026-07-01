@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { updateRoomState } from "@/lib/room";
+import { isRetryableError, retryOperation } from "@/lib/retry";
 import { Recorder } from "./Recorder";
 import { teamColorClasses, formatClock } from "@/lib/team-style";
 import type { RoomState } from "@/lib/types";
@@ -107,11 +108,25 @@ function RecordPhase({
   async function handleUpload(blob: Blob, durationMs: number) {
     const ext = blob.type.includes("mp4") ? "mp4" : "webm";
     const path = `${roomId}/${snd.roundId}/${me.id}-${Date.now()}.${ext}`;
-    const up = await supabase.storage
-      .from("recordings")
-      .upload(path, blob, { contentType: blob.type });
+    const up = await retryOperation(
+      async () => {
+        const result = await supabase.storage
+          .from("recordings")
+          .upload(path, blob, { contentType: blob.type });
+        if (result.error && isRetryableError(result.error)) throw result.error;
+        return result;
+      },
+      { shouldRetry: (error) => isRetryableError(error) },
+    );
     if (up.error) throw up.error;
-    const signed = await supabase.storage.from("recordings").createSignedUrl(path, 60 * 60 * 3);
+    const signed = await retryOperation(
+      async () => {
+        const result = await supabase.storage.from("recordings").createSignedUrl(path, 60 * 60 * 3);
+        if (result.error && isRetryableError(result.error)) throw result.error;
+        return result;
+      },
+      { shouldRetry: (error) => isRetryableError(error) },
+    );
     const audio_url = signed.data?.signedUrl ?? null;
 
     // transcribe

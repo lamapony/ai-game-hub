@@ -60,6 +60,7 @@ bun run preview
 | `OPENAI_VISION_MODEL`           | только сервер    | Vision-capable model                   |
 | `OPENAI_TTS_MODEL`              | только сервер    | TTS model                              |
 | `OPENAI_TRANSCRIBE_MODEL`       | только сервер    | STT model                              |
+| `OPENAI_RETRY_ATTEMPTS`         | только сервер    | Retry attempts для transient AI errors |
 
 `process.env.*` доступен только внутри `createServerFn().handler(...)`, файлов `*.server.ts` и `src/routes/api/*`. В браузере — только `import.meta.env.VITE_*`.
 

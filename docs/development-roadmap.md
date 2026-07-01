@@ -58,7 +58,7 @@ DIMAS fest должен стать форматом живой AI-вечерин
 - Вынести общий game contract: `HostView`, `PlayerView`, `initialState`, `actions`, `score`.
 - Добавить tests для `src/lib/room.ts` и game state transitions.
 - Расширить structured logging на room lifecycle и upload failures.
-- Добавить retry/backoff для AI calls и Supabase upload.
+- Расширить retry/backoff на остальные Supabase writes после field test.
 - Добавить optimistic UI только там, где state можно безопасно откатить.
 
 ## Горизонт 3: stronger games

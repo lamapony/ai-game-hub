@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatClock } from "@/lib/team-style";
 import { friendlyUploadError } from "@/lib/media-errors";
+import { isRetryableError, retryOperation } from "@/lib/retry";
 import type { RoomState } from "@/lib/types";
 import { PhotoCapture } from "./PhotoCapture";
 import { downscaleImage } from "./image-utils";
@@ -121,13 +122,27 @@ export function PhotoHuntPlayer({
               const { blob, dataUrl } = await downscaleImage(file, 1024, 0.82);
               setMyPhotoUrl(dataUrl);
               const path = `${roomId}/photos/${ph.roundId}/${me.id}-${Date.now()}.jpg`;
-              const up = await supabase.storage
-                .from("recordings")
-                .upload(path, blob, { contentType: "image/jpeg" });
+              const up = await retryOperation(
+                async () => {
+                  const result = await supabase.storage
+                    .from("recordings")
+                    .upload(path, blob, { contentType: "image/jpeg" });
+                  if (result.error && isRetryableError(result.error)) throw result.error;
+                  return result;
+                },
+                { shouldRetry: (error) => isRetryableError(error) },
+              );
               if (up.error) throw up.error;
-              const signed = await supabase.storage
-                .from("recordings")
-                .createSignedUrl(path, 60 * 60 * 24);
+              const signed = await retryOperation(
+                async () => {
+                  const result = await supabase.storage
+                    .from("recordings")
+                    .createSignedUrl(path, 60 * 60 * 24);
+                  if (result.error && isRetryableError(result.error)) throw result.error;
+                  return result;
+                },
+                { shouldRetry: (error) => isRetryableError(error) },
+              );
               const photo_url = signed.data?.signedUrl;
               if (!photo_url) throw new Error("no signed url");
               const ins = await supabase.from("photos").insert({

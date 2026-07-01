@@ -23,6 +23,7 @@
 - Добавлены понятные player-facing ошибки для camera, microphone, photo read и media upload failures.
 - Добавлен базовый `bun test` regression pack для host controls и player-facing media/upload errors.
 - Добавлен lightweight structured JSON logging для AI gateway, API routes и cleanup endpoint.
+- Добавлен retry/backoff для transient AI provider errors и Supabase Storage upload/signed URL calls.
 - Fast Refresh правило отключено только для `src/components/ui`, где shadcn/ui ожидаемо экспортирует variants рядом с компонентами.
 - Локальный `.codebase-memory/` исключен из публичного репозитория.
 
@@ -90,6 +91,11 @@
   - cleanup summary пишет rooms/storage counts и errorCount;
   - secrets/tokens/api keys редактируются в structured logger.
 
+- Retry/backoff:
+  - AI gateway ретраит network errors и HTTP `408`, `409`, `425`, `429`, `5xx`;
+  - количество AI retry attempts можно переопределить через `OPENAI_RETRY_ATTEMPTS`, по умолчанию 3;
+  - Soundscape, Challenge и Photo Hunt ретраят transient Supabase Storage upload/createSignedUrl failures.
+
 ## Подготовка к прод-развертыванию
 
 1. Создать отдельный Supabase-проект для production.
@@ -128,6 +134,7 @@
   - `OPENAI_VISION_MODEL`
   - `OPENAI_TTS_MODEL`
   - `OPENAI_TRANSCRIBE_MODEL`
+  - `OPENAI_RETRY_ATTEMPTS` (optional, default `3`)
 - Required repo secrets for deploy:
   - `SUPABASE_SERVICE_ROLE_KEY`
   - `CLEANUP_SECRET`

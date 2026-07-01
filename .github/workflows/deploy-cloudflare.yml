@@ -21,6 +21,7 @@ jobs:
       OPENAI_VISION_MODEL: ${{ vars.OPENAI_VISION_MODEL }}
       OPENAI_TTS_MODEL: ${{ vars.OPENAI_TTS_MODEL }}
       OPENAI_TRANSCRIBE_MODEL: ${{ vars.OPENAI_TRANSCRIBE_MODEL }}
+      OPENAI_RETRY_ATTEMPTS: ${{ vars.OPENAI_RETRY_ATTEMPTS }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
@@ -62,6 +63,7 @@ jobs:
             echo "OPENAI_VISION_MODEL=${OPENAI_VISION_MODEL:-gpt-4o-mini}"
             echo "OPENAI_TTS_MODEL=${OPENAI_TTS_MODEL:-gpt-4o-mini-tts}"
             echo "OPENAI_TRANSCRIBE_MODEL=${OPENAI_TRANSCRIBE_MODEL:-gpt-4o-mini-transcribe}"
+            echo "OPENAI_RETRY_ATTEMPTS=${OPENAI_RETRY_ATTEMPTS:-3}"
           } > dist/server/.deploy.env
 
       - name: Deploy
