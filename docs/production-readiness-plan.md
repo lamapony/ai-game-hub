@@ -44,6 +44,8 @@
   `/api/transcribe` с 429/Retry-After headers и regression tests.
 - Добавлен heartbeat для `/speaker/$code`: ведущий видит свежие, stale и offline дополнительные
   колонки, а readiness логика покрыта unit tests.
+- Добавлен GitHub production config audit: `bun run verify:github-prod --repo=lamapony/ai-game-hub`
+  проверяет имена обязательных repo vars/secrets без чтения их значений.
 - Fast Refresh правило отключено только для `src/components/ui`, где shadcn/ui ожидаемо экспортирует variants рядом с компонентами.
 - Локальный `.codebase-memory/` исключен из публичного репозитория.
 
@@ -136,11 +138,12 @@
    - `OPENAI_VISION_MODEL`;
    - `OPENAI_TTS_MODEL`;
    - `OPENAI_TRANSCRIBE_MODEL`.
-4. Выполнить preflight: `bun run verify:prod-env`.
-5. Выполнить `bun run build`.
-6. Подготовить runtime env: `bun run verify:prod-env --write-dotenv=dist/server/.deploy.env`.
-7. Задеплоить prebuilt Worker output: `npx wrangler deploy --config wrangler.json --cwd dist/server --secrets-file .deploy.env --keep-vars`.
-8. После деплоя пройти smoke test на production URL.
+4. Проверить GitHub Actions config: `bun run verify:github-prod --repo=lamapony/ai-game-hub`.
+5. Выполнить preflight: `bun run verify:prod-env`.
+6. Выполнить `bun run build`.
+7. Подготовить runtime env: `bun run verify:prod-env --write-dotenv=dist/server/.deploy.env`.
+8. Задеплоить prebuilt Worker output: `npx wrangler deploy --config wrangler.json --cwd dist/server --secrets-file .deploy.env --keep-vars`.
+9. После деплоя пройти smoke test на production URL.
 
 ## GitHub Actions
 
@@ -148,19 +151,21 @@
 - `Deploy Cloudflare` запускается вручную через GitHub Actions после настройки secrets.
   Workflow сначала запускает `bun run verify:prod-env`, чтобы показать конкретные отсутствующие
   keys до build/deploy.
-- Required repo variables:
-  - `CLEANUP_URL`
+- Required repo variables for first deploy:
   - `VITE_SUPABASE_URL`
   - `VITE_SUPABASE_PUBLISHABLE_KEY`
   - `VITE_SUPABASE_PROJECT_ID`
   - `SUPABASE_URL`
   - `SUPABASE_PUBLISHABLE_KEY`
+- Post-deploy repo variables:
+  - `CLEANUP_URL`
+- Optional repo variables with runtime defaults:
   - `OPENAI_BASE_URL`
   - `OPENAI_CHAT_MODEL`
   - `OPENAI_VISION_MODEL`
   - `OPENAI_TTS_MODEL`
   - `OPENAI_TRANSCRIBE_MODEL`
-  - `OPENAI_RETRY_ATTEMPTS` (optional, default `3`)
+  - `OPENAI_RETRY_ATTEMPTS` (default `3`)
 - Required repo secrets for deploy:
   - `SUPABASE_SERVICE_ROLE_KEY`
   - `CLEANUP_SECRET`

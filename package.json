@@ -11,6 +11,7 @@
     "test": "bun test",
     "lint": "eslint .",
     "verify:prod-env": "bun scripts/verify-production-env.ts",
+    "verify:github-prod": "bun scripts/verify-github-production-config.ts",
     "format": "prettier --write ."
   },
   "dependencies": {
