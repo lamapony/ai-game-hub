@@ -88,7 +88,6 @@ export const judgeChallenge = createServerFn({ method: "POST" })
     ];
 
     const r = await chatJSON<{ score: number; feedback: string; verdict: string }>({
-      model: "google/gemini-2.5-flash",
       system: HOST_VOICE_SYSTEM,
       user: parts,
       temperature: 0.7,

@@ -1,75 +1,88 @@
 # DIMAS fest
 
-Jackbox-style AI-вечеринка для парка. Один экран-ведущий, все игроки заходят с телефона по QR-коду, дополнительные телефоны становятся «духами» — пространственными колонками. Три игры:
+Jackbox-style AI-вечеринка для парка. Один экран-ведущий, игроки заходят с телефона по QR-коду, дополнительные телефоны становятся пространственными колонками. Три игры:
 
 - **Звуковой баттл** — команды записывают звуки, AI-оркестратор играет их через 5 телефонов-колонок.
-- **Челлендж духа парка** — оператор снимает видео, Gemini судит и озвучивает вердикт.
+- **Челлендж духа парка** — оператор снимает видео, AI судит и озвучивает вердикт.
 - **Фотоохота** — все делают по одному кадру на абсурдное задание, AI ранжирует.
 
-Проект собран на Lovable, но полностью работает в любом окружении — ниже инструкция для разработки в своей IDE.
-
----
+Проект полностью независим: сборка, AI и деплой работают напрямую через open-source tooling, Supabase, OpenAI-compatible API и Cloudflare Workers.
 
 ## Стек
 
-- **TanStack Start v1** (React 19 + Vite 7, SSR под Cloudflare Workers)
-- **TailwindCSS v4** (`src/styles.css`, без tailwind.config.js)
+- **TanStack Start v1** (React 19 + Vite 8, SSR под Cloudflare Workers)
+- **TailwindCSS v4** (`src/styles.css`, без `tailwind.config.js`)
 - **Supabase** — БД, Realtime, Storage (bucket `recordings`)
-- **Lovable AI Gateway** — Gemini 2.5 Flash (vision), GPT-4o mini TTS, Whisper-mini STT
+- **OpenAI-compatible API** — JSON judging/vision, TTS, STT
 - **shadcn/ui** — компоненты в `src/components/ui`
-- **Bun** — пакетный менеджер (можно заменить на pnpm/npm)
+- **Bun** — пакетный менеджер
 
 ## Требования
 
-- Node.js 20+ или Bun 1.1+
-- Supabase-проект (свой или существующий Lovable Cloud)
-- Ключ Lovable AI Gateway **или** ключи OpenAI/Gemini, если решишь переписать `src/lib/ai-gateway.server.ts`
+- Bun 1.1+ или Node.js 20+
+- Supabase-проект
+- OpenAI API key или совместимый endpoint
+- Cloudflare account для production deploy
 
 ## Быстрый старт
 
 ```bash
-# 1. Установить зависимости
-bun install         # или: npm install / pnpm install
-
-# 2. Скопировать переменные окружения
+bun install
 cp .env.example .env
-#    заполнить значениями из Supabase Dashboard → Project Settings → API
-
-# 3. Запустить dev-сервер
-bun run dev         # http://localhost:8080
+bun run dev
 ```
+
+Dev server: `http://localhost:8080`
 
 Сборка и предпросмотр:
 
 ```bash
-bun run build           # прод-сборка (Cloudflare Worker через nitro)
-bun run build:dev       # прод-сборка в dev-режиме (без минификации)
-bun run preview         # локальный запуск собранной версии
-bun run lint            # ESLint
+bun run lint
+bunx tsc --noEmit
+bun run build
+bun run preview
 ```
 
 ## Переменные окружения
-
-Все переменные — в `.env.example`. Правила:
 
 | Переменная                      | Где доступна     | Назначение                             |
 | ------------------------------- | ---------------- | -------------------------------------- |
 | `VITE_SUPABASE_URL`             | браузер + сервер | URL Supabase-проекта                   |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | браузер + сервер | Anon/publishable key                   |
 | `VITE_SUPABASE_PROJECT_ID`      | браузер          | Ref проекта                            |
-| `SUPABASE_URL`                  | только сервер    | То же, для server functions            |
-| `SUPABASE_PUBLISHABLE_KEY`      | только сервер    | То же, для server functions            |
+| `SUPABASE_URL`                  | только сервер    | URL Supabase для server functions      |
+| `SUPABASE_PUBLISHABLE_KEY`      | только сервер    | Publishable key для server functions   |
 | `SUPABASE_SERVICE_ROLE_KEY`     | только сервер    | Bypass RLS. **Никогда не в браузере.** |
-| `LOVABLE_API_KEY`               | только сервер    | AI Gateway (TTS, STT, Gemini vision)   |
+| `OPENAI_API_KEY`                | только сервер    | AI calls: JSON, vision, TTS, STT       |
+| `OPENAI_BASE_URL`               | только сервер    | OpenAI-compatible base URL             |
+| `OPENAI_CHAT_MODEL`             | только сервер    | JSON/text model                        |
+| `OPENAI_VISION_MODEL`           | только сервер    | Vision-capable model                   |
+| `OPENAI_TTS_MODEL`              | только сервер    | TTS model                              |
+| `OPENAI_TRANSCRIBE_MODEL`       | только сервер    | STT model                              |
 
-`process.env.*` доступен только внутри `createServerFn().handler(...)` и в файлах `*.server.ts` / `src/routes/api/*`. В браузере — только `import.meta.env.VITE_*`.
+`process.env.*` доступен только внутри `createServerFn().handler(...)`, файлов `*.server.ts` и `src/routes/api/*`. В браузере — только `import.meta.env.VITE_*`.
+
+## AI
+
+`src/lib/ai-gateway.server.ts` напрямую вызывает OpenAI-compatible endpoints:
+
+- `POST /chat/completions` для генерации заданий, JSON-вердиктов и vision judging;
+- `POST /audio/speech` для TTS;
+- `POST /audio/transcriptions` для STT.
+
+По умолчанию используются:
+
+- `gpt-4o-mini` для text/JSON и vision;
+- `gpt-4o-mini-tts` для озвучки;
+- `gpt-4o-mini-transcribe` для расшифровки.
+
+Если нужен другой провайдер, укажи `OPENAI_BASE_URL` и модели через env.
 
 ## База данных
 
-Все миграции лежат в `supabase/migrations/`. Применить к своему Supabase-проекту:
+Все миграции лежат в `supabase/migrations/`. Применить к Supabase-проекту:
 
 ```bash
-# через Supabase CLI (https://supabase.com/docs/guides/cli)
 supabase link --project-ref <your-ref>
 supabase db push
 ```
@@ -77,63 +90,46 @@ supabase db push
 Таблицы: `rooms`, `submissions`, `votes`, `challenges`, `photos`.
 Bucket: `recordings` (private).
 
-RLS-политики намеренно открытые (party-режим без аутентификации) — если разворачиваешь публично, ужесточи их.
-
-## Замена Lovable AI Gateway
-
-`src/lib/ai-gateway.server.ts` вызывает `https://ai.gateway.lovable.dev/v1` в формате OpenAI. Если ключа нет, замени `BASE` и модели на:
-
-- `https://api.openai.com/v1` — для TTS (`gpt-4o-mini-tts`) и Whisper (`gpt-4o-mini-transcribe` → `whisper-1`)
-- `https://generativelanguage.googleapis.com/v1beta/openai` — для Gemini через OpenAI-совместимый endpoint
-
-Модели, используемые в коде:
-
-- `google/gemini-3-flash-preview` — судейство в челлендже, ранжирование фотоохоты, генерация тем и заданий
-- `openai/gpt-4o-mini-tts` — голос духа парка
-- `openai/gpt-4o-mini-transcribe` — расшифровка записей в звуковом баттле
+RLS-политики намеренно открытые для party-mode без аутентификации. Для публичного постоянного деплоя нужно добавить rate limiting, cleanup старых комнат и более строгие политики.
 
 ## Структура
 
-```
+```text
 src/
   routes/
     index.tsx              # лендинг + создание комнаты
-    host.$code.tsx         # экран ведущего (хаб игр)
+    host.$code.tsx         # экран ведущего
     play.$code.tsx         # экран игрока
-    speaker.$code.tsx      # экран «духа» (колонки)
+    speaker.$code.tsx      # экран колонки
     api/
       speak.ts             # TTS endpoint
       transcribe.ts        # STT endpoint
   games/
-    soundscape/            # звуковой баттл
-    challenge/             # челлендж духа парка
-    phototunt/             # фотоохота
+    soundscape/
+    challenge/
+    phototunt/
   lib/
-    room.ts                # realtime-движок комнат
-    types.ts               # общие типы состояния
-    ai-gateway.server.ts   # обёртка над AI Gateway
-    ai/                    # server functions для каждой игры
-  integrations/supabase/   # авто-генерируемые клиенты — не редактировать
-  components/ui/           # shadcn
+    room.ts
+    types.ts
+    ai-gateway.server.ts
+    ai/
+  integrations/supabase/
+  components/ui/
 ```
 
 ## Развёртывание
 
-Проект настроен под **Cloudflare Workers** (`vite.config.ts` → nitro). Альтернативы:
+Проект собирается под **Cloudflare Workers** через TanStack Start/Nitro:
 
-- **Vercel / Netlify** — заменить `nitro` preset в vite-конфиге. См. https://tanstack.com/start/latest/docs/framework/react/hosting
-- **Node.js** — `nitro` умеет собирать под `node-server`.
-- **Обратно в Lovable** — просто открыть проект в Lovable, все правки подхватятся.
+```bash
+bun run build
+npx wrangler deploy --config wrangler.json --cwd dist/server --secrets-file .deploy.env --keep-vars
+```
 
-## Что нельзя редактировать
+В GitHub Actions есть:
 
-Авто-генерируется Lovable / TanStack плагинами — при ручных правках сломается:
-
-- `src/routeTree.gen.ts`
-- `src/integrations/supabase/client.ts`, `client.server.ts`, `types.ts`, `auth-middleware.ts`, `auth-attacher.ts`
-- `supabase/config.toml`
-
-Если разрабатываешь только вне Lovable — эти файлы можно удалить из ignore-списка и вести вручную.
+- `CI` — lint, typecheck, build на push/PR;
+- `Deploy Cloudflare` — ручной production deploy после настройки secrets.
 
 ## Лицензия
 

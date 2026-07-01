@@ -15,13 +15,7 @@ export type Player = {
 };
 
 export type SoundscapePhase =
-  | "idle"
-  | "topics"
-  | "recording"
-  | "mixing"
-  | "playback"
-  | "voting"
-  | "results";
+  "idle" | "topics" | "recording" | "mixing" | "playback" | "voting" | "results";
 
 export type SoundscapeCue = {
   atMs: number;

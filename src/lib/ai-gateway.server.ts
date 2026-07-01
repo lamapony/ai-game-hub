@@ -1,15 +1,16 @@
-// Server-only helper to call Lovable AI Gateway.
-const BASE = "https://ai.gateway.lovable.dev/v1";
+// Server-only helper to call OpenAI or an OpenAI-compatible provider directly.
+function baseUrl(): string {
+  return process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1";
+}
 
 function key(): string {
-  const k = process.env.LOVABLE_API_KEY;
-  if (!k) throw new Error("LOVABLE_API_KEY missing");
+  const k = process.env.OPENAI_API_KEY;
+  if (!k) throw new Error("OPENAI_API_KEY missing");
   return k;
 }
 
 type ContentPart =
-  | { type: "text"; text: string }
-  | { type: "image_url"; image_url: { url: string } };
+  { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } };
 
 export async function chatJSON<T>(opts: {
   model?: string;
@@ -17,14 +18,27 @@ export async function chatJSON<T>(opts: {
   user: string | ContentPart[];
   temperature?: number;
 }): Promise<T> {
-  const res = await fetch(`${BASE}/chat/completions`, {
+  const hasImages = Array.isArray(opts.user) && opts.user.some((part) => part.type === "image_url");
+  const requestedModel = opts.model ?? "";
+  const model = requestedModel.startsWith("google/")
+    ? hasImages
+      ? process.env.OPENAI_VISION_MODEL
+      : process.env.OPENAI_CHAT_MODEL
+    : requestedModel;
+
+  const res = await fetch(`${baseUrl()}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${key()}`,
     },
     body: JSON.stringify({
-      model: opts.model ?? "google/gemini-3-flash-preview",
+      model:
+        model ||
+        (hasImages
+          ? (process.env.OPENAI_VISION_MODEL ?? process.env.OPENAI_CHAT_MODEL)
+          : process.env.OPENAI_CHAT_MODEL) ||
+        "gpt-4o-mini",
       temperature: opts.temperature ?? 0.85,
       messages: [
         { role: "system", content: opts.system },
@@ -35,7 +49,7 @@ export async function chatJSON<T>(opts: {
   });
   if (!res.ok) {
     const t = await res.text().catch(() => "");
-    throw new Error(`AI Gateway ${res.status}: ${t.slice(0, 300)}`);
+    throw new Error(`AI provider ${res.status}: ${t.slice(0, 300)}`);
   }
   const data = await res.json();
   const text: string = data?.choices?.[0]?.message?.content ?? "{}";
@@ -48,14 +62,14 @@ export async function chatJSON<T>(opts: {
 }
 
 export async function ttsMp3(text: string, voice = "alloy"): Promise<ArrayBuffer> {
-  const res = await fetch(`${BASE}/audio/speech`, {
+  const res = await fetch(`${baseUrl()}/audio/speech`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${key()}`,
     },
     body: JSON.stringify({
-      model: "openai/gpt-4o-mini-tts",
+      model: process.env.OPENAI_TTS_MODEL ?? "gpt-4o-mini-tts",
       input: text,
       voice,
       response_format: "mp3",
@@ -70,9 +84,9 @@ export async function ttsMp3(text: string, voice = "alloy"): Promise<ArrayBuffer
 
 export async function transcribeAudio(file: Blob, filename = "recording.webm"): Promise<string> {
   const fd = new FormData();
-  fd.append("model", "openai/gpt-4o-mini-transcribe");
+  fd.append("model", process.env.OPENAI_TRANSCRIBE_MODEL ?? "gpt-4o-mini-transcribe");
   fd.append("file", file, filename);
-  const res = await fetch(`${BASE}/audio/transcriptions`, {
+  const res = await fetch(`${baseUrl()}/audio/transcriptions`, {
     method: "POST",
     headers: { Authorization: `Bearer ${key()}` },
     body: fd,

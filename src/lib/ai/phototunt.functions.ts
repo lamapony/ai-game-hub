@@ -104,7 +104,6 @@ ${data.photos.map((p, i) => `${i + 1}. ${p.playerName} (id: ${p.playerId})`).joi
         ranking: Array<{ playerId: string; rank: number; comment: string }>;
         verdict: string;
       }>({
-        model: "google/gemini-2.5-flash",
         system: VOICE,
         user: parts,
         temperature: 0.7,

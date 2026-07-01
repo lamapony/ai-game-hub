@@ -8,7 +8,7 @@
 - TypeScript-проверка проходит: `bunx tsc --noEmit`.
 - ESLint проходит без ошибок и предупреждений: `bun run lint`.
 - `.env` исключен из git; публично коммитится только `.env.example`.
-- Сборка ориентирована на Cloudflare Workers через Nitro/TanStack Start.
+- Сборка ориентирована на Cloudflare Workers через TanStack Start и официальный Cloudflare Vite plugin.
 
 ## Уже закрыто
 
@@ -42,10 +42,10 @@
    - фото и downscale для Photo Hunt.
 
 4. Проверить AI failure modes:
-   - отсутствует `LOVABLE_API_KEY`;
-   - AI Gateway возвращает 4xx/5xx;
+   - отсутствует `OPENAI_API_KEY`;
+   - OpenAI-compatible API возвращает 4xx/5xx;
    - STT/TTS timeout;
-   - Gemini возвращает невалидный JSON;
+   - JSON/vision model возвращает невалидный JSON;
    - fallback-тексты не ломают UI.
 
 5. Проверить Supabase:
@@ -86,9 +86,14 @@
    - `SUPABASE_URL`;
    - `SUPABASE_PUBLISHABLE_KEY`;
    - `SUPABASE_SERVICE_ROLE_KEY`;
-   - `LOVABLE_API_KEY`.
+   - `OPENAI_API_KEY`;
+   - `OPENAI_BASE_URL`;
+   - `OPENAI_CHAT_MODEL`;
+   - `OPENAI_VISION_MODEL`;
+   - `OPENAI_TTS_MODEL`;
+   - `OPENAI_TRANSCRIBE_MODEL`.
 4. Выполнить `bun run build`.
-5. Задеплоить prebuilt Nitro output: `npx nitro deploy --prebuilt`.
+5. Задеплоить prebuilt Worker output: `npx wrangler deploy --config wrangler.json --cwd dist/server --secrets-file .deploy.env --keep-vars`.
 6. После деплоя пройти smoke test на production URL.
 
 ## GitHub Actions
@@ -101,9 +106,14 @@
   - `VITE_SUPABASE_PROJECT_ID`
   - `SUPABASE_URL`
   - `SUPABASE_PUBLISHABLE_KEY`
+  - `OPENAI_BASE_URL`
+  - `OPENAI_CHAT_MODEL`
+  - `OPENAI_VISION_MODEL`
+  - `OPENAI_TTS_MODEL`
+  - `OPENAI_TRANSCRIBE_MODEL`
 - Required repo secrets for deploy:
   - `SUPABASE_SERVICE_ROLE_KEY`
-  - `LOVABLE_API_KEY`
+  - `OPENAI_API_KEY`
   - `CLOUDFLARE_ACCOUNT_ID`
   - `CLOUDFLARE_API_TOKEN`
 
@@ -111,5 +121,5 @@
 
 - Публичный party-mode без auth: добавить rate limiting или cleanup, если URL станет широко доступен.
 - Большой client chunk `index` выше 500 kB: после функциональной стабилизации вынести тяжелые игровые ветки в lazy imports.
-- Зависимость от Lovable AI Gateway: подготовить прямой OpenAI/Gemini fallback или понятное сообщение host-у при недоступности AI.
+- Зависимость от внешнего AI-провайдера: подготовить понятное сообщение host-у при недоступности API и fallback для TTS/STT.
 - Синхронизация speaker playback зависит от устройств и сети: перед мероприятием провести тест с тем же Wi-Fi/мобильным интернетом и теми же колонками.
