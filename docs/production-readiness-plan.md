@@ -91,6 +91,22 @@
 5. Задеплоить prebuilt Nitro output: `npx nitro deploy --prebuilt`.
 6. После деплоя пройти smoke test на production URL.
 
+## GitHub Actions
+
+- `CI` запускается на push и pull request в `main`: install, lint, typecheck, build.
+- `Deploy Cloudflare` запускается вручную через GitHub Actions после настройки secrets.
+- Required repo variables:
+  - `VITE_SUPABASE_URL`
+  - `VITE_SUPABASE_PUBLISHABLE_KEY`
+  - `VITE_SUPABASE_PROJECT_ID`
+  - `SUPABASE_URL`
+  - `SUPABASE_PUBLISHABLE_KEY`
+- Required repo secrets for deploy:
+  - `SUPABASE_SERVICE_ROLE_KEY`
+  - `LOVABLE_API_KEY`
+  - `CLOUDFLARE_ACCOUNT_ID`
+  - `CLOUDFLARE_API_TOKEN`
+
 ## Риски, которые стоит закрыть до публичного мероприятия
 
 - Публичный party-mode без auth: добавить rate limiting или cleanup, если URL станет широко доступен.
