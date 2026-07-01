@@ -131,6 +131,11 @@ npx wrangler deploy --config wrangler.json --cwd dist/server --secrets-file .dep
 - `CI` — lint, typecheck, build на push/PR;
 - `Deploy Cloudflare` — ручной production deploy после настройки secrets.
 
+## Документы
+
+- `docs/production-readiness-plan.md` — стабилизация, тестирование и подготовка к продакшену.
+- `docs/development-roadmap.md` — долгосрочные продуктовые и технические цели.
+
 ## Лицензия
 
 Приватный проект вечеринки. Делай что хочешь.
