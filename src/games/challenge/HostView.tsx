@@ -99,11 +99,12 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
 
   // Auto-generate task on briefing entry
   useEffect(() => {
+    if (state.paused) return;
     if (ch.phase === "briefing" && !ch.task && !busy) {
       generate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ch.phase, ch.task]);
+  }, [state.paused, ch.phase, ch.task]);
 
   async function generate() {
     if (!ch.operatorName) return;
@@ -129,6 +130,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
 
   // Auto-end recording (timeout safety; operator usually uploads earlier)
   useEffect(() => {
+    if (state.paused) return;
     if (ch.phase !== "recording" || !ch.recordingEndsAt) return;
     if (now < ch.recordingEndsAt + 30_000) return; // grace for upload
     if (judgedForRef.current === ch.roundId) return;
@@ -138,7 +140,12 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
       result: { score: 0, feedback: "Никто ничего не снял. Дух парка разочарован.", videoUrl: "" },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [now, ch.phase, ch.recordingEndsAt]);
+  }, [state.paused, now, ch.phase, ch.recordingEndsAt]);
+
+  useEffect(() => {
+    if (!state.paused) return;
+    audioRef.current?.pause();
+  }, [state.paused]);
 
   async function runJudgement(p: {
     roundId: string;

@@ -18,6 +18,7 @@
 - В `Orchestra` устранен риск stale callback при срабатывании scheduled audio cues.
 - Media helpers вынесены из React-компонентов в отдельные utility-модули.
 - Добавлены fallback-задания, fallback-судейство и graceful STT fallback для AI outage.
+- Добавлены host controls для активной игры: pause/resume, skip phase, restart game, force back to hub.
 - Fast Refresh правило отключено только для `src/components/ui`, где shadcn/ui ожидаемо экспортирует variants рядом с компонентами.
 - Локальный `.codebase-memory/` исключен из публичного репозитория.
 
@@ -69,6 +70,8 @@
   - подключить игрока;
   - подключить speaker;
   - пройти по одному раунду Soundscape, Challenge и Photo Hunt;
+  - проверить, что host может поставить раунд на паузу и продолжить без сгорания таймера;
+  - проверить skip phase, restart game и force back to hub во время активной игры;
   - проверить, что host может вернуться в hub после игры.
 
 - Минимальный regression pack после live-теста:

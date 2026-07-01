@@ -171,7 +171,9 @@ function PlayerScreen({
           </div>
         </div>
 
-        {state.currentGame === "soundscape" && state.soundscape ? (
+        {state.paused ? (
+          <PausedPanel />
+        ) : state.currentGame === "soundscape" && state.soundscape ? (
           <SoundscapePlayer roomId={room.id} state={state} me={me} />
         ) : state.currentGame === "challenge" && state.challenge ? (
           <ChallengePlayer roomId={room.id} state={state} me={me} />
@@ -182,6 +184,20 @@ function PlayerScreen({
         )}
       </div>
     </PlayShell>
+  );
+}
+
+function PausedPanel() {
+  return (
+    <div className="rounded-3xl bg-black/45 backdrop-blur p-8 border border-white/10 text-center text-white">
+      <div className="text-xs uppercase tracking-[0.25em] text-[var(--color-park-bright)]">
+        Пауза
+      </div>
+      <div className="font-display text-3xl mt-2">Ждём ведущего</div>
+      <p className="text-white/60 text-sm mt-2">
+        Раунд остановлен. Когда ведущий продолжит, экран обновится сам.
+      </p>
+    </div>
   );
 }
 

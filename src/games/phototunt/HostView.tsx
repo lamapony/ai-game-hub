@@ -69,11 +69,12 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
 
   // Briefing → auto-generate task
   useEffect(() => {
+    if (state.paused) return;
     if (ph.phase === "briefing" && !ph.task && !busy) {
       generate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ph.phase, ph.task]);
+  }, [state.paused, ph.phase, ph.task]);
 
   async function generate() {
     setBusy("Дух парка придумывает охоту…");
@@ -98,6 +99,7 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
 
   // Auto-end hunt when timer runs out OR everyone submitted
   useEffect(() => {
+    if (state.paused) return;
     if (ph.phase !== "hunting") return;
     const allDone = state.players.length > 0 && photos.length >= state.players.length;
     const timeUp = ph.huntEndsAt && now >= ph.huntEndsAt;
@@ -111,7 +113,12 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ph.phase, ph.huntEndsAt, now, photos.length, state.players.length]);
+  }, [state.paused, ph.phase, ph.huntEndsAt, now, photos.length, state.players.length]);
+
+  useEffect(() => {
+    if (!state.paused) return;
+    audioRef.current?.pause();
+  }, [state.paused]);
 
   async function runJudgement() {
     setBusy("AI рассматривает фотографии…");

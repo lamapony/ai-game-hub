@@ -26,7 +26,8 @@ DIMAS fest должен стать форматом живой AI-вечерин
 - Production deploy на Cloudflare Workers.
 - Отдельный production Supabase проект.
 - Все secrets настроены в GitHub Actions.
-- Host может создать комнату, запустить 3 игры и вернуться в hub.
+- Host может создать комнату, запустить 3 игры, поставить раунд на паузу, пропустить фазу,
+  перезапустить игру и вернуться в hub.
 - 8-20 игроков проходят вечер на телефонах.
 - Минимум 1 дополнительный speaker-telephone стабильно подключается и играет.
 - AI failure states показываются host-у понятным текстом.
@@ -36,7 +37,7 @@ DIMAS fest должен стать форматом живой AI-вечерин
 
 - Добавить cleanup job для комнат, записей и storage objects старше N часов.
 - Расширить fallback-задания и fallback-судейство после первого field test.
-- Добавить host controls: pause, skip, restart round, force back to hub.
+- Проверить host controls на field test: pause, skip, restart round, force back to hub.
 - Улучшить сообщения ошибок для камеры, микрофона, upload, AI.
 - Провести field test на реальных телефонах и сети.
 
@@ -150,7 +151,7 @@ DIMAS fest должен стать форматом живой AI-вечерин
 2. Провести smoke test с 2-3 телефонами.
 3. Провести field test с 8+ игроками.
 4. Зафиксировать top 10 friction points после field test.
-5. Добавить fallback-задания и host controls.
+5. Проверить fallback-задания и host controls на field test.
 6. Добавить cleanup старых комнат/uploads.
 7. Подготовить “event profile” как простой config, без dashboard.
 

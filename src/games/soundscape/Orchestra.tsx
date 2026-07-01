@@ -2,6 +2,8 @@
 import { useEffect, useRef } from "react";
 import type { SoundscapeMix } from "@/lib/types";
 
+const PAST_CUE_GRACE_MS = 1000;
+
 type Props = {
   slot: number;
   mix: SoundscapeMix | null | undefined;
@@ -37,6 +39,7 @@ export function Orchestra({ slot, mix, startAt, intro, onCueFired }: Props) {
     const offsetToStart = startAt - now;
 
     const fire = (delay: number, fn: () => void) => {
+      if (delay < -PAST_CUE_GRACE_MS) return;
       const t = setTimeout(fn, Math.max(0, delay));
       timeoutsRef.current.push(t);
     };

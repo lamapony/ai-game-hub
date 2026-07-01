@@ -130,16 +130,18 @@ export function SoundscapeHost({
   }
 
   useEffect(() => {
+    if (state.paused) return;
     if (snd.phase === "topics" && !snd.topics) triggerTopics();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [snd.phase]);
+  }, [state.paused, snd.phase]);
 
   // Auto-end recording
   useEffect(() => {
+    if (state.paused) return;
     if (snd.phase !== "recording" || !snd.recordingEndsAt) return;
     if (now >= snd.recordingEndsAt) startMixing();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [now, snd.phase, snd.recordingEndsAt]);
+  }, [state.paused, now, snd.phase, snd.recordingEndsAt]);
 
   async function startMixing() {
     setBusy("mixing");
@@ -181,6 +183,7 @@ export function SoundscapeHost({
 
   // Advance through playback teams
   useEffect(() => {
+    if (state.paused) return;
     if (snd.phase !== "playback" || !snd.playback || !snd.mixes) return;
     const tEnd = snd.playback.startAt + PLAYBACK_TOTAL_MS;
     if (now < tEnd) return;
@@ -193,15 +196,16 @@ export function SoundscapeHost({
       update({ phase: "voting", voteOpenAt: Date.now() });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [now, snd.phase, snd.playback?.teamId, snd.playback?.startAt]);
+  }, [state.paused, now, snd.phase, snd.playback?.teamId, snd.playback?.startAt]);
 
   // End voting after timer
   useEffect(() => {
+    if (state.paused) return;
     if (snd.phase !== "voting" || !snd.voteOpenAt) return;
     if (now < snd.voteOpenAt + VOTING_MS) return;
     finishVoting();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [now, snd.phase, snd.voteOpenAt]);
+  }, [state.paused, now, snd.phase, snd.voteOpenAt]);
 
   async function finishVoting() {
     setBusy("scoring");
@@ -262,7 +266,12 @@ export function SoundscapeHost({
 
   return (
     <div className="space-y-4">
-      <Orchestra slot={1} mix={activeMix} startAt={snd.playback?.startAt ?? null} intro={intro} />
+      <Orchestra
+        slot={1}
+        mix={state.paused ? null : activeMix}
+        startAt={state.paused ? null : (snd.playback?.startAt ?? null)}
+        intro={state.paused ? null : intro}
+      />
 
       <div className="rounded-3xl park-gradient p-6 text-white">
         <div className="flex items-center justify-between">

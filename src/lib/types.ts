@@ -105,6 +105,9 @@ export type RoomState = {
   teams: Team[];
   players: Player[];
   currentGame: GameId | null;
+  paused?: {
+    startedAt: number;
+  };
   soundscape?: SoundscapeState;
   challenge?: ChallengeState;
   phototunt?: PhotoHuntState;

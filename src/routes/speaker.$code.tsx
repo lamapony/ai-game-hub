@@ -74,11 +74,13 @@ function SpeakerPage() {
 
   const snd = room.state.soundscape;
   const activeMix =
-    snd?.phase === "playback" && snd.playback ? snd.mixes?.[snd.playback.teamId] : null;
+    !room.state.paused && snd?.phase === "playback" && snd.playback
+      ? snd.mixes?.[snd.playback.teamId]
+      : null;
 
   return (
     <Shell>
-      {armed && (
+      {armed && !room.state.paused && (
         <Orchestra
           slot={slot}
           mix={activeMix}
@@ -130,16 +132,20 @@ function SpeakerPage() {
             className={`mt-8 rounded-3xl border border-white/20 p-6 ${snd?.phase === "playback" ? "bg-[var(--color-park-bright)]/20 animate-pulse" : "bg-white/5"}`}
           >
             <div className="text-sm uppercase tracking-widest text-white/70">
-              {snd?.phase === "playback"
-                ? "Выступаю"
-                : snd?.phase
-                  ? `Жду · ${snd.phase}`
-                  : "На связи"}
+              {room.state.paused
+                ? "Пауза"
+                : snd?.phase === "playback"
+                  ? "Выступаю"
+                  : snd?.phase
+                    ? `Жду · ${snd.phase}`
+                    : "На связи"}
             </div>
             <div className="font-display text-3xl mt-1">
-              {snd?.phase === "playback"
-                ? (activeMix?.cues.filter((c) => c.slot === slot).length ?? 0) + " реплик"
-                : "✓"}
+              {room.state.paused
+                ? "||"
+                : snd?.phase === "playback"
+                  ? (activeMix?.cues.filter((c) => c.slot === slot).length ?? 0) + " реплик"
+                  : "✓"}
             </div>
             <p className="text-xs text-white/60 mt-3">
               Не выключай экран. Колонка ждёт сигнала от AI.

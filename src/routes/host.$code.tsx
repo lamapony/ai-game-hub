@@ -7,6 +7,14 @@ import { SoundscapeHost } from "@/games/soundscape/HostView";
 import { ChallengeHost } from "@/games/challenge/HostView";
 import { PhotoHuntHost } from "@/games/phototunt/HostView";
 import { teamColorClasses } from "@/lib/team-style";
+import {
+  canSkipCurrentPhase,
+  forceBackToHubState,
+  pauseRoomState,
+  resumeRoomState,
+  skipCurrentPhaseState,
+} from "@/lib/host-controls";
+import type { RoomState } from "@/lib/types";
 
 export const Route = createFileRoute("/host/$code")({
   component: HostPage,
@@ -53,18 +61,7 @@ function HostPage() {
   return <HostInner roomId={room.id} code={room.code} state={room.state} />;
 }
 
-function HostInner({
-  roomId,
-  code,
-  state,
-}: {
-  roomId: string;
-  code: string;
-  state: import("@/lib/types").RoomState;
-}) {
-  const update = (patch: Partial<import("@/lib/types").RoomState>) =>
-    updateRoomState(roomId, { ...state, ...patch });
-
+function HostInner({ roomId, code, state }: { roomId: string; code: string; state: RoomState }) {
   const { send } = useBroadcast(roomId);
 
   const totalPlayers = state.players.length;
@@ -89,7 +86,10 @@ function HostInner({
       ...state,
       status: "playing",
       currentGame: "soundscape",
+      paused: undefined,
       soundscape: { phase: "topics", roundId },
+      challenge: undefined,
+      phototunt: undefined,
     });
   }
 
@@ -100,6 +100,8 @@ function HostInner({
       ...state,
       status: "playing",
       currentGame: "challenge",
+      paused: undefined,
+      soundscape: undefined,
       challenge: {
         phase: "briefing",
         roundId: genId("ch"),
@@ -107,6 +109,7 @@ function HostInner({
         operatorName: operator.name,
         pastOperatorIds: [],
       },
+      phototunt: undefined,
     });
   }
 
@@ -116,6 +119,9 @@ function HostInner({
       ...state,
       status: "playing",
       currentGame: "phototunt",
+      paused: undefined,
+      soundscape: undefined,
+      challenge: undefined,
       phototunt: {
         phase: "briefing",
         roundId: genId("ph"),
@@ -129,10 +135,32 @@ function HostInner({
       ...state,
       status: "lobby",
       currentGame: null,
+      paused: undefined,
       soundscape: undefined,
       challenge: undefined,
       phototunt: undefined,
     });
+  }
+
+  async function togglePause() {
+    await updateRoomState(
+      roomId,
+      state.paused ? resumeRoomState(state, Date.now()) : pauseRoomState(state, Date.now()),
+    );
+  }
+
+  async function skipPhase() {
+    await updateRoomState(roomId, skipCurrentPhaseState(state, Date.now()));
+  }
+
+  async function restartCurrentGame() {
+    if (state.currentGame === "soundscape") await launchSoundscape();
+    if (state.currentGame === "challenge") await launchChallenge();
+    if (state.currentGame === "phototunt") await launchPhotoHunt();
+  }
+
+  async function forceBackToHub() {
+    await updateRoomState(roomId, forceBackToHubState(state));
   }
 
   return (
@@ -154,6 +182,17 @@ function HostInner({
 
       <div className="mx-auto max-w-6xl px-5 py-6 grid lg:grid-cols-[1fr_320px] gap-6">
         <section>
+          {state.currentGame && (
+            <HostControlBar
+              state={state}
+              canSkip={canSkipCurrentPhase(state)}
+              onTogglePause={togglePause}
+              onSkip={skipPhase}
+              onRestart={restartCurrentGame}
+              onBackToHub={forceBackToHub}
+            />
+          )}
+
           {state.currentGame === "soundscape" && state.soundscape ? (
             <SoundscapeHost roomId={roomId} code={code} state={state} />
           ) : state.currentGame === "challenge" && state.challenge ? (
@@ -187,6 +226,88 @@ function HostInner({
         </aside>
       </div>
     </main>
+  );
+}
+
+function HostControlBar({
+  state,
+  canSkip,
+  onTogglePause,
+  onSkip,
+  onRestart,
+  onBackToHub,
+}: {
+  state: RoomState;
+  canSkip: boolean;
+  onTogglePause: () => void;
+  onSkip: () => void;
+  onRestart: () => void;
+  onBackToHub: () => void;
+}) {
+  const gameLabel = {
+    soundscape: "Звуковой баттл",
+    challenge: "Челлендж",
+    phototunt: "Фотоохота",
+  }[state.currentGame ?? "soundscape"];
+  const phase =
+    state.currentGame === "soundscape"
+      ? state.soundscape?.phase
+      : state.currentGame === "challenge"
+        ? state.challenge?.phase
+        : state.currentGame === "phototunt"
+          ? state.phototunt?.phase
+          : null;
+
+  return (
+    <div className="mb-4 rounded-3xl border border-white/10 bg-card p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            Управление раундом
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <span className="font-display text-xl">{gameLabel}</span>
+            {phase && (
+              <span className="rounded-full bg-white/5 px-2.5 py-1 text-xs text-muted-foreground">
+                {phase}
+              </span>
+            )}
+            {state.paused && (
+              <span className="rounded-full bg-[var(--color-park-bright)]/20 px-2.5 py-1 text-xs text-[var(--color-park-bright)]">
+                пауза
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+          <button
+            onClick={onTogglePause}
+            className="rounded-2xl bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/15"
+          >
+            {state.paused ? "Продолжить" : "Пауза"}
+          </button>
+          <button
+            onClick={onSkip}
+            disabled={!canSkip}
+            className="rounded-2xl bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Пропустить фазу
+          </button>
+          <button
+            onClick={onRestart}
+            className="rounded-2xl bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/15"
+          >
+            Заново
+          </button>
+          <button
+            onClick={onBackToHub}
+            className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/75 hover:text-white"
+          >
+            В hub
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
