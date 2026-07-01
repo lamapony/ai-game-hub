@@ -14,6 +14,21 @@ export const Route = createFileRoute("/api/speak")({
           logWarn("api.speak.invalid", { durationMs: Date.now() - startedAt, status: 400 });
           return new Response("text required", { status: 400 });
         }
+        const { checkRequestRateLimit, rateLimitResponse } =
+          await import("@/lib/api-rate-limit.server");
+        const rateLimit = checkRequestRateLimit(request, {
+          keyPrefix: "api:speak",
+          limit: 180,
+          windowMs: 60_000,
+        });
+        if (!rateLimit.allowed) {
+          logWarn("api.speak.rate_limited", {
+            durationMs: Date.now() - startedAt,
+            status: 429,
+            retryAfterSeconds: rateLimit.retryAfterSeconds,
+          });
+          return rateLimitResponse(rateLimit);
+        }
         const { ttsMp3 } = await import("@/lib/ai-gateway.server");
         try {
           const buf = await ttsMp3(text, voice);

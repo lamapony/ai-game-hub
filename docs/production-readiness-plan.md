@@ -38,6 +38,8 @@
   vars/secrets до build и пишет `.deploy.env` с defaults для optional OpenAI настроек.
 - Тяжелые Host/Player views для Soundscape, Challenge и Photo Hunt вынесены в lazy imports:
   warning Vite про client chunk `index` выше 500 kB больше не воспроизводится в production build.
+- Добавлен best-effort per-IP rate limiting для AI-затратных API endpoints `/api/speak` и
+  `/api/transcribe` с 429/Retry-After headers и regression tests.
 - Fast Refresh правило отключено только для `src/components/ui`, где shadcn/ui ожидаемо экспортирует variants рядом с компонентами.
 - Локальный `.codebase-memory/` исключен из публичного репозитория.
 
@@ -166,8 +168,7 @@
 Для первого production deploy ещё нужны `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY` и
 `CLOUDFLARE_API_TOKEN`. После первого deploy нужно добавить repo variable `CLEANUP_URL`.
 
-## Риски, которые стоит закрыть до публичного мероприятия
+## Риски, которые стоит проверить до публичного мероприятия
 
-- Публичный party-mode без auth: добавить rate limiting или cleanup, если URL станет широко доступен.
 - Зависимость от внешнего AI-провайдера: подготовить понятное сообщение host-у при недоступности API и fallback для TTS/STT.
 - Синхронизация speaker playback зависит от устройств и сети: перед мероприятием провести тест с тем же Wi-Fi/мобильным интернетом и теми же колонками.

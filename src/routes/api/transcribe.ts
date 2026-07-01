@@ -7,6 +7,21 @@ export const Route = createFileRoute("/api/transcribe")({
     handlers: {
       POST: async ({ request }) => {
         const startedAt = Date.now();
+        const { checkRequestRateLimit, rateLimitResponse } =
+          await import("@/lib/api-rate-limit.server");
+        const rateLimit = checkRequestRateLimit(request, {
+          keyPrefix: "api:transcribe",
+          limit: 120,
+          windowMs: 60_000,
+        });
+        if (!rateLimit.allowed) {
+          logWarn("api.transcribe.rate_limited", {
+            durationMs: Date.now() - startedAt,
+            status: 429,
+            retryAfterSeconds: rateLimit.retryAfterSeconds,
+          });
+          return rateLimitResponse(rateLimit);
+        }
         try {
           const form = await request.formData();
           const file = form.get("file");
