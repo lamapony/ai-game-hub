@@ -116,7 +116,7 @@ export type RoomState = {
   soundscape?: SoundscapeState;
   challenge?: ChallengeState;
   phototunt?: PhotoHuntState;
-  speakerSlots: Record<number, { connected: boolean; name: string }>; // 1..5
+  speakerSlots: Record<number, { connected: boolean; name: string; lastSeenAt?: number }>; // 1..5
 };
 
 export type RoomRow = {

@@ -42,6 +42,8 @@
   warning Vite про client chunk `index` выше 500 kB больше не воспроизводится в production build.
 - Добавлен best-effort per-IP rate limiting для AI-затратных API endpoints `/api/speak` и
   `/api/transcribe` с 429/Retry-After headers и regression tests.
+- Добавлен heartbeat для `/speaker/$code`: ведущий видит свежие, stale и offline дополнительные
+  колонки, а readiness логика покрыта unit tests.
 - Fast Refresh правило отключено только для `src/components/ui`, где shadcn/ui ожидаемо экспортирует variants рядом с компонентами.
 - Локальный `.codebase-memory/` исключен из публичного репозитория.
 
@@ -172,4 +174,4 @@
 
 ## Риски, которые стоит проверить до публичного мероприятия
 
-- Синхронизация speaker playback зависит от устройств и сети: перед мероприятием провести тест с тем же Wi-Fi/мобильным интернетом и теми же колонками.
+- Синхронизация speaker playback всё ещё зависит от реальных устройств, Bluetooth и сети: перед мероприятием провести smoke test с тем же Wi-Fi/мобильным интернетом и теми же колонками.

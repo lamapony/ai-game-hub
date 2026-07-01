@@ -17,6 +17,7 @@ import {
   resumeRoomState,
   skipCurrentPhaseState,
 } from "@/lib/host-controls";
+import { formatSpeakerHeartbeatAge, speakerReadiness } from "@/lib/speaker-status";
 import type { RoomState } from "@/lib/types";
 
 const SoundscapeHost = lazy(() =>
@@ -353,7 +354,9 @@ function Lobby({
     setMainTested(true);
   }
 
-  const extrasConnected = [2, 3, 4, 5].filter((s) => state.speakerSlots?.[s]?.connected).length;
+  const extrasConnected = [2, 3, 4, 5].filter(
+    (s) => speakerReadiness(s, state.speakerSlots?.[s]).status === "ready",
+  ).length;
   const step1Done = mainTested;
   const step2Done = totalPlayers > 0;
   const step3Done = extrasConnected > 0 || extrasSkipped;
@@ -606,6 +609,13 @@ function SpeakerSetupRow({
 }) {
   const sp = state.speakerSlots?.[slot];
   const isMain = slot === 1;
+  const readiness = speakerReadiness(slot, sp);
+  const readyClass =
+    readiness.status === "ready" || readiness.status === "host"
+      ? "bg-[var(--color-park-bright)]/20 text-[var(--color-park-bright)]"
+      : readiness.status === "stale"
+        ? "bg-amber-300/15 text-amber-100"
+        : "bg-white/5 text-white/40";
   const [copied, setCopied] = useState(false);
   function copy() {
     if (!url) return;
@@ -622,7 +632,13 @@ function SpeakerSetupRow({
             Колонка {slot} · {sp?.name}
           </div>
           <div className="text-xs text-muted-foreground">
-            {isMain ? "Это устройство ведущего" : "Открой ссылку на другом телефоне"}
+            {isMain
+              ? "Это устройство ведущего"
+              : readiness.status === "ready"
+                ? `heartbeat ${formatSpeakerHeartbeatAge(readiness.ageMs)}`
+                : readiness.status === "stale"
+                  ? `нужно проверить · ${formatSpeakerHeartbeatAge(readiness.ageMs)}`
+                  : "Открой ссылку на другом телефоне"}
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -634,10 +650,8 @@ function SpeakerSetupRow({
               🔊 тест
             </button>
           )}
-          <span
-            className={`text-xs px-2 py-0.5 rounded-full ${sp?.connected ? "bg-[var(--color-park-bright)]/20 text-[var(--color-park-bright)]" : "bg-white/5 text-white/40"}`}
-          >
-            {sp?.connected ? "готова" : "офлайн"}
+          <span className={`text-xs px-2 py-0.5 rounded-full ${readyClass}`}>
+            {readiness.label}
           </span>
         </div>
       </div>

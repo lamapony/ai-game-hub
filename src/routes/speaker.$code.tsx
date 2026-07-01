@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRoom, updateRoomState, useBroadcast } from "@/lib/room";
 import { Orchestra } from "@/games/soundscape/Orchestra";
 import { SPEAKER_NAMES } from "@/lib/types";
+import { SPEAKER_HEARTBEAT_MS } from "@/lib/speaker-status";
 
 export const Route = createFileRoute("/speaker/$code")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -16,24 +17,36 @@ function SpeakerPage() {
   const { slot } = Route.useSearch();
   const { room, loading, error } = useRoom(code);
   const [armed, setArmed] = useState(false); // mobile audio needs user gesture
+  const roomRef = useRef(room);
+
+  useEffect(() => {
+    roomRef.current = room;
+  }, [room]);
 
   // Mark slot as connected once user arms
   useEffect(() => {
     if (!room || !armed) return;
-    const slots = { ...(room.state.speakerSlots ?? {}) };
-    slots[slot] = {
-      ...(slots[slot] ?? { connected: false, name: SPEAKER_NAMES[slot] }),
-      connected: true,
-    };
-    updateRoomState(room.id, { ...room.state, speakerSlots: slots }).catch(() => {});
-    return () => {
-      // best-effort offline mark
-      const s = { ...(room.state.speakerSlots ?? {}) };
-      s[slot] = {
-        ...(s[slot] ?? { connected: false, name: SPEAKER_NAMES[slot] }),
-        connected: false,
+
+    function updateSpeakerSlot(connected: boolean) {
+      const current = roomRef.current;
+      if (!current) return;
+      const slots = { ...(current.state.speakerSlots ?? {}) };
+      const existing = slots[slot] ?? { connected: false, name: SPEAKER_NAMES[slot] };
+      slots[slot] = {
+        ...existing,
+        connected,
+        name: existing.name || SPEAKER_NAMES[slot],
+        lastSeenAt: connected ? Date.now() : existing.lastSeenAt,
       };
-      updateRoomState(room.id, { ...room.state, speakerSlots: s }).catch(() => {});
+      updateRoomState(current.id, { ...current.state, speakerSlots: slots }).catch(() => {});
+    }
+
+    updateSpeakerSlot(true);
+    const heartbeat = window.setInterval(() => updateSpeakerSlot(true), SPEAKER_HEARTBEAT_MS);
+
+    return () => {
+      window.clearInterval(heartbeat);
+      updateSpeakerSlot(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room?.id, armed, slot]);
