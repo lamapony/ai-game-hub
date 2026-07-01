@@ -24,6 +24,8 @@
 - Добавлен базовый `bun test` regression pack для host controls и player-facing media/upload errors.
 - Добавлен lightweight structured JSON logging для AI gateway, API routes и cleanup endpoint.
 - Добавлен retry/backoff для transient AI provider errors и Supabase Storage upload/signed URL calls.
+- Добавлены unit-тесты для базового контракта `src/lib/room.ts`: room code/id generation,
+  create/fetch/update room flows, duplicate-code retry и persisted player identity.
 - Fast Refresh правило отключено только для `src/components/ui`, где shadcn/ui ожидаемо экспортирует variants рядом с компонентами.
 - Локальный `.codebase-memory/` исключен из публичного репозитория.
 
@@ -81,7 +83,7 @@
   - проверить, что host может вернуться в hub после игры.
 
 - Минимальный regression pack после live-теста:
-  - расширить unit-тесты для state transitions в `src/lib/room.ts`;
+  - расширить unit-тесты для game-specific state transitions;
   - добавить тесты для sanitization AI-ответов в `src/lib/ai/*`;
   - добавить browser smoke test для маршрутов `/`, `/play`, `/host/$code`, `/speaker/$code`.
 

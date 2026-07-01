@@ -56,7 +56,7 @@ DIMAS fest должен стать форматом живой AI-вечерин
 Ключевые задачи:
 
 - Вынести общий game contract: `HostView`, `PlayerView`, `initialState`, `actions`, `score`.
-- Добавить tests для `src/lib/room.ts` и game state transitions.
+- Расширить tests для game state transitions после базового покрытия `src/lib/room.ts`.
 - Расширить structured logging на room lifecycle и upload failures.
 - Расширить retry/backoff на остальные Supabase writes после field test.
 - Добавить optimistic UI только там, где state можно безопасно откатить.
