@@ -1,6 +1,7 @@
 // Server functions for "Фотоохота" — AI picks an absurd photo task and ranks all submitted photos.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { sanitizePhotoRanking, sanitizeTask } from "./sanitize";
 
 const VOICE = `Ты — дух парка, ведущий вечеринки DIMAS fest. Голос: едкий, остроумный конферансье.
 Всегда отвечай на русском. Всегда возвращай строгий валидный JSON, без markdown-обёрток.`;
@@ -69,10 +70,7 @@ ${avoid}
 JSON: { "task": "...", "intro": "..." }`,
         temperature: 0.95,
       });
-      return {
-        task: r.task || fallbackPhotoTask(data.pastTasks).task,
-        intro: r.intro || fallbackPhotoTask(data.pastTasks).intro,
-      };
+      return sanitizeTask(r, fallbackPhotoTask(data.pastTasks));
     } catch (error) {
       console.error("[AI fallback] generatePhotoTask", error);
       return fallbackPhotoTask(data.pastTasks);
@@ -160,30 +158,6 @@ ${data.photos.map((p, i) => `${i + 1}. ${p.playerName} (id: ${p.playerId})`).joi
         };
       }
 
-      // Sanitize: ensure every player gets a rank, dedupe ranks.
-      const seen = new Map<string, { rank: number; comment: string }>();
-      (r.ranking ?? []).forEach((e) => {
-        if (e?.playerId && !seen.has(e.playerId)) {
-          seen.set(e.playerId, { rank: e.rank ?? 99, comment: e.comment ?? "" });
-        }
-      });
-      // Append anyone the model forgot.
-      data.photos.forEach((p) => {
-        if (!seen.has(p.playerId))
-          seen.set(p.playerId, { rank: 99, comment: "Дух парка проглядел тебя." });
-      });
-
-      // Renumber ranks 1..N based on sort.
-      const sorted = [...seen.entries()].sort((a, b) => a[1].rank - b[1].rank);
-      const ranking = sorted.map(([playerId, v], i) => ({
-        playerId,
-        rank: i + 1,
-        comment: v.comment,
-      }));
-
-      return {
-        ranking,
-        verdict: r.verdict || "Ну, кто-то выиграл, кто-то нет. Идём дальше.",
-      };
+      return sanitizePhotoRanking(r, data.photos);
     },
   );

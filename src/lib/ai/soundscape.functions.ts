@@ -1,7 +1,8 @@
 // Server functions for the Soundscape Battle game.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import type { SoundscapeMix, SoundscapeCue } from "../types";
+import type { SoundscapeMix } from "../types";
+import { sanitizeMixJudgement, sanitizeMixResponse, sanitizeTopics } from "./sanitize";
 
 const HOST_VOICE_SYSTEM = `You are the AI host of an outdoor party in a park called "DIMAS fest".
 Voice: witty, energetic, a little sarcastic, like a friend who is also a master of ceremonies.
@@ -27,7 +28,7 @@ Mix absurd, atmospheric, and cinematic. Keep each under 6 words.
 Return JSON: { "topics": ["...", "...", "..."] }`,
         temperature: 0.95,
       });
-      return result.topics?.slice(0, 3) ?? FALLBACK_TOPICS;
+      return sanitizeTopics(result, FALLBACK_TOPICS);
     } catch (error) {
       console.error("[AI fallback] generateTopics", error);
       return FALLBACK_TOPICS;
@@ -111,25 +112,7 @@ clip_index must be an integer 0..${numClips - 1}. slot must be 2..5 for clips an
       };
     }
 
-    const cues: SoundscapeCue[] = [];
-    for (const step of resp.score ?? []) {
-      const at = Math.max(0, Math.min(58000, Math.round(step.at_ms || 0)));
-      const slot = Math.max(2, Math.min(5, Math.round(step.slot || 2)));
-      if (typeof step.clip_index === "number" && data.clips[step.clip_index]) {
-        const clip = data.clips[step.clip_index];
-        cues.push({ atMs: at, slot, type: "audio", url: clip.url, durationMs: clip.durationMs });
-      } else if (step.speak) {
-        cues.push({ atMs: at, slot, type: "tts", text: step.speak });
-      }
-    }
-    cues.sort((a, b) => a.atMs - b.atMs);
-
-    return {
-      teamId: "",
-      intro: resp.intro || `Team ${data.teamName}, the park is listening.`,
-      cues,
-      totalMs: Math.max(60000, resp.total_ms || 60000),
-    };
+    return sanitizeMixResponse(resp, data.clips, data.teamName);
   });
 
 export const judgeMix = createServerFn({ method: "POST" })
@@ -155,7 +138,7 @@ Write 1-2 sentence reaction in the voice of a witty MC: specific, funny, mention
 Return JSON: { "feedback": "...", "bonus": 12 }`,
         temperature: 0.85,
       });
-      return { feedback: r.feedback, bonus: Math.max(0, Math.min(30, Math.round(r.bonus || 0))) };
+      return sanitizeMixJudgement(r, data.teamName);
     } catch (error) {
       console.error("[AI fallback] judgeMix", error);
       return {

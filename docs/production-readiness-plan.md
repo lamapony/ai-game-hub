@@ -28,6 +28,8 @@
 - Добавлен retry/backoff для transient AI provider errors и Supabase Storage upload/signed URL calls.
 - Добавлены unit-тесты для базового контракта `src/lib/room.ts`: room code/id generation,
   create/fetch/update room flows, duplicate-code retry и persisted player identity.
+- Добавлены pure sanitizers и regression tests для AI JSON responses: topics/tasks, challenge
+  judgement, soundscape mix/judgement и photo ranking.
 - Fast Refresh правило отключено только для `src/components/ui`, где shadcn/ui ожидаемо экспортирует variants рядом с компонентами.
 - Локальный `.codebase-memory/` исключен из публичного репозитория.
 
@@ -86,7 +88,7 @@
 
 - Минимальный regression pack после live-теста:
   - расширить unit-тесты для game-specific state transitions;
-  - добавить тесты для sanitization AI-ответов в `src/lib/ai/*`;
+  - расширить AI sanitizer tests после field test новыми edge cases из реальных ответов;
   - добавить browser smoke test для маршрутов `/`, `/play`, `/host/$code`, `/speaker/$code`.
 
 - Базовая observability:

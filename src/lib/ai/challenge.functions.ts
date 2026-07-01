@@ -1,6 +1,7 @@
 // Server functions for "Челлендж духа парка" — AI invents a scene task and judges the recorded video.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { sanitizeChallengeJudgement, sanitizeTask } from "./sanitize";
 
 const HOST_VOICE_SYSTEM = `Ты — дух парка, ведущий вечеринки DIMAS fest. Голос: едкий, остроумный, как саркастичный конферансье.
 Всегда отвечай на русском. Всегда отвечай строгим валидным JSON, без markdown-обёрток.`;
@@ -65,10 +66,7 @@ ${avoid}
 JSON: { "task": "...", "intro": "..." }`,
         temperature: 0.95,
       });
-      return {
-        task: r.task || fallbackChallengeTask(data.pastTasks).task,
-        intro: r.intro || fallbackChallengeTask(data.pastTasks).intro,
-      };
+      return sanitizeTask(r, fallbackChallengeTask(data.pastTasks));
     } catch (error) {
       console.error("[AI fallback] generateChallengeTask", error);
       return fallbackChallengeTask(data.pastTasks);
@@ -127,11 +125,7 @@ export const judgeChallenge = createServerFn({ method: "POST" })
         user: parts,
         temperature: 0.7,
       });
-      return {
-        score: Math.max(1, Math.min(10, Math.round(r.score || 5))),
-        feedback: r.feedback || "Молча принято.",
-        verdict: r.verdict || `${Math.round(r.score || 5)} из 10. Идём дальше.`,
-      };
+      return sanitizeChallengeJudgement(r);
     } catch (error) {
       console.error("[AI fallback] judgeChallenge", error);
       const transcriptHint = data.transcript
