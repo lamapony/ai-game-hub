@@ -1,4 +1,5 @@
 // Shared game/room types for DIMAS fest.
+import { eventProfile } from "./event-profile";
 
 export type Team = {
   id: string;
@@ -127,15 +128,9 @@ export const DEFAULT_TEAMS: Team[] = [
   { id: "sun", name: "Sun", color: "amber", score: 0 },
 ];
 
-export const SPEAKER_NAMES: Record<number, string> = {
-  1: "Main Stage",
-  2: "Oak Spirit",
-  3: "The Wind",
-  4: "Squirrel Gossip",
-  5: "Forest Echo",
-};
+export const SPEAKER_NAMES: Record<number, string> = eventProfile.speakerSlots;
 
-export function emptyRoomState(hostName = "Host"): RoomState {
+export function emptyRoomState(hostName = eventProfile.defaultHostName): RoomState {
   return {
     hostName,
     status: "lobby",

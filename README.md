@@ -80,6 +80,12 @@ bun run preview
 
 Если нужен другой провайдер, укажи `OPENAI_BASE_URL` и модели через env.
 
+## Event profile
+
+Базовая настройка события лежит в `src/lib/event-profile.ts`: название, SEO-тексты, имя ведущего
+по умолчанию, storage key prefix, персона ведущего и 5 speaker slots. Это простой code config без
+dashboard; для нового события меняй его и проверяй `bun test && bun run build`.
+
 ## База данных
 
 Все миграции лежат в `supabase/migrations/`. Применить к Supabase-проекту:

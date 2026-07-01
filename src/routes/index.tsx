@@ -1,20 +1,20 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { eventProfile } from "@/lib/event-profile";
 import { createRoom } from "@/lib/room";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "DIMAS fest — AI-игры в парке" },
+      { title: eventProfile.seo.titleRu },
       {
         name: "description",
-        content:
-          "Jackbox в парке: один телефон ведущего, остальные подключаются по QR. AI ведёт игру, колонки разговаривают.",
+        content: eventProfile.seo.descriptionRu,
       },
-      { property: "og:title", content: "DIMAS fest" },
+      { property: "og:title", content: eventProfile.title },
       {
         property: "og:description",
-        content: "AI-игры для тусовки. Телефон ведущего + QR. Без ноутбука.",
+        content: eventProfile.seo.ogDescriptionRu,
       },
     ],
   }),
@@ -31,7 +31,7 @@ function Landing() {
     setErr(null);
     setCreating(true);
     try {
-      const { code } = await createRoom("Ведущий");
+      const { code } = await createRoom(eventProfile.defaultHostName);
       navigate({ to: "/host/$code", params: { code } });
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Не получилось создать комнату");
@@ -59,17 +59,18 @@ function Landing() {
       <div className="relative mx-auto max-w-3xl px-5 pt-8 pb-14 sm:py-16">
         <header className="mb-8 sm:mb-10">
           <div className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur px-3 py-1 text-[11px] tracking-wide uppercase text-white/80">
-            <span className="size-1.5 rounded-full bg-[var(--color-park-bright)]" /> AI-игры для
-            парка
+            <span className="size-1.5 rounded-full bg-[var(--color-park-bright)]" />{" "}
+            {eventProfile.landing.badgeRu}
           </div>
           <h1 className="font-display mt-5 text-6xl sm:text-7xl text-white leading-[0.95]">
-            DIMAS
-            <br />
-            fest.
+            {eventProfile.titleLines.map((line) => (
+              <span key={line} className="block">
+                {line}
+              </span>
+            ))}
           </h1>
           <p className="mt-4 max-w-lg text-white/80 text-base sm:text-lg">
-            Тусовка в стиле Jackbox прямо в парке. Один телефон ведущего, остальные сканируют QR. AI
-            выдаёт темы, колонки разговаривают. Ноутбук не нужен.
+            {eventProfile.landing.descriptionRu}
           </p>
         </header>
 

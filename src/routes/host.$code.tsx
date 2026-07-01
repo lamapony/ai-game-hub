@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SoundscapeHost } from "@/games/soundscape/HostView";
 import { ChallengeHost } from "@/games/challenge/HostView";
 import { PhotoHuntHost } from "@/games/phototunt/HostView";
+import { eventProfile } from "@/lib/event-profile";
 import { teamColorClasses } from "@/lib/team-style";
 import {
   canSkipCurrentPhase,
@@ -169,7 +170,7 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
         <div className="mx-auto max-w-6xl px-5 py-4 flex items-center justify-between gap-4">
           <div>
             <div className="text-[10px] uppercase tracking-[0.25em] text-white/70">Ведущий</div>
-            <h1 className="font-display text-2xl sm:text-3xl text-white">DIMAS fest</h1>
+            <h1 className="font-display text-2xl sm:text-3xl text-white">{eventProfile.title}</h1>
           </div>
           <div className="text-right">
             <div className="text-[10px] uppercase tracking-[0.2em] text-white/70">Код</div>
@@ -347,7 +348,7 @@ function Lobby({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "DIMAS fest",
+          title: eventProfile.title,
           text: `Заходи в парк, код ${code}`,
           url: joinUrl,
         });

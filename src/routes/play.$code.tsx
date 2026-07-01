@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useRoom, updateRoomState, getOrCreatePlayer, genId } from "@/lib/room";
+import { playerStorageKey } from "@/lib/event-profile";
 import { teamColorClasses } from "@/lib/team-style";
 import { SoundscapePlayer } from "@/games/soundscape/PlayerView";
 import { ChallengePlayer } from "@/games/challenge/PlayerView";
@@ -17,7 +18,7 @@ function PlayPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const stored = localStorage.getItem(`dimas:player:${code}`);
+    const stored = localStorage.getItem(playerStorageKey(code));
     if (stored) setMe(JSON.parse(stored));
   }, [code]);
 

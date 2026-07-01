@@ -153,7 +153,7 @@ DIMAS fest должен стать форматом живой AI-вечерин
 4. Зафиксировать top 10 friction points после field test.
 5. Проверить fallback-задания и host controls на field test.
 6. Проверить cleanup старых комнат/uploads на production.
-7. Подготовить “event profile” как простой config, без dashboard.
+7. Расширить `eventProfile` после field test реальными настройками языка, темы и возрастного режима.
 
 ## Ближайшие 90 дней
 

@@ -30,6 +30,8 @@
   create/fetch/update room flows, duplicate-code retry и persisted player identity.
 - Добавлены pure sanitizers и regression tests для AI JSON responses: topics/tasks, challenge
   judgement, soundscape mix/judgement и photo ranking.
+- Добавлен простой `eventProfile` config без dashboard: brand/SEO, default host name, storage
+  prefix, host persona и speaker slot names.
 - Fast Refresh правило отключено только для `src/components/ui`, где shadcn/ui ожидаемо экспортирует variants рядом с компонентами.
 - Локальный `.codebase-memory/` исключен из публичного репозитория.
 

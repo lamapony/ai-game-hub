@@ -1,11 +1,9 @@
 // Client-side room helpers. All anonymous; host control gated by host_secret in localStorage.
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { hostStorageKey, playerStorageKey } from "./event-profile";
 import { logError, logInfo, logWarn } from "./structured-log";
 import { type RoomRow, type RoomState, emptyRoomState } from "./types";
-
-const HOST_KEY = (code: string) => `dimas:host:${code}`;
-const PLAYER_KEY = (code: string) => `dimas:player:${code}`;
 
 export function genCode(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -28,7 +26,7 @@ export async function createRoom(hostName: string): Promise<{ code: string; id: 
       .select("id, code")
       .single();
     if (!error && data) {
-      localStorage.setItem(HOST_KEY(code), host_secret);
+      localStorage.setItem(hostStorageKey(code), host_secret);
       logInfo("room.create.success", {
         roomId: data.id,
         code: data.code,
@@ -87,7 +85,7 @@ export async function updateRoomState(id: string, state: RoomState): Promise<voi
 }
 
 export function getHostSecret(code: string): string | null {
-  return typeof window === "undefined" ? null : localStorage.getItem(HOST_KEY(code));
+  return typeof window === "undefined" ? null : localStorage.getItem(hostStorageKey(code));
 }
 
 export function getOrCreatePlayer(
@@ -95,7 +93,7 @@ export function getOrCreatePlayer(
   name?: string,
   teamId?: string,
 ): { id: string; name: string; teamId: string } {
-  const key = PLAYER_KEY(code);
+  const key = playerStorageKey(code);
   if (typeof window === "undefined") return { id: "ssr", name: name ?? "", teamId: teamId ?? "" };
   const raw = localStorage.getItem(key);
   if (raw) {

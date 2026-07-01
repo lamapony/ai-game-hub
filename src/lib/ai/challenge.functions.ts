@@ -1,9 +1,10 @@
 // Server functions for "Челлендж духа парка" — AI invents a scene task and judges the recorded video.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { eventProfile } from "../event-profile";
 import { sanitizeChallengeJudgement, sanitizeTask } from "./sanitize";
 
-const HOST_VOICE_SYSTEM = `Ты — дух парка, ведущий вечеринки DIMAS fest. Голос: едкий, остроумный, как саркастичный конферансье.
+const HOST_VOICE_SYSTEM = `Ты — ${eventProfile.hostPersona.ru}, ведущий вечеринки ${eventProfile.title}. Голос: ${eventProfile.hostPersona.voiceRu}.
 Всегда отвечай на русском. Всегда отвечай строгим валидным JSON, без markdown-обёрток.`;
 
 const FALLBACK_TASKS = [

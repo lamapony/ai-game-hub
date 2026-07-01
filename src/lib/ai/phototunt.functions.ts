@@ -1,9 +1,10 @@
 // Server functions for "Фотоохота" — AI picks an absurd photo task and ranks all submitted photos.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { eventProfile } from "../event-profile";
 import { sanitizePhotoRanking, sanitizeTask } from "./sanitize";
 
-const VOICE = `Ты — дух парка, ведущий вечеринки DIMAS fest. Голос: едкий, остроумный конферансье.
+const VOICE = `Ты — ${eventProfile.hostPersona.ru}, ведущий вечеринки ${eventProfile.title}. Голос: ${eventProfile.hostPersona.voiceRu}.
 Всегда отвечай на русском. Всегда возвращай строгий валидный JSON, без markdown-обёрток.`;
 
 const FALLBACK_TASKS = [

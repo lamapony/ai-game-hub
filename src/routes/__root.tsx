@@ -8,6 +8,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { eventProfile } from "@/lib/event-profile";
 
 import appCss from "../styles.css?url";
 
@@ -76,17 +77,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { title: "DIMAS fest — AI park party games" },
+      { title: eventProfile.seo.titleEn },
       {
         name: "description",
-        content:
-          "DIMAS fest: Jackbox-style AI party games for the park. One host screen, every phone joins, five speakers turn the park into a stage.",
+        content: eventProfile.seo.descriptionEn,
       },
       { name: "theme-color", content: "#0c2a1c" },
-      { property: "og:title", content: "DIMAS fest" },
+      { property: "og:title", content: eventProfile.title },
       {
         property: "og:description",
-        content: "AI park party games. One screen, every phone joins, the park becomes the stage.",
+        content: eventProfile.seo.ogDescriptionEn,
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
