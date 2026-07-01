@@ -21,8 +21,6 @@ export const REQUIRED_GITHUB_SECRETS_FOR_DEPLOY = [
   "SUPABASE_SERVICE_ROLE_KEY",
   "CLEANUP_SECRET",
   "OPENAI_API_KEY",
-  "CLOUDFLARE_ACCOUNT_ID",
-  "CLOUDFLARE_API_TOKEN",
 ] as const;
 
 export type GitHubProductionConfigAudit = {

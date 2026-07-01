@@ -6,12 +6,15 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
+    "postinstall": "node scripts/patch-nf3-nft-import.mjs",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
+    "deploy:vercel": "bun run verify:prod-env && bun run build && npx vercel deploy --prebuilt --prod",
     "test": "bun test",
     "lint": "eslint .",
     "verify:prod-env": "bun scripts/verify-production-env.ts",
     "verify:github-prod": "bun scripts/verify-github-production-config.ts",
+    "setup:supabase": "bun scripts/setup-supabase-project.ts",
     "format": "prettier --write ."
   },
   "dependencies": {
@@ -71,11 +74,11 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.42.3",
     "@eslint/js": "^9.32.0",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "@vercel/nft": "^1.10.2",
     "@vitejs/plugin-react": "^5.2.0",
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.1",
@@ -83,11 +86,10 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
-    "nitro": "3.0.260603-beta",
+    "nitro": "3.0.260610-beta",
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "^8.0.16",
-    "wrangler": "^4.105.0"
+    "vite": "^8.0.16"
   }
 }

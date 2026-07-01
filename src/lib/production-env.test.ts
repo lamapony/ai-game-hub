@@ -10,8 +10,6 @@ const completeEnv = {
   SUPABASE_SERVICE_ROLE_KEY: "service-role",
   CLEANUP_SECRET: "cleanup",
   OPENAI_API_KEY: "openai",
-  CLOUDFLARE_ACCOUNT_ID: "cf-account",
-  CLOUDFLARE_API_TOKEN: "cf-token",
 };
 
 describe("production env validation", () => {
@@ -23,7 +21,7 @@ describe("production env validation", () => {
     });
 
     expect(result.ok).toBe(false);
-    expect(result.missing.join(",")).toBe("OPENAI_API_KEY,CLOUDFLARE_API_TOKEN");
+    expect(result.missing.join(",")).toBe("OPENAI_API_KEY");
   });
 
   test("fills optional OpenAI runtime defaults", () => {
