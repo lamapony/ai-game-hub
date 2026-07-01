@@ -28,6 +28,8 @@
 - Добавлен retry/backoff для transient AI provider errors и Supabase Storage upload/signed URL calls.
 - Добавлены unit-тесты для базового контракта `src/lib/room.ts`: room code/id generation,
   create/fetch/update room flows, duplicate-code retry и persisted player identity.
+- Game launch transitions вынесены в pure helpers и покрыты regression tests:
+  Soundscape/Challenge/Photo Hunt start, cleanup старого game state и минимальное число игроков.
 - Добавлены pure sanitizers и regression tests для AI JSON responses: topics/tasks, challenge
   judgement, soundscape mix/judgement и photo ranking.
 - Добавлен простой `eventProfile` config без dashboard: brand/SEO, default host name, storage
@@ -89,7 +91,7 @@
   - проверить, что host может вернуться в hub после игры.
 
 - Минимальный regression pack после live-теста:
-  - расширить unit-тесты для game-specific state transitions;
+  - расширить unit-тесты для поздних game-specific state transitions после field test;
   - расширить AI sanitizer tests после field test новыми edge cases из реальных ответов;
   - добавить browser smoke test для маршрутов `/`, `/play`, `/host/$code`, `/speaker/$code`.
 

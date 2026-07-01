@@ -7,6 +7,11 @@ import { SoundscapeHost } from "@/games/soundscape/HostView";
 import { ChallengeHost } from "@/games/challenge/HostView";
 import { PhotoHuntHost } from "@/games/phototunt/HostView";
 import { eventProfile } from "@/lib/event-profile";
+import {
+  launchChallengeState,
+  launchPhotoHuntState,
+  launchSoundscapeState,
+} from "@/lib/game-state";
 import { teamColorClasses } from "@/lib/team-style";
 import {
   canSkipCurrentPhase,
@@ -82,65 +87,23 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
   }
 
   async function launchSoundscape() {
-    const roundId = genId("snd");
-    await updateRoomState(roomId, {
-      ...state,
-      status: "playing",
-      currentGame: "soundscape",
-      paused: undefined,
-      soundscape: { phase: "topics", roundId },
-      challenge: undefined,
-      phototunt: undefined,
-    });
+    await updateRoomState(roomId, launchSoundscapeState(state, genId("snd")));
   }
 
   async function launchChallenge() {
-    if (state.players.length < 2) return;
-    const operator = state.players[Math.floor(Math.random() * state.players.length)];
-    await updateRoomState(roomId, {
-      ...state,
-      status: "playing",
-      currentGame: "challenge",
-      paused: undefined,
-      soundscape: undefined,
-      challenge: {
-        phase: "briefing",
-        roundId: genId("ch"),
-        operatorId: operator.id,
-        operatorName: operator.name,
-        pastOperatorIds: [],
-      },
-      phototunt: undefined,
-    });
+    const next = launchChallengeState(state, genId("ch"));
+    if (!next) return;
+    await updateRoomState(roomId, next);
   }
 
   async function launchPhotoHunt() {
-    if (state.players.length < 1) return;
-    await updateRoomState(roomId, {
-      ...state,
-      status: "playing",
-      currentGame: "phototunt",
-      paused: undefined,
-      soundscape: undefined,
-      challenge: undefined,
-      phototunt: {
-        phase: "briefing",
-        roundId: genId("ph"),
-        pastTasks: [],
-      },
-    });
+    const next = launchPhotoHuntState(state, genId("ph"));
+    if (!next) return;
+    await updateRoomState(roomId, next);
   }
 
   async function resetGame() {
-    await updateRoomState(roomId, {
-      ...state,
-      status: "lobby",
-      currentGame: null,
-      paused: undefined,
-      soundscape: undefined,
-      challenge: undefined,
-      phototunt: undefined,
-    });
+    await updateRoomState(roomId, forceBackToHubState(state));
   }
 
   async function togglePause() {
