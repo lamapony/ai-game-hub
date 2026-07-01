@@ -5,6 +5,7 @@ import { updateRoomState } from "@/lib/room";
 import { VideoRecorder } from "./VideoRecorder";
 import { extractFrames } from "./video-utils";
 import { formatClock } from "@/lib/team-style";
+import { friendlyMediaError } from "@/lib/media-errors";
 import type { RoomState } from "@/lib/types";
 
 const RECORDING_MS = 25_000;
@@ -130,7 +131,7 @@ function OperatorReady({
       });
     } catch (e) {
       console.error(e);
-      setErr(e instanceof Error ? e.message : "Не удалось получить доступ к камере");
+      setErr(friendlyMediaError(e, "camera-microphone"));
       setStarting(false);
     }
   }
@@ -155,11 +156,7 @@ function OperatorReady({
       >
         {starting ? "Включаем…" : "📷 Открыть камеру"}
       </button>
-      {err && (
-        <p className="text-sm text-red-300 text-center">
-          {err}. Проверь, что у браузера есть доступ к камере.
-        </p>
-      )}
+      {err && <p className="text-sm text-red-300 text-center">{err}</p>}
     </div>
   );
 }

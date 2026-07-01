@@ -20,6 +20,7 @@
 - Добавлены fallback-задания, fallback-судейство и graceful STT fallback для AI outage.
 - Добавлены host controls для активной игры: pause/resume, skip phase, restart game, force back to hub.
 - Добавлен protected cleanup endpoint и GitHub scheduled workflow для старых комнат и uploads.
+- Добавлены понятные player-facing ошибки для camera, microphone, photo read и media upload failures.
 - Fast Refresh правило отключено только для `src/components/ui`, где shadcn/ui ожидаемо экспортирует variants рядом с компонентами.
 - Локальный `.codebase-memory/` исключен из публичного репозитория.
 
@@ -124,6 +125,10 @@
   - `OPENAI_API_KEY`
   - `CLOUDFLARE_ACCOUNT_ID`
   - `CLOUDFLARE_API_TOKEN`
+
+На 2026-07-01 в GitHub уже заведены `CLEANUP_SECRET` и `CLOUDFLARE_ACCOUNT_ID`.
+Для первого production deploy ещё нужны `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY` и
+`CLOUDFLARE_API_TOKEN`. После первого deploy нужно добавить repo variable `CLEANUP_URL`.
 
 ## Риски, которые стоит закрыть до публичного мероприятия
 

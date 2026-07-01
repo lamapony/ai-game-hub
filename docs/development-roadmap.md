@@ -38,7 +38,7 @@ DIMAS fest должен стать форматом живой AI-вечерин
 - Проверить cleanup job на production после первого deploy: dry-run, затем реальное удаление старых комнат.
 - Расширить fallback-задания и fallback-судейство после первого field test.
 - Проверить host controls на field test: pause, skip, restart round, force back to hub.
-- Улучшить сообщения ошибок для камеры, микрофона, upload, AI.
+- Проверить сообщения ошибок для камеры, микрофона, upload и AI на iOS/Android field test.
 - Провести field test на реальных телефонах и сети.
 
 ## Горизонт 2: reliable party engine

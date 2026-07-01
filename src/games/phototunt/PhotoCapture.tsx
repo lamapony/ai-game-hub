@@ -1,6 +1,7 @@
 // Single-photo capture using the platform camera (file input with capture=environment).
 // Works on iOS Safari and Android Chrome without MediaRecorder/getUserMedia gymnastics.
 import { useRef, useState } from "react";
+import { friendlyUploadError } from "@/lib/media-errors";
 
 export function PhotoCapture({
   onCapture,
@@ -11,8 +12,10 @@ export function PhotoCapture({
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
   function open() {
+    setErr(null);
     inputRef.current?.click();
   }
 
@@ -24,6 +27,9 @@ export function PhotoCapture({
       const url = String(reader.result);
       setPreview(url);
       onCapture(file, url);
+    };
+    reader.onerror = () => {
+      setErr(friendlyUploadError(reader.error, "photo"));
     };
     reader.readAsDataURL(file);
   }
@@ -58,6 +64,7 @@ export function PhotoCapture({
           📸 Открыть камеру
         </button>
       )}
+      {err && <p className="text-sm text-red-300 text-center">{err}</p>}
     </div>
   );
 }

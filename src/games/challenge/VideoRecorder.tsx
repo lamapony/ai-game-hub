@@ -1,5 +1,6 @@
 // Video recorder for the Challenge game: operator films other players.
 import { useEffect, useRef, useState } from "react";
+import { friendlyMediaError, friendlyUploadError } from "@/lib/media-errors";
 
 type Props = {
   maxMs?: number;
@@ -64,7 +65,7 @@ export function VideoRecorder({
       }
       setState("preview");
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Камера недоступна");
+      setErr(friendlyMediaError(e, "camera-microphone"));
       setState("error");
     }
   }
@@ -102,7 +103,7 @@ export function VideoRecorder({
         setState("done");
       } catch (e) {
         setState("error");
-        setErr(e instanceof Error ? e.message : "Не загрузилось");
+        setErr(friendlyUploadError(e, "video"));
       }
     };
     startRef.current = Date.now();

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { friendlyMediaError, friendlyUploadError } from "@/lib/media-errors";
 
 type Props = {
   maxMs?: number;
@@ -44,7 +45,7 @@ export function Recorder({ maxMs = 15000, onComplete, disabled }: Props) {
         const duration = Date.now() - startTimeRef.current;
         if (blob.size < 1024) {
           setState("error");
-          setErr("Recording too short");
+          setErr("Запись слишком короткая. Запиши хотя бы пару секунд звука.");
           return;
         }
         setState("uploading");
@@ -53,7 +54,7 @@ export function Recorder({ maxMs = 15000, onComplete, disabled }: Props) {
           setState("done");
         } catch (e) {
           setState("error");
-          setErr(e instanceof Error ? e.message : "Upload failed");
+          setErr(friendlyUploadError(e, "audio"));
         }
       };
       startTimeRef.current = Date.now();
@@ -66,7 +67,7 @@ export function Recorder({ maxMs = 15000, onComplete, disabled }: Props) {
         if (e >= maxMs) stop();
       }, 100);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Mic denied");
+      setErr(friendlyMediaError(e, "microphone"));
       setState("error");
     }
   }
@@ -97,7 +98,7 @@ export function Recorder({ maxMs = 15000, onComplete, disabled }: Props) {
         </button>
       ) : state === "uploading" ? (
         <div className="rounded-3xl bg-white/10 text-white/80 py-6 text-center">
-          Uploading + transcribing…
+          Отправляем звук и расшифровываем…
         </div>
       ) : state === "done" ? (
         <button
@@ -108,7 +109,7 @@ export function Recorder({ maxMs = 15000, onComplete, disabled }: Props) {
           disabled={disabled}
           className="w-full rounded-3xl bg-[var(--color-park-bright)] text-[oklch(0.18_0.05_160)] py-5 text-lg font-medium"
         >
-          ✓ Sent. Record another?
+          ✓ Отправлено. Записать ещё?
         </button>
       ) : (
         <button
@@ -116,7 +117,7 @@ export function Recorder({ maxMs = 15000, onComplete, disabled }: Props) {
           disabled={disabled}
           className="w-full rounded-3xl bg-red-500 text-white py-6 text-xl font-display disabled:opacity-40"
         >
-          ● Record sound ({Math.round(maxMs / 1000)}s max)
+          ● Записать звук ({Math.round(maxMs / 1000)}с максимум)
         </button>
       )}
       {err && <p className="text-sm text-red-300">{err}</p>}

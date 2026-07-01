@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatClock } from "@/lib/team-style";
+import { friendlyUploadError } from "@/lib/media-errors";
 import type { RoomState } from "@/lib/types";
 import { PhotoCapture } from "./PhotoCapture";
 import { downscaleImage } from "./image-utils";
@@ -141,7 +142,7 @@ export function PhotoHuntPlayer({
               setSubmitted(true);
             } catch (e) {
               console.error(e);
-              setErr(e instanceof Error ? e.message : "Не удалось загрузить кадр");
+              setErr(friendlyUploadError(e, "photo"));
             } finally {
               setUploading(false);
             }
