@@ -1,5 +1,6 @@
 // Scheduled/admin cleanup endpoint for old party rooms and uploaded media.
 import { createFileRoute } from "@tanstack/react-router";
+import { logError, logInfo, logWarn } from "@/lib/structured-log";
 
 function timingSafeEqual(a: string, b: string) {
   if (a.length !== b.length) return false;
@@ -18,11 +19,22 @@ export const Route = createFileRoute("/api/cleanup")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const startedAt = Date.now();
         const cleanupSecret = process.env.CLEANUP_SECRET;
-        if (!cleanupSecret) return new Response("cleanup not configured", { status: 503 });
+        if (!cleanupSecret) {
+          logWarn("api.cleanup.not_configured", {
+            durationMs: Date.now() - startedAt,
+            status: 503,
+          });
+          return new Response("cleanup not configured", { status: 503 });
+        }
 
         const token = getBearerToken(request) ?? request.headers.get("x-cleanup-secret") ?? "";
         if (!timingSafeEqual(token, cleanupSecret)) {
+          logWarn("api.cleanup.unauthorized", {
+            durationMs: Date.now() - startedAt,
+            status: 401,
+          });
           return new Response("unauthorized", { status: 401 });
         }
 
@@ -38,9 +50,29 @@ export const Route = createFileRoute("/api/cleanup")({
           dryRunRaw === true || dryRunRaw === "true" || dryRunRaw === "1" || dryRunRaw === 1;
 
         const { cleanupOldRooms } = await import("@/lib/cleanup.server");
-        const result = await cleanupOldRooms({ retentionHours, dryRun });
-        const status = result.errors.length > 0 ? 207 : 200;
-        return Response.json(result, { status });
+        try {
+          const result = await cleanupOldRooms({ retentionHours, dryRun });
+          const status = result.errors.length > 0 ? 207 : 200;
+          logInfo("api.cleanup.success", {
+            durationMs: Date.now() - startedAt,
+            status,
+            dryRun: result.dryRun,
+            retentionHours: result.retentionHours,
+            roomsMatched: result.roomsMatched,
+            roomsDeleted: result.roomsDeleted,
+            storageObjectsMatched: result.storageObjectsMatched,
+            storageObjectsDeleted: result.storageObjectsDeleted,
+            errorCount: result.errors.length,
+          });
+          return Response.json(result, { status });
+        } catch (error) {
+          logError("api.cleanup.failure", error, {
+            durationMs: Date.now() - startedAt,
+            status: 500,
+            dryRun,
+          });
+          return new Response("cleanup failed", { status: 500 });
+        }
       },
     },
   },

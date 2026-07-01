@@ -51,13 +51,13 @@ DIMAS fest должен стать форматом живой AI-вечерин
 - Явные state transitions с проверками допустимых фаз.
 - Server-authoritative updates для критичных действий.
 - Базовый automated regression pack в CI.
-- Observability для room lifecycle, AI latency, upload failures.
+- Базовая observability для AI latency и cleanup/API failures.
 
 Ключевые задачи:
 
 - Вынести общий game contract: `HostView`, `PlayerView`, `initialState`, `actions`, `score`.
 - Добавить tests для `src/lib/room.ts` и game state transitions.
-- Добавить structured logging для server functions и API routes.
+- Расширить structured logging на room lifecycle и upload failures.
 - Добавить retry/backoff для AI calls и Supabase upload.
 - Добавить optimistic UI только там, где state можно безопасно откатить.
 

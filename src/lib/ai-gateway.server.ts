@@ -1,4 +1,6 @@
 // Server-only helper to call OpenAI or an OpenAI-compatible provider directly.
+import { logError, logInfo } from "./structured-log";
+
 function baseUrl(): string {
   return process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1";
 }
@@ -18,6 +20,7 @@ export async function chatJSON<T>(opts: {
   user: string | ContentPart[];
   temperature?: number;
 }): Promise<T> {
+  const startedAt = Date.now();
   const hasImages = Array.isArray(opts.user) && opts.user.some((part) => part.type === "image_url");
   const requestedModel = opts.model ?? "";
   const model = requestedModel.startsWith("google/")
@@ -25,6 +28,12 @@ export async function chatJSON<T>(opts: {
       ? process.env.OPENAI_VISION_MODEL
       : process.env.OPENAI_CHAT_MODEL
     : requestedModel;
+  const effectiveModel =
+    model ||
+    (hasImages
+      ? (process.env.OPENAI_VISION_MODEL ?? process.env.OPENAI_CHAT_MODEL)
+      : process.env.OPENAI_CHAT_MODEL) ||
+    "gpt-4o-mini";
 
   const res = await fetch(`${baseUrl()}/chat/completions`, {
     method: "POST",
@@ -33,12 +42,7 @@ export async function chatJSON<T>(opts: {
       Authorization: `Bearer ${key()}`,
     },
     body: JSON.stringify({
-      model:
-        model ||
-        (hasImages
-          ? (process.env.OPENAI_VISION_MODEL ?? process.env.OPENAI_CHAT_MODEL)
-          : process.env.OPENAI_CHAT_MODEL) ||
-        "gpt-4o-mini",
+      model: effectiveModel,
       temperature: opts.temperature ?? 0.85,
       messages: [
         { role: "system", content: opts.system },
@@ -49,7 +53,14 @@ export async function chatJSON<T>(opts: {
   });
   if (!res.ok) {
     const t = await res.text().catch(() => "");
-    throw new Error(`AI provider ${res.status}: ${t.slice(0, 300)}`);
+    const error = new Error(`AI provider ${res.status}: ${t.slice(0, 300)}`);
+    logError("ai.chat_json.failure", new Error(`AI provider ${res.status}`), {
+      durationMs: Date.now() - startedAt,
+      status: res.status,
+      model: effectiveModel,
+      hasImages,
+    });
+    throw error;
   }
   const data = await res.json();
   const text: string = data?.choices?.[0]?.message?.content ?? "{}";
@@ -58,10 +69,31 @@ export async function chatJSON<T>(opts: {
     .trim()
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/```$/, "");
-  return JSON.parse(cleaned) as T;
+  try {
+    const parsed = JSON.parse(cleaned) as T;
+    logInfo("ai.chat_json.success", {
+      durationMs: Date.now() - startedAt,
+      status: res.status,
+      model: effectiveModel,
+      hasImages,
+      outputChars: text.length,
+    });
+    return parsed;
+  } catch (error) {
+    logError("ai.chat_json.parse_failure", error, {
+      durationMs: Date.now() - startedAt,
+      status: res.status,
+      model: effectiveModel,
+      hasImages,
+      outputChars: text.length,
+    });
+    throw error;
+  }
 }
 
 export async function ttsMp3(text: string, voice = "alloy"): Promise<ArrayBuffer> {
+  const startedAt = Date.now();
+  const model = process.env.OPENAI_TTS_MODEL ?? "gpt-4o-mini-tts";
   const res = await fetch(`${baseUrl()}/audio/speech`, {
     method: "POST",
     headers: {
@@ -69,7 +101,7 @@ export async function ttsMp3(text: string, voice = "alloy"): Promise<ArrayBuffer
       Authorization: `Bearer ${key()}`,
     },
     body: JSON.stringify({
-      model: process.env.OPENAI_TTS_MODEL ?? "gpt-4o-mini-tts",
+      model,
       input: text,
       voice,
       response_format: "mp3",
@@ -77,14 +109,33 @@ export async function ttsMp3(text: string, voice = "alloy"): Promise<ArrayBuffer
   });
   if (!res.ok) {
     const t = await res.text().catch(() => "");
-    throw new Error(`TTS ${res.status}: ${t.slice(0, 300)}`);
+    const error = new Error(`TTS ${res.status}: ${t.slice(0, 300)}`);
+    logError("ai.tts.failure", new Error(`TTS ${res.status}`), {
+      durationMs: Date.now() - startedAt,
+      status: res.status,
+      model,
+      voice,
+      textChars: text.length,
+    });
+    throw error;
   }
-  return await res.arrayBuffer();
+  const buffer = await res.arrayBuffer();
+  logInfo("ai.tts.success", {
+    durationMs: Date.now() - startedAt,
+    status: res.status,
+    model,
+    voice,
+    textChars: text.length,
+    outputBytes: buffer.byteLength,
+  });
+  return buffer;
 }
 
 export async function transcribeAudio(file: Blob, filename = "recording.webm"): Promise<string> {
+  const startedAt = Date.now();
+  const model = process.env.OPENAI_TRANSCRIBE_MODEL ?? "gpt-4o-mini-transcribe";
   const fd = new FormData();
-  fd.append("model", process.env.OPENAI_TRANSCRIBE_MODEL ?? "gpt-4o-mini-transcribe");
+  fd.append("model", model);
   fd.append("file", file, filename);
   const res = await fetch(`${baseUrl()}/audio/transcriptions`, {
     method: "POST",
@@ -93,8 +144,23 @@ export async function transcribeAudio(file: Blob, filename = "recording.webm"): 
   });
   if (!res.ok) {
     const t = await res.text().catch(() => "");
-    throw new Error(`STT ${res.status}: ${t.slice(0, 300)}`);
+    const error = new Error(`STT ${res.status}: ${t.slice(0, 300)}`);
+    logError("ai.stt.failure", new Error(`STT ${res.status}`), {
+      durationMs: Date.now() - startedAt,
+      status: res.status,
+      model,
+      fileBytes: file.size,
+    });
+    throw error;
   }
   const data = await res.json();
-  return (data?.text as string) ?? "";
+  const text = (data?.text as string) ?? "";
+  logInfo("ai.stt.success", {
+    durationMs: Date.now() - startedAt,
+    status: res.status,
+    model,
+    fileBytes: file.size,
+    textChars: text.length,
+  });
+  return text;
 }

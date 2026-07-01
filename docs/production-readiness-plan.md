@@ -22,6 +22,7 @@
 - Добавлен protected cleanup endpoint и GitHub scheduled workflow для старых комнат и uploads.
 - Добавлены понятные player-facing ошибки для camera, microphone, photo read и media upload failures.
 - Добавлен базовый `bun test` regression pack для host controls и player-facing media/upload errors.
+- Добавлен lightweight structured JSON logging для AI gateway, API routes и cleanup endpoint.
 - Fast Refresh правило отключено только для `src/components/ui`, где shadcn/ui ожидаемо экспортирует variants рядом с компонентами.
 - Локальный `.codebase-memory/` исключен из публичного репозитория.
 
@@ -82,6 +83,12 @@
   - расширить unit-тесты для state transitions в `src/lib/room.ts`;
   - добавить тесты для sanitization AI-ответов в `src/lib/ai/*`;
   - добавить browser smoke test для маршрутов `/`, `/play`, `/host/$code`, `/speaker/$code`.
+
+- Базовая observability:
+  - AI gateway пишет `ai.chat_json.*`, `ai.tts.*`, `ai.stt.*` с duration/status/model без prompt body;
+  - API routes пишут `api.speak.*`, `api.transcribe.*`, `api.cleanup.*`;
+  - cleanup summary пишет rooms/storage counts и errorCount;
+  - secrets/tokens/api keys редактируются в structured logger.
 
 ## Подготовка к прод-развертыванию
 
