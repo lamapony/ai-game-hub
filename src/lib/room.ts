@@ -1,6 +1,7 @@
 // Client-side room helpers. All anonymous; host control gated by host_secret in localStorage.
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { logError, logInfo, logWarn } from "./structured-log";
 import { type RoomRow, type RoomState, emptyRoomState } from "./types";
 
 const HOST_KEY = (code: string) => `dimas:host:${code}`;
@@ -28,10 +29,21 @@ export async function createRoom(hostName: string): Promise<{ code: string; id: 
       .single();
     if (!error && data) {
       localStorage.setItem(HOST_KEY(code), host_secret);
+      logInfo("room.create.success", {
+        roomId: data.id,
+        code: data.code,
+        attempts: attempt + 1,
+        teamCount: state.teams.length,
+      });
       return { code: data.code, id: data.id };
     }
-    if (error && !`${error.message}`.toLowerCase().includes("duplicate")) throw error;
+    if (error && !`${error.message}`.toLowerCase().includes("duplicate")) {
+      logError("room.create.failure", error, { attempt: attempt + 1 });
+      throw error;
+    }
+    logWarn("room.create.duplicate_code", { attempt: attempt + 1 });
   }
+  logError("room.create.exhausted", new Error("Could not allocate room code"), { attempts: 5 });
   throw new Error("Could not allocate room code");
 }
 
@@ -41,8 +53,15 @@ export async function fetchRoomByCode(code: string): Promise<RoomRow | null> {
     .select("id, code, state")
     .eq("code", code.toUpperCase())
     .maybeSingle();
-  if (error) throw error;
-  if (!data) return null;
+  if (error) {
+    logError("room.fetch.failure", error, { code: code.toUpperCase() });
+    throw error;
+  }
+  if (!data) {
+    logWarn("room.fetch.not_found", { code: code.toUpperCase() });
+    return null;
+  }
+  logInfo("room.fetch.success", { roomId: data.id, code: data.code });
   return { id: data.id, code: data.code, state: data.state as unknown as RoomState };
 }
 
@@ -51,7 +70,20 @@ export async function updateRoomState(id: string, state: RoomState): Promise<voi
     .from("rooms")
     .update({ state: state as never })
     .eq("id", id);
-  if (error) throw error;
+  if (error) {
+    logError("room.update.failure", error, {
+      roomId: id,
+      status: state.status,
+      currentGame: state.currentGame ?? undefined,
+    });
+    throw error;
+  }
+  logInfo("room.update.success", {
+    roomId: id,
+    status: state.status,
+    currentGame: state.currentGame ?? undefined,
+    playerCount: state.players.length,
+  });
 }
 
 export function getHostSecret(code: string): string | null {

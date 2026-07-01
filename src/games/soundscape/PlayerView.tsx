@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { updateRoomState } from "@/lib/room";
 import { isRetryableError, retryOperation } from "@/lib/retry";
+import { logError } from "@/lib/structured-log";
 import { Recorder } from "./Recorder";
 import { teamColorClasses, formatClock } from "@/lib/team-style";
 import type { RoomState } from "@/lib/types";
@@ -108,6 +109,17 @@ function RecordPhase({
   async function handleUpload(blob: Blob, durationMs: number) {
     const ext = blob.type.includes("mp4") ? "mp4" : "webm";
     const path = `${roomId}/${snd.roundId}/${me.id}-${Date.now()}.${ext}`;
+    const uploadLogFields = {
+      game: "soundscape",
+      stage: "audio_upload",
+      roomId,
+      roundId: snd.roundId,
+      playerId: me.id,
+      teamId: me.teamId,
+      mimeType: blob.type,
+      blobSize: blob.size,
+      durationMs,
+    };
     const up = await retryOperation(
       async () => {
         const result = await supabase.storage
@@ -118,7 +130,10 @@ function RecordPhase({
       },
       { shouldRetry: (error) => isRetryableError(error) },
     );
-    if (up.error) throw up.error;
+    if (up.error) {
+      logError("upload.failure", up.error, uploadLogFields);
+      throw up.error;
+    }
     const signed = await retryOperation(
       async () => {
         const result = await supabase.storage.from("recordings").createSignedUrl(path, 60 * 60 * 3);
@@ -127,6 +142,10 @@ function RecordPhase({
       },
       { shouldRetry: (error) => isRetryableError(error) },
     );
+    if (signed.error) {
+      logError("upload.failure", signed.error, { ...uploadLogFields, stage: "signed_url" });
+      throw signed.error;
+    }
     const audio_url = signed.data?.signedUrl ?? null;
 
     // transcribe
@@ -143,7 +162,7 @@ function RecordPhase({
       /* non-fatal */
     }
 
-    await supabase.from("submissions").insert({
+    const inserted = await supabase.from("submissions").insert({
       room_id: roomId,
       round_id: snd.roundId,
       team_id: me.teamId,
@@ -153,6 +172,13 @@ function RecordPhase({
       transcript,
       duration_seconds: durationMs / 1000,
     });
+    if (inserted.error) {
+      logError("upload.failure", inserted.error, {
+        ...uploadLogFields,
+        stage: "submission_insert",
+      });
+      throw inserted.error;
+    }
   }
 
   return (

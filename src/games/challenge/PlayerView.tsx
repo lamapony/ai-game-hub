@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { updateRoomState } from "@/lib/room";
 import { isRetryableError, retryOperation } from "@/lib/retry";
+import { logError } from "@/lib/structured-log";
 import { VideoRecorder } from "./VideoRecorder";
 import { extractFrames } from "./video-utils";
 import { formatClock } from "@/lib/team-style";
@@ -179,6 +180,16 @@ function OperatorRecord({
   async function handleUpload(blob: Blob, mime: string) {
     const ext = mime.includes("mp4") ? "mp4" : "webm";
     const path = `${roomId}/challenge/${ch.roundId}/${me.id}-${Date.now()}.${ext}`;
+    const uploadLogFields = {
+      game: "challenge",
+      stage: "video_upload",
+      roomId,
+      roundId: ch.roundId,
+      playerId: me.id,
+      teamId: me.teamId,
+      mimeType: mime,
+      blobSize: blob.size,
+    };
     const up = await retryOperation(
       async () => {
         const result = await supabase.storage
@@ -189,7 +200,10 @@ function OperatorRecord({
       },
       { shouldRetry: (error) => isRetryableError(error) },
     );
-    if (up.error) throw up.error;
+    if (up.error) {
+      logError("upload.failure", up.error, uploadLogFields);
+      throw up.error;
+    }
     const signed = await retryOperation(
       async () => {
         const result = await supabase.storage
@@ -200,6 +214,10 @@ function OperatorRecord({
       },
       { shouldRetry: (error) => isRetryableError(error) },
     );
+    if (signed.error) {
+      logError("upload.failure", signed.error, { ...uploadLogFields, stage: "signed_url" });
+      throw signed.error;
+    }
     const video_url = signed.data?.signedUrl ?? null;
 
     // transcribe audio track (whisper can pull audio from webm/mp4)
@@ -222,7 +240,7 @@ function OperatorRecord({
       /* */
     }
 
-    await supabase.from("challenges").insert({
+    const inserted = await supabase.from("challenges").insert({
       room_id: roomId,
       round_id: ch.roundId,
       task: ch.task ?? "",
@@ -231,6 +249,10 @@ function OperatorRecord({
       video_url,
       transcript,
     });
+    if (inserted.error) {
+      logError("upload.failure", inserted.error, { ...uploadLogFields, stage: "challenge_insert" });
+      throw inserted.error;
+    }
 
     // Host listens for INSERT and runs the judge. Pass frames out-of-band via broadcast.
     const channel = supabase.channel(`judge:${roomId}`);

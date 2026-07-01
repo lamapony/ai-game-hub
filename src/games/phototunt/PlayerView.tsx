@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatClock } from "@/lib/team-style";
 import { friendlyUploadError } from "@/lib/media-errors";
 import { isRetryableError, retryOperation } from "@/lib/retry";
+import { logError } from "@/lib/structured-log";
 import type { RoomState } from "@/lib/types";
 import { PhotoCapture } from "./PhotoCapture";
 import { downscaleImage } from "./image-utils";
@@ -122,6 +123,16 @@ export function PhotoHuntPlayer({
               const { blob, dataUrl } = await downscaleImage(file, 1024, 0.82);
               setMyPhotoUrl(dataUrl);
               const path = `${roomId}/photos/${ph.roundId}/${me.id}-${Date.now()}.jpg`;
+              const uploadLogFields = {
+                game: "phototunt",
+                stage: "photo_upload",
+                roomId,
+                roundId: ph.roundId,
+                playerId: me.id,
+                teamId: me.teamId,
+                mimeType: "image/jpeg",
+                blobSize: blob.size,
+              };
               const up = await retryOperation(
                 async () => {
                   const result = await supabase.storage
@@ -132,7 +143,10 @@ export function PhotoHuntPlayer({
                 },
                 { shouldRetry: (error) => isRetryableError(error) },
               );
-              if (up.error) throw up.error;
+              if (up.error) {
+                logError("upload.failure", up.error, uploadLogFields);
+                throw up.error;
+              }
               const signed = await retryOperation(
                 async () => {
                   const result = await supabase.storage
@@ -143,8 +157,19 @@ export function PhotoHuntPlayer({
                 },
                 { shouldRetry: (error) => isRetryableError(error) },
               );
+              if (signed.error) {
+                logError("upload.failure", signed.error, {
+                  ...uploadLogFields,
+                  stage: "signed_url",
+                });
+                throw signed.error;
+              }
               const photo_url = signed.data?.signedUrl;
-              if (!photo_url) throw new Error("no signed url");
+              if (!photo_url) {
+                const error = new Error("no signed url");
+                logError("upload.failure", error, { ...uploadLogFields, stage: "signed_url" });
+                throw error;
+              }
               const ins = await supabase.from("photos").insert({
                 room_id: roomId,
                 round_id: ph.roundId,
@@ -153,7 +178,13 @@ export function PhotoHuntPlayer({
                 team_id: me.teamId,
                 photo_url,
               });
-              if (ins.error) throw ins.error;
+              if (ins.error) {
+                logError("upload.failure", ins.error, {
+                  ...uploadLogFields,
+                  stage: "photo_insert",
+                });
+                throw ins.error;
+              }
               setSubmitted(true);
             } catch (e) {
               console.error(e);

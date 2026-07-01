@@ -14,6 +14,20 @@ function sanitizeValue(key: string, value: LogPrimitive): LogPrimitive {
   return value;
 }
 
+function objectField(error: Record<string, unknown>, key: string): LogPrimitive {
+  const value = error[key];
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    value === null ||
+    value === undefined
+  ) {
+    return value;
+  }
+  return undefined;
+}
+
 export function errorFields(error: unknown): LogFields {
   if (error instanceof Error) {
     return {
@@ -23,6 +37,21 @@ export function errorFields(error: unknown): LogFields {
   }
   if (typeof error === "string") {
     return { errorMessage: sanitizeValue("errorMessage", error) };
+  }
+  if (error && typeof error === "object") {
+    const source = error as Record<string, unknown>;
+    const fields: LogFields = {};
+    const name = objectField(source, "name");
+    const message = objectField(source, "message");
+    const status = objectField(source, "status") ?? objectField(source, "statusCode");
+    const code = objectField(source, "code");
+
+    if (name !== undefined) fields.errorName = sanitizeValue("errorName", name);
+    if (message !== undefined) fields.errorMessage = sanitizeValue("errorMessage", message);
+    if (status !== undefined) fields.errorStatus = status;
+    if (code !== undefined) fields.errorCode = sanitizeValue("errorCode", code);
+
+    if (Object.keys(fields).length > 0) return fields;
   }
   return { errorMessage: "Unknown error" };
 }

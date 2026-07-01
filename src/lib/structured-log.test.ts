@@ -28,4 +28,16 @@ describe("structured logging", () => {
     expect(payload.errorName).toBe("TypeError");
     expect(payload.errorMessage).toBe("bad input");
   });
+
+  test("normalizes plain Supabase-style error objects", () => {
+    const payload = errorFields({
+      message: "permission denied",
+      status: 403,
+      code: "42501",
+    });
+
+    expect(payload.errorMessage).toBe("permission denied");
+    expect(payload.errorStatus).toBe(403);
+    expect(payload.errorCode).toBe("42501");
+  });
 });

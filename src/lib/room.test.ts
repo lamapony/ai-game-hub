@@ -83,12 +83,31 @@ const bunMock = (await import("bun:test")) as unknown as {
   mock: { module: (specifier: string, factory: () => unknown) => void };
 };
 
+const logEvents: {
+  level: "info" | "warn" | "error";
+  event: string;
+  error?: unknown;
+  fields: Record<string, unknown>;
+}[] = [];
+
 bunMock.mock.module("@/integrations/supabase/client", () => ({
   supabase: {
     from(table: string) {
       if (table !== "rooms") throw new Error(`Unexpected table: ${table}`);
       return new RoomsQueryBuilder();
     },
+  },
+}));
+
+bunMock.mock.module("./structured-log", () => ({
+  logInfo(event: string, fields: Record<string, unknown> = {}) {
+    logEvents.push({ level: "info", event, fields });
+  },
+  logWarn(event: string, fields: Record<string, unknown> = {}) {
+    logEvents.push({ level: "warn", event, fields });
+  },
+  logError(event: string, error: unknown, fields: Record<string, unknown> = {}) {
+    logEvents.push({ level: "error", event, error, fields });
   },
 }));
 
@@ -137,6 +156,7 @@ function resetMockRooms() {
   mockRooms.updates = [];
   mockRooms.selects = [];
   mockRooms.filters = [];
+  logEvents.length = 0;
 }
 
 function resetTestState() {
@@ -183,6 +203,13 @@ describe("room helpers", () => {
     expect(room.code).toBe(mockRooms.inserts[1]?.code);
     expect(room.id).toBe(`room_${mockRooms.inserts[1]?.code}`);
     expect(getHostSecret(room.code)).toBe(mockRooms.inserts[1]?.host_secret);
+    expect(logEvents.some((entry) => entry.event === "room.create.duplicate_code")).toBe(true);
+    expect(
+      logEvents.some(
+        (entry) => entry.event === "room.create.success" && entry.fields.roomId === room.id,
+      ),
+    ).toBe(true);
+    expect(JSON.stringify(logEvents).includes("host_secret")).toBe(false);
   });
 
   test("createRoom fails immediately on non-duplicate insert errors", async () => {
@@ -195,6 +222,7 @@ describe("room helpers", () => {
 
     expect(await rejectedMessage(() => createRoom("Dimas"))).toContain("permission denied");
     expect(mockRooms.inserts.length).toBe(1);
+    expect(logEvents.some((entry) => entry.event === "room.create.failure")).toBe(true);
   });
 
   test("fetchRoomByCode uppercases codes and maps missing rooms to null", async () => {
@@ -210,12 +238,14 @@ describe("room helpers", () => {
     expect(room?.id).toBe("room_1");
     expect(room?.code).toBe("ABCD");
     expect(room?.state).toBe(state);
+    expect(logEvents.some((entry) => entry.event === "room.fetch.success")).toBe(true);
     expect(
       mockRooms.filters.some((filter) => filter.field === "code" && filter.value === "ABCD"),
     ).toBe(true);
 
     mockRooms.maybeSingleResult = { data: null, error: null };
     expect(await fetchRoomByCode("missing")).toBeNull();
+    expect(logEvents.some((entry) => entry.event === "room.fetch.not_found")).toBe(true);
   });
 
   test("fetchRoomByCode and updateRoomState surface Supabase errors", async () => {
@@ -231,6 +261,8 @@ describe("room helpers", () => {
     expect(
       await rejectedMessage(() => updateRoomState("room_1", emptyRoomState("Host"))),
     ).toContain("write rejected");
+    expect(logEvents.some((entry) => entry.event === "room.fetch.failure")).toBe(true);
+    expect(logEvents.some((entry) => entry.event === "room.update.failure")).toBe(true);
   });
 
   test("updateRoomState writes the complete state for the target room id", async () => {
@@ -243,6 +275,7 @@ describe("room helpers", () => {
     expect(mockRooms.updates.length).toBe(1);
     expect(mockRooms.updates[0]?.id).toBe("room_1");
     expect(mockRooms.updates[0]?.state).toBe(state);
+    expect(logEvents.some((entry) => entry.event === "room.update.success")).toBe(true);
   });
 
   test("getOrCreatePlayer persists player identity and allows name/team updates", () => {

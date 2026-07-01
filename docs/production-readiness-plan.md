@@ -23,6 +23,8 @@
 - Добавлены понятные player-facing ошибки для camera, microphone, photo read и media upload failures.
 - Добавлен базовый `bun test` regression pack для host controls и player-facing media/upload errors.
 - Добавлен lightweight structured JSON logging для AI gateway, API routes и cleanup endpoint.
+- Structured logging расширен на room lifecycle events и upload failures в Soundscape,
+  Challenge и Photo Hunt без signed URL/media body/host secret.
 - Добавлен retry/backoff для transient AI provider errors и Supabase Storage upload/signed URL calls.
 - Добавлены unit-тесты для базового контракта `src/lib/room.ts`: room code/id generation,
   create/fetch/update room flows, duplicate-code retry и persisted player identity.
@@ -90,6 +92,8 @@
 - Базовая observability:
   - AI gateway пишет `ai.chat_json.*`, `ai.tts.*`, `ai.stt.*` с duration/status/model без prompt body;
   - API routes пишут `api.speak.*`, `api.transcribe.*`, `api.cleanup.*`;
+  - room helpers пишут `room.create.*`, `room.fetch.*`, `room.update.*` без `host_secret`;
+  - player upload paths пишут `upload.failure` с game/stage/room/round/player/team и размером blob;
   - cleanup summary пишет rooms/storage counts и errorCount;
   - secrets/tokens/api keys редактируются в structured logger.
 
