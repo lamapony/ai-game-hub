@@ -85,7 +85,7 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
         taskSpokenRef.current = ph.roundId;
         speak(`${r.intro} ${r.task}`);
       }
-      await update({ task: r.task, intro: r.intro });
+      await update({ task: r.task, intro: r.intro, aiFallback: r.fallback });
     } catch (e) {
       console.error(e);
     } finally {
@@ -185,6 +185,7 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
           ...ph,
           phase: "results",
           results,
+          aiFallback: ph.aiFallback || r.fallback,
           pastTasks: [...(ph.pastTasks ?? []), ph.task ?? ""].filter(Boolean),
         },
       });
@@ -212,6 +213,7 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
       phototunt: {
         phase: "briefing",
         roundId: genId("ph"),
+        aiFallback: undefined,
         pastTasks: [...(ph.pastTasks ?? []), ph.task ?? ""].filter(Boolean),
       },
     });
@@ -239,6 +241,7 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
 
       {ph.phase === "briefing" && (
         <Panel>
+          {ph.aiFallback && <AiFallbackNotice />}
           {!ph.task ? (
             <div className="font-display text-2xl">Дух парка диктует задание…</div>
           ) : (
@@ -329,6 +332,7 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
 
       {ph.phase === "results" && ph.results && (
         <Panel>
+          {ph.aiFallback && <AiFallbackNotice />}
           <div className="text-xs uppercase tracking-widest text-white/60">Вердикт духа парка</div>
           <div className="font-display text-2xl mt-1">«{ph.task}»</div>
           {ph.results.length === 0 ? (
@@ -389,4 +393,12 @@ function phaseTitle(p: PhotoHuntState["phase"]) {
 
 function Panel({ children }: { children: React.ReactNode }) {
   return <div className="rounded-3xl bg-card border p-6 text-white">{children}</div>;
+}
+
+function AiFallbackNotice() {
+  return (
+    <div className="mb-4 rounded-2xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+      AI-провайдер не ответил стабильно, поэтому раунд продолжен в аварийном режиме.
+    </div>
+  );
 }

@@ -120,8 +120,13 @@ export function SoundscapeHost({
   async function triggerTopics() {
     setBusy("topics");
     try {
-      const topics = await generateTopics({ data: {} });
-      await update({ phase: "topics", topics, topicVotes: {} });
+      const result = await generateTopics({ data: {} });
+      await update({
+        phase: "topics",
+        topics: result.topics,
+        topicVotes: {},
+        aiFallback: result.fallback,
+      });
     } catch (e) {
       console.error(e);
     } finally {
@@ -225,7 +230,7 @@ export function SoundscapeHost({
         if (!mix) continue;
         const clips = teamsWithClips[team.id] ?? [];
         try {
-          const { feedback, bonus } = await judgeMix({
+          const { feedback, bonus, fallback } = await judgeMix({
             data: {
               teamName: team.name,
               topic: snd.topic ?? "",
@@ -233,7 +238,12 @@ export function SoundscapeHost({
                 clips.map((c) => c.transcript || "(non-verbal)").join(" | ") || "no recordings",
             },
           });
-          updatedMixes[team.id] = { ...mix, feedback, bonusPoints: bonus };
+          updatedMixes[team.id] = {
+            ...mix,
+            feedback,
+            bonusPoints: bonus,
+            aiFallback: mix.aiFallback || fallback,
+          };
           perTeam[team.id] = (perTeam[team.id] ?? 0) + bonus;
         } catch {
           /* keep going */
@@ -344,6 +354,7 @@ function TopicsPanel({ snd, onPick }: { snd: SoundscapeState; onPick: () => void
   const total = Object.keys(snd.topicVotes ?? {}).length;
   return (
     <div className="rounded-3xl bg-card p-6 border space-y-4">
+      {snd.aiFallback && <AiFallbackNotice />}
       <p className="text-sm text-muted-foreground">
         Players vote on their phones. {total} vote{total === 1 ? "" : "s"} so far.
       </p>
@@ -424,11 +435,13 @@ function PlaybackPanel({
   now: number;
 }) {
   const team = state.teams.find((t) => t.id === snd.playback!.teamId);
+  const mix = snd.mixes?.[snd.playback!.teamId];
   const c = team ? teamColorClasses(team.color) : null;
   const elapsed = Math.max(0, now - snd.playback!.startAt);
   const pct = Math.min(100, (elapsed / PLAYBACK_TOTAL_MS) * 100);
   return (
     <div className="rounded-3xl bg-card p-6 border">
+      {mix?.aiFallback && <AiFallbackNotice />}
       <div
         className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs ${c?.chip ?? ""}`}
       >
@@ -512,6 +525,7 @@ function ResultsPanel({
           const c = teamColorClasses(t.color);
           return (
             <div key={t.id} className={`rounded-3xl border bg-card p-5 ${c.ring}`}>
+              {m.aiFallback && <AiFallbackNotice />}
               <div className="flex items-baseline justify-between">
                 <div className={`font-display text-xl ${c.text}`}>{t.name}</div>
                 <div className="font-display text-3xl tabular-num">+{m.bonusPoints ?? 0}</div>
@@ -526,6 +540,14 @@ function ResultsPanel({
       >
         Back to lobby
       </button>
+    </div>
+  );
+}
+
+function AiFallbackNotice() {
+  return (
+    <div className="mb-4 rounded-2xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+      AI provider did not respond reliably, so this part continued in fallback mode.
     </div>
   );
 }

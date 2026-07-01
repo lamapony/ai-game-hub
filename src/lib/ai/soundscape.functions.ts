@@ -17,7 +17,7 @@ const FALLBACK_TOPICS = [
 
 export const generateTopics = createServerFn({ method: "POST" })
   .validator((input: unknown) => z.object({}).parse(input))
-  .handler(async () => {
+  .handler(async (): Promise<{ topics: string[]; fallback?: true }> => {
     const { chatJSON } = await import("../ai-gateway.server");
     try {
       const result = await chatJSON<{ topics: string[] }>({
@@ -29,10 +29,10 @@ Mix absurd, atmospheric, and cinematic. Keep each under 6 words.
 Return JSON: { "topics": ["...", "...", "..."] }`,
         temperature: 0.95,
       });
-      return sanitizeTopics(result, FALLBACK_TOPICS);
+      return { topics: sanitizeTopics(result, FALLBACK_TOPICS) };
     } catch (error) {
       console.error("[AI fallback] generateTopics", error);
-      return FALLBACK_TOPICS;
+      return { topics: FALLBACK_TOPICS, fallback: true };
     }
   });
 
@@ -111,6 +111,7 @@ clip_index must be an integer 0..${numClips - 1}. slot must be 2..5 for clips an
         })),
         total_ms: 60000,
       };
+      return { ...sanitizeMixResponse(resp, data.clips, data.teamName), aiFallback: true };
     }
 
     return sanitizeMixResponse(resp, data.clips, data.teamName);
@@ -126,7 +127,7 @@ export const judgeMix = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<{ feedback: string; bonus: number; fallback?: true }> => {
     const { chatJSON } = await import("../ai-gateway.server");
     try {
       const r = await chatJSON<{ feedback: string; bonus: number }>({
@@ -145,6 +146,7 @@ Return JSON: { "feedback": "...", "bonus": 12 }`,
       return {
         feedback: `Team ${data.teamName} survived "${data.topic}" without the AI jury. The park awards a practical offline bonus.`,
         bonus: 10,
+        fallback: true,
       };
     }
   });

@@ -18,6 +18,8 @@
 - В `Orchestra` устранен риск stale callback при срабатывании scheduled audio cues.
 - Media helpers вынесены из React-компонентов в отдельные utility-модули.
 - Добавлены fallback-задания, fallback-судейство и graceful STT fallback для AI outage.
+- Fallback-режимы AI теперь помечаются в room state и показываются ведущему в Challenge,
+  Photo Hunt и Soundscape, чтобы аварийная логика не выглядела как обычный AI-вердикт.
 - Добавлены host controls для активной игры: pause/resume, skip phase, restart game, force back to hub.
 - Добавлен protected cleanup endpoint и GitHub scheduled workflow для старых комнат и uploads.
 - Добавлены понятные player-facing ошибки для camera, microphone, photo read и media upload failures.
@@ -170,5 +172,4 @@
 
 ## Риски, которые стоит проверить до публичного мероприятия
 
-- Зависимость от внешнего AI-провайдера: подготовить понятное сообщение host-у при недоступности API и fallback для TTS/STT.
 - Синхронизация speaker playback зависит от устройств и сети: перед мероприятием провести тест с тем же Wi-Fi/мобильным интернетом и теми же колонками.

@@ -41,7 +41,7 @@ export const generatePhotoTask = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data }): Promise<{ task: string; intro: string }> => {
+  .handler(async ({ data }): Promise<{ task: string; intro: string; fallback?: true }> => {
     const { chatJSON } = await import("../ai-gateway.server");
     const avoid =
       (data.pastTasks ?? [])
@@ -74,7 +74,7 @@ JSON: { "task": "...", "intro": "..." }`,
       return sanitizeTask(r, fallbackPhotoTask(data.pastTasks));
     } catch (error) {
       console.error("[AI fallback] generatePhotoTask", error);
-      return fallbackPhotoTask(data.pastTasks);
+      return { ...fallbackPhotoTask(data.pastTasks), fallback: true };
     }
   });
 
@@ -99,6 +99,7 @@ export const judgePhotos = createServerFn({ method: "POST" })
     }): Promise<{
       ranking: Array<{ playerId: string; rank: number; comment: string }>;
       verdict: string;
+      fallback?: true;
     }> => {
       const { chatJSON } = await import("../ai-gateway.server");
 
@@ -157,6 +158,7 @@ ${data.photos.map((p, i) => `${i + 1}. ${p.playerName} (id: ${p.playerId})`).joi
           })),
           verdict: `${data.photos[0]?.playerName ?? "Первый загрузивший"} забирает аварийную победу.`,
         };
+        return { ...sanitizePhotoRanking(r, data.photos), fallback: true };
       }
 
       return sanitizePhotoRanking(r, data.photos);

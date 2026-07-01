@@ -118,7 +118,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
       });
       // speak intro + task via slot 1
       speak(`${r.intro} ${r.task}`);
-      await update({ task: r.task });
+      await update({ task: r.task, aiFallback: r.fallback });
       // Recording starts when the operator taps "Открыть камеру" on their phone.
     } catch (e) {
       console.error(e);
@@ -184,6 +184,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
           ...ch,
           phase: "results",
           result: { score: r.score, feedback: r.feedback, videoUrl: p.videoUrl },
+          aiFallback: ch.aiFallback || r.fallback,
           pastOperatorIds: [...(ch.pastOperatorIds ?? []), p.operatorName],
         },
       });
@@ -221,6 +222,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
         roundId: genId("ch"),
         operatorId: nextOp.id,
         operatorName: nextOp.name,
+        aiFallback: undefined,
         pastOperatorIds: [...(ch.pastOperatorIds ?? []), ch.operatorId ?? ""].filter(Boolean),
       },
     });
@@ -256,6 +258,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
 
       {ch.phase === "briefing" && (
         <Panel>
+          {ch.aiFallback && <AiFallbackNotice />}
           <div className="font-display text-2xl">Дух парка диктует задание…</div>
           {ch.task && <p className="mt-3 text-lg text-white">«{ch.task}»</p>}
           {ch.task && (
@@ -296,6 +299,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
 
       {ch.phase === "results" && ch.result && (
         <Panel>
+          {ch.aiFallback && <AiFallbackNotice />}
           <div className="flex items-baseline justify-between flex-wrap gap-3">
             <div>
               <div className="text-xs uppercase tracking-widest text-white/60">Вердикт</div>
@@ -344,6 +348,14 @@ function phaseTitle(p: ChallengeState["phase"]) {
 
 function Panel({ children }: { children: React.ReactNode }) {
   return <div className="rounded-3xl bg-card border p-6 text-white">{children}</div>;
+}
+
+function AiFallbackNotice() {
+  return (
+    <div className="mb-4 rounded-2xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+      AI-провайдер не ответил стабильно, поэтому раунд продолжен в аварийном режиме.
+    </div>
+  );
 }
 
 function Gallery({ history }: { history: ChallengeRow[] }) {

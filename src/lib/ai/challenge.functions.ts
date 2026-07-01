@@ -42,7 +42,7 @@ export const generateChallengeTask = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data }): Promise<{ task: string; intro: string }> => {
+  .handler(async ({ data }): Promise<{ task: string; intro: string; fallback?: true }> => {
     const { chatJSON } = await import("../ai-gateway.server");
     const avoid =
       (data.pastTasks ?? [])
@@ -70,7 +70,7 @@ JSON: { "task": "...", "intro": "..." }`,
       return sanitizeTask(r, fallbackChallengeTask(data.pastTasks));
     } catch (error) {
       console.error("[AI fallback] generateChallengeTask", error);
-      return fallbackChallengeTask(data.pastTasks);
+      return { ...fallbackChallengeTask(data.pastTasks), fallback: true };
     }
   });
 
@@ -85,14 +85,17 @@ export const judgeChallenge = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data }): Promise<{ score: number; feedback: string; verdict: string }> => {
-    const { chatJSON } = await import("../ai-gateway.server");
-    const parts: Array<
-      { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }
-    > = [
-      {
-        type: "text",
-        text: `Задание было: «${data.task}»
+  .handler(
+    async ({
+      data,
+    }): Promise<{ score: number; feedback: string; verdict: string; fallback?: true }> => {
+      const { chatJSON } = await import("../ai-gateway.server");
+      const parts: Array<
+        { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }
+      > = [
+        {
+          type: "text",
+          text: `Задание было: «${data.task}»
 Оператор (снимал): ${data.operatorName}.
 Расшифровка звука с видео: "${data.transcript || "(без речи или неразборчиво)"}"
 
@@ -116,26 +119,28 @@ export const judgeChallenge = createServerFn({ method: "POST" })
   "feedback": "<твой комментарий 1-2 предложения, как саркастичный судья, со ссылкой на КОНКРЕТНУЮ деталь которую видишь>",
   "verdict": "<КОРОТКАЯ фраза до 12 слов которую дух парка скажет голосом в колонку, с оценкой>"
 }`,
-      },
-      ...data.frames.map((url) => ({ type: "image_url" as const, image_url: { url } })),
-    ];
+        },
+        ...data.frames.map((url) => ({ type: "image_url" as const, image_url: { url } })),
+      ];
 
-    try {
-      const r = await chatJSON<{ score: number; feedback: string; verdict: string }>({
-        system: HOST_VOICE_SYSTEM,
-        user: parts,
-        temperature: 0.7,
-      });
-      return sanitizeChallengeJudgement(r);
-    } catch (error) {
-      console.error("[AI fallback] judgeChallenge", error);
-      const transcriptHint = data.transcript
-        ? "Судья видел расшифровку, но не смог дозвониться до своего хрустального шара."
-        : "Видео принято, но судья сегодня без зрения и без слуха.";
-      return {
-        score: 6,
-        feedback: `${transcriptHint} Засчитываю попытку и энергию команды.`,
-        verdict: "Шесть из десяти. Дух парка работает офлайн.",
-      };
-    }
-  });
+      try {
+        const r = await chatJSON<{ score: number; feedback: string; verdict: string }>({
+          system: HOST_VOICE_SYSTEM,
+          user: parts,
+          temperature: 0.7,
+        });
+        return sanitizeChallengeJudgement(r);
+      } catch (error) {
+        console.error("[AI fallback] judgeChallenge", error);
+        const transcriptHint = data.transcript
+          ? "Судья видел расшифровку, но не смог дозвониться до своего хрустального шара."
+          : "Видео принято, но судья сегодня без зрения и без слуха.";
+        return {
+          score: 6,
+          feedback: `${transcriptHint} Засчитываю попытку и энергию команды.`,
+          verdict: "Шесть из десяти. Дух парка работает офлайн.",
+          fallback: true,
+        };
+      }
+    },
+  );
