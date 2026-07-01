@@ -38,6 +38,7 @@ Dev server: `http://localhost:8080`
 
 ```bash
 bun run lint
+bun test
 bunx tsc --noEmit
 bun run build
 bun run preview
@@ -145,7 +146,9 @@ src/
 Проект собирается под **Cloudflare Workers** через TanStack Start/Nitro:
 
 ```bash
+bun run verify:prod-env
 bun run build
+bun run verify:prod-env --write-dotenv=dist/server/.deploy.env
 npx wrangler deploy --config wrangler.json --cwd dist/server --secrets-file .deploy.env --keep-vars
 ```
 

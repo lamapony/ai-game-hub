@@ -34,6 +34,8 @@
   judgement, soundscape mix/judgement и photo ranking.
 - Добавлен простой `eventProfile` config без dashboard: brand/SEO, default host name, storage
   prefix, host persona и speaker slot names.
+- Добавлен production env preflight для deploy workflow: проверяет обязательные GitHub
+  vars/secrets до build и пишет `.deploy.env` с defaults для optional OpenAI настроек.
 - Fast Refresh правило отключено только для `src/components/ui`, где shadcn/ui ожидаемо экспортирует variants рядом с компонентами.
 - Локальный `.codebase-memory/` исключен из публичного репозитория.
 
@@ -126,14 +128,18 @@
    - `OPENAI_VISION_MODEL`;
    - `OPENAI_TTS_MODEL`;
    - `OPENAI_TRANSCRIBE_MODEL`.
-4. Выполнить `bun run build`.
-5. Задеплоить prebuilt Worker output: `npx wrangler deploy --config wrangler.json --cwd dist/server --secrets-file .deploy.env --keep-vars`.
-6. После деплоя пройти smoke test на production URL.
+4. Выполнить preflight: `bun run verify:prod-env`.
+5. Выполнить `bun run build`.
+6. Подготовить runtime env: `bun run verify:prod-env --write-dotenv=dist/server/.deploy.env`.
+7. Задеплоить prebuilt Worker output: `npx wrangler deploy --config wrangler.json --cwd dist/server --secrets-file .deploy.env --keep-vars`.
+8. После деплоя пройти smoke test на production URL.
 
 ## GitHub Actions
 
 - `CI` запускается на push и pull request в `main`: install, lint, test, typecheck, build.
 - `Deploy Cloudflare` запускается вручную через GitHub Actions после настройки secrets.
+  Workflow сначала запускает `bun run verify:prod-env`, чтобы показать конкретные отсутствующие
+  keys до build/deploy.
 - Required repo variables:
   - `CLEANUP_URL`
   - `VITE_SUPABASE_URL`
