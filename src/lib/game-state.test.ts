@@ -5,6 +5,7 @@ import {
   launchSoundscapeState,
   launchSpectrumCourtState,
   launchTrackGuessState,
+  launchWhoAmongState,
 } from "./game-state";
 import type { RoomState } from "./types";
 
@@ -127,5 +128,32 @@ describe("game state launch helpers", () => {
     expect(withTeams?.spectrumcourt?.phase).toBe("briefing");
     expect(withTeams?.spectrumcourt?.totalRounds).toBe(4);
     expect(oneActiveTeam).toBeNull();
+  });
+
+  test("launchWhoAmong starts only with at least three players", () => {
+    const withThree = launchWhoAmongState(
+      roomState({
+        players: [
+          { id: "p1", name: "One", teamId: "forest", joinedAt: 1 },
+          { id: "p2", name: "Two", teamId: "lake", joinedAt: 2 },
+          { id: "p3", name: "Three", teamId: "forest", joinedAt: 3 },
+        ],
+      }),
+      "wa_1",
+    );
+    const withTwo = launchWhoAmongState(
+      roomState({
+        players: [
+          { id: "p1", name: "One", teamId: "forest", joinedAt: 1 },
+          { id: "p2", name: "Two", teamId: "lake", joinedAt: 2 },
+        ],
+      }),
+      "wa_2",
+    );
+
+    expect(withThree?.currentGame).toBe("whoamong");
+    expect(withThree?.whoamong?.phase).toBe("briefing");
+    expect(withThree?.whoamong?.totalRounds).toBe(5);
+    expect(withTwo).toBeNull();
   });
 });

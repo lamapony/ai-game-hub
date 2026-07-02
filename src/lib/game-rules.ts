@@ -1,5 +1,9 @@
 import type { GameId } from "./types";
-import { SPECTRUM_COURT_TOTAL_ROUNDS, TRACK_GUESS_TOTAL_ROUNDS } from "./game-state";
+import {
+  SPECTRUM_COURT_TOTAL_ROUNDS,
+  TRACK_GUESS_TOTAL_ROUNDS,
+  WHO_AMONG_TOTAL_ROUNDS,
+} from "./game-state";
 import {
   CHALLENGE_BRIEFING_MS,
   SOUND_RECORDING_MS,
@@ -7,6 +11,7 @@ import {
   SPECTRUM_COURT_CLUE_MS,
   TRACK_GUESS_GUESS_MS,
   TRACK_GUESS_LISTEN_MS,
+  WHO_AMONG_VOTE_MS,
 } from "./host-controls";
 
 export type GameRules = {
@@ -24,6 +29,7 @@ export const GAME_IDS: GameId[] = [
   "phototunt",
   "trackguess",
   "spectrumcourt",
+  "whoamong",
 ];
 
 const soundRecordingMin = Math.round(SOUND_RECORDING_MS / 60_000);
@@ -32,6 +38,7 @@ const challengeBriefingSec = Math.round(CHALLENGE_BRIEFING_MS / 1000);
 const listenSec = Math.round(TRACK_GUESS_LISTEN_MS / 1000);
 const guessSec = Math.round(TRACK_GUESS_GUESS_MS / 1000);
 const clueSec = Math.round(SPECTRUM_COURT_CLUE_MS / 1000);
+const voteSec = Math.round(WHO_AMONG_VOTE_MS / 1000);
 
 export const GAME_RULES: Record<GameId, GameRules> = {
   soundscape: {
@@ -98,5 +105,18 @@ export const GAME_RULES: Record<GameId, GameRules> = {
     ],
     scoring: "0–10 по дистанции; команда подсказки — лучший чужой счёт",
     minPlayers: "нужно 2+ команды с игроками",
+  },
+  whoamong: {
+    title: "Кто из нас",
+    emoji: "🕵️",
+    tagline: "Острый вопрос — тайно голосуешь за «своего» героя",
+    steps: [
+      `${WHO_AMONG_TOTAL_ROUNDS} раундов — на экране вопрос в духе «кто из нас…»`,
+      "Тайно выбираешь одного игрока — можно себя",
+      `На голосование ~${voteSec} сек, можно передумать`,
+      "Ведущий показывает звезду раунда и начисляет очки",
+    ],
+    scoring: "Звезда раунда +3 команде; угадал звезду +2 команде",
+    minPlayers: "от 3 игроков",
   },
 };

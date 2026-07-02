@@ -10,6 +10,7 @@ import {
   launchSoundscapeState,
   launchSpectrumCourtState,
   launchTrackGuessState,
+  launchWhoAmongState,
 } from "@/lib/game-state";
 import { teamColorClasses } from "@/lib/team-style";
 import {
@@ -62,6 +63,11 @@ const TrackGuessHost = lazy(() =>
 const SpectrumCourtHost = lazy(() =>
   import("@/games/spectrumcourt/HostView").then((module) => ({
     default: module.SpectrumCourtHost,
+  })),
+);
+const WhoAmongHost = lazy(() =>
+  import("@/games/whoamong/HostView").then((module) => ({
+    default: module.WhoAmongHost,
   })),
 );
 
@@ -157,6 +163,12 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
     await updateRoomState(roomId, next);
   }
 
+  async function launchWhoAmong() {
+    const next = launchWhoAmongState(state, genId("wa"));
+    if (!next) return;
+    await updateRoomState(roomId, next);
+  }
+
   async function resetGame() {
     await updateRoomState(roomId, forceBackToHubState(state));
   }
@@ -178,6 +190,7 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
     if (state.currentGame === "phototunt") await launchPhotoHunt();
     if (state.currentGame === "trackguess") await launchTrackGuess();
     if (state.currentGame === "spectrumcourt") await launchSpectrumCourt();
+    if (state.currentGame === "whoamong") await launchWhoAmong();
   }
 
   async function forceBackToHub() {
@@ -263,6 +276,8 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
                 <TrackGuessHost roomId={roomId} state={state} />
               ) : state.currentGame === "spectrumcourt" && state.spectrumcourt ? (
                 <SpectrumCourtHost roomId={roomId} state={state} />
+              ) : state.currentGame === "whoamong" && state.whoamong ? (
+                <WhoAmongHost roomId={roomId} state={state} />
               ) : (
                 <HostGameLoading />
               )}
@@ -277,6 +292,7 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
               onLaunchPhotoHunt={launchPhotoHunt}
               onLaunchTrackGuess={launchTrackGuess}
               onLaunchSpectrumCourt={launchSpectrumCourt}
+              onLaunchWhoAmong={launchWhoAmong}
               onFinishParty={finishParty}
               speakerUrlFor={speakerUrlFor}
               onTestSpeaker={testSpeaker}
@@ -333,6 +349,7 @@ function HostControlBar({
     phototunt: "Фотоохота",
     trackguess: "Настоящий или AI?",
     spectrumcourt: "Spectrum Court",
+    whoamong: "Кто из нас",
   }[state.currentGame ?? "soundscape"];
   const phase =
     state.currentGame === "soundscape"
@@ -345,7 +362,9 @@ function HostControlBar({
             ? state.trackguess?.phase
             : state.currentGame === "spectrumcourt"
               ? state.spectrumcourt?.phase
-              : null;
+              : state.currentGame === "whoamong"
+                ? state.whoamong?.phase
+                : null;
 
   return (
     <div className="mb-4 rounded-3xl border border-white/10 bg-card p-4">
@@ -414,6 +433,7 @@ function Lobby({
   onLaunchPhotoHunt,
   onLaunchTrackGuess,
   onLaunchSpectrumCourt,
+  onLaunchWhoAmong,
   onFinishParty,
   speakerUrlFor,
   onTestSpeaker,
@@ -430,6 +450,7 @@ function Lobby({
   onLaunchPhotoHunt: () => void;
   onLaunchTrackGuess: () => void;
   onLaunchSpectrumCourt: () => void;
+  onLaunchWhoAmong: () => void;
   onFinishParty: () => void;
   speakerUrlFor: (n: number) => string;
   onTestSpeaker: (n: number) => void;
@@ -453,6 +474,7 @@ function Lobby({
     state.players.some((player) => player.teamId === team.id),
   ).length;
   const canSpectrumCourt = activeTeamCount >= 2;
+  const canWhoAmong = totalPlayers >= 3;
   const hasScores = state.teams.some((team) => team.score > 0);
 
   function copyLink() {
@@ -645,6 +667,16 @@ function Lobby({
             disabled={!canSpectrumCourt}
             disabledHint={!canSpectrumCourt ? "нужно ≥ 2 активных команд" : undefined}
             onClick={onLaunchSpectrumCourt}
+          />
+          <GameCard
+            gameId="whoamong"
+            emoji="🕵️"
+            title="Кто из нас"
+            time="~5 раундов"
+            desc="Острый вопрос на экране — тайно голосуешь за того, кто подходит лучше всех."
+            disabled={!canWhoAmong}
+            disabledHint={!canWhoAmong ? "нужно ≥ 3 игроков" : undefined}
+            onClick={onLaunchWhoAmong}
           />
         </div>
       </div>

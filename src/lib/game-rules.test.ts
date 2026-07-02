@@ -8,6 +8,7 @@ const ALL_GAME_IDS: GameId[] = [
   "phototunt",
   "trackguess",
   "spectrumcourt",
+  "whoamong",
 ];
 
 describe("game rules", () => {

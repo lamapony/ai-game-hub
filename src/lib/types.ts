@@ -80,7 +80,32 @@ export type ChallengeState = {
   pastOperatorIds?: string[];
 };
 
-export type GameId = "soundscape" | "challenge" | "phototunt" | "trackguess" | "spectrumcourt";
+export type GameId =
+  "soundscape" | "challenge" | "phototunt" | "trackguess" | "spectrumcourt" | "whoamong";
+
+export type WhoAmongPhase = "briefing" | "voting" | "reveal" | "results";
+
+export type WhoAmongRoundResult = {
+  promptId: string;
+  prompt: string;
+  starIds: string[];
+  voteCounts: Record<string, number>;
+  correctVoterIds: string[];
+};
+
+export type WhoAmongState = {
+  phase: WhoAmongPhase;
+  roundId: string;
+  roundNumber: number;
+  totalRounds: number;
+  usedPromptIds: string[];
+  promptId?: string;
+  prompt?: string;
+  votes?: Record<string, string>;
+  voteEndsAt?: number;
+  revealEndsAt?: number;
+  roundResults?: WhoAmongRoundResult[];
+};
 
 export type PhotoHuntPhase = "briefing" | "hunting" | "judging" | "results";
 
@@ -200,6 +225,7 @@ export type RoomState = {
   phototunt?: PhotoHuntState;
   trackguess?: TrackGuessState;
   spectrumcourt?: SpectrumCourtState;
+  whoamong?: WhoAmongState;
   speakerSlots: Record<number, { connected: boolean; name: string; lastSeenAt?: number }>; // 1..5
 };
 

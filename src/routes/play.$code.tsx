@@ -38,6 +38,11 @@ const SpectrumCourtPlayer = lazy(() =>
     default: module.SpectrumCourtPlayer,
   })),
 );
+const WhoAmongPlayer = lazy(() =>
+  import("@/games/whoamong/PlayerView").then((module) => ({
+    default: module.WhoAmongPlayer,
+  })),
+);
 
 export const Route = createFileRoute("/play/$code")({
   component: PlayPage,
@@ -251,6 +256,8 @@ function PlayerScreen({
             <TrackGuessPlayer roomId={room.id} state={state} me={me} />
           ) : state.currentGame === "spectrumcourt" && state.spectrumcourt ? (
             <SpectrumCourtPlayer roomId={room.id} state={state} me={me} />
+          ) : state.currentGame === "whoamong" && state.whoamong ? (
+            <WhoAmongPlayer roomId={room.id} state={state} me={me} />
           ) : (
             <WaitingPanel room={room} me={me} code={code} onTeamChange={onTeamChange} />
           )}

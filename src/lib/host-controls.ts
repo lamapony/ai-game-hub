@@ -15,6 +15,8 @@ const SPECTRUM_COURT_CLUE_MS = 60_000;
 const SPECTRUM_COURT_GUESS_MS = 35_000;
 const SPECTRUM_COURT_APPEAL_MS = 18_000;
 const SPECTRUM_COURT_REVEAL_MS = 10_000;
+const WHO_AMONG_VOTE_MS = 25_000;
+const WHO_AMONG_REVEAL_MS = 10_000;
 
 export const SOUNDSCAPE_FALLBACK_TOPIC = "Звуки утреннего парка";
 export const SPECTRUM_COURT_FALLBACK_CLUE = "Без подсказки — командная интуиция!";
@@ -107,6 +109,13 @@ export function resumeRoomState(state: RoomState, now = Date.now()): RoomState {
           revealEndsAt: shiftTime(state.spectrumcourt.revealEndsAt, deltaMs),
         }
       : undefined,
+    whoamong: state.whoamong
+      ? {
+          ...state.whoamong,
+          voteEndsAt: shiftTime(state.whoamong.voteEndsAt, deltaMs),
+          revealEndsAt: shiftTime(state.whoamong.revealEndsAt, deltaMs),
+        }
+      : undefined,
   };
 }
 
@@ -121,6 +130,7 @@ export function forceBackToHubState(state: RoomState): RoomState {
     phototunt: undefined,
     trackguess: undefined,
     spectrumcourt: undefined,
+    whoamong: undefined,
   };
 }
 
@@ -135,6 +145,7 @@ export function finishPartyState(state: RoomState): RoomState {
     phototunt: undefined,
     trackguess: undefined,
     spectrumcourt: undefined,
+    whoamong: undefined,
   };
 }
 
@@ -150,6 +161,7 @@ export function resumePartyState(state: RoomState): RoomState {
     phototunt: undefined,
     trackguess: undefined,
     spectrumcourt: undefined,
+    whoamong: undefined,
   };
 }
 
@@ -240,6 +252,9 @@ export function canSkipCurrentPhase(state: RoomState): boolean {
       state.spectrumcourt.phase === "clue" ||
       ["guessing", "appeal", "reveal"].includes(state.spectrumcourt.phase)
     );
+  }
+  if (state.currentGame === "whoamong" && state.whoamong) {
+    return ["voting", "reveal"].includes(state.whoamong.phase);
   }
   return false;
 }
@@ -412,6 +427,22 @@ export function skipCurrentPhaseState(state: RoomState, now = Date.now()): RoomS
     }
   }
 
+  if (state.currentGame === "whoamong" && state.whoamong) {
+    const wa = state.whoamong;
+    if (wa.phase === "voting") {
+      return {
+        ...state,
+        whoamong: { ...wa, voteEndsAt: now },
+      };
+    }
+    if (wa.phase === "reveal") {
+      return {
+        ...state,
+        whoamong: { ...wa, revealEndsAt: now },
+      };
+    }
+  }
+
   return state;
 }
 
@@ -426,4 +457,6 @@ export {
   SPECTRUM_COURT_GUESS_MS,
   SPECTRUM_COURT_APPEAL_MS,
   SPECTRUM_COURT_REVEAL_MS,
+  WHO_AMONG_VOTE_MS,
+  WHO_AMONG_REVEAL_MS,
 };

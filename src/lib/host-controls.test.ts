@@ -76,6 +76,15 @@ describe("host controls state helpers", () => {
         appealEndsAt: 17_000,
         revealEndsAt: 18_000,
       },
+      whoamong: {
+        phase: "voting",
+        roundId: "wa",
+        roundNumber: 1,
+        totalRounds: 5,
+        usedPromptIds: [],
+        voteEndsAt: 18_500,
+        revealEndsAt: 19_000,
+      },
     });
 
     const paused = pauseRoomState(state, 20_000);
@@ -93,6 +102,8 @@ describe("host controls state helpers", () => {
     expect(resumed.spectrumcourt?.guessEndsAt).toBe(21_500);
     expect(resumed.spectrumcourt?.appealEndsAt).toBe(22_500);
     expect(resumed.spectrumcourt?.revealEndsAt).toBe(23_500);
+    expect(resumed.whoamong?.voteEndsAt).toBe(24_000);
+    expect(resumed.whoamong?.revealEndsAt).toBe(24_500);
   });
 
   test("forceBackToHub clears active games and pause state", () => {
@@ -109,6 +120,13 @@ describe("host controls state helpers", () => {
         totalRounds: 4,
         usedSpectrumIds: [],
       },
+      whoamong: {
+        phase: "voting",
+        roundId: "wa",
+        roundNumber: 1,
+        totalRounds: 5,
+        usedPromptIds: [],
+      },
     });
 
     const result = forceBackToHubState(state);
@@ -120,6 +138,7 @@ describe("host controls state helpers", () => {
     expect(result.challenge).toBeUndefined();
     expect(result.phototunt).toBeUndefined();
     expect(result.spectrumcourt).toBeUndefined();
+    expect(result.whoamong).toBeUndefined();
   });
 
   test("skip soundscape topics without generated topics uses fallback theme", () => {
@@ -313,6 +332,44 @@ describe("host controls state helpers", () => {
     expect(skipCurrentPhaseState(state, now).spectrumcourt?.appealEndsAt).toBe(now);
   });
 
+  test("skip whoamong voting ends vote timer immediately", () => {
+    const now = 55_000;
+    const state = roomState({
+      currentGame: "whoamong",
+      whoamong: {
+        phase: "voting",
+        roundId: "wa",
+        roundNumber: 1,
+        totalRounds: 5,
+        usedPromptIds: ["sleep-party"],
+        promptId: "sleep-party",
+        prompt: "Кто из нас заснёт?",
+        voteEndsAt: now + 25_000,
+      },
+    });
+
+    expect(canSkipCurrentPhase(state)).toBe(true);
+    expect(skipCurrentPhaseState(state, now).whoamong?.voteEndsAt).toBe(now);
+  });
+
+  test("skip whoamong reveal ends reveal timer immediately", () => {
+    const now = 60_000;
+    const state = roomState({
+      currentGame: "whoamong",
+      whoamong: {
+        phase: "reveal",
+        roundId: "wa",
+        roundNumber: 1,
+        totalRounds: 5,
+        usedPromptIds: ["sleep-party"],
+        revealEndsAt: now + 10_000,
+      },
+    });
+
+    expect(canSkipCurrentPhase(state)).toBe(true);
+    expect(skipCurrentPhaseState(state, now).whoamong?.revealEndsAt).toBe(now);
+  });
+
   test("finishPartyState sets finished and clears game substates", () => {
     const state = roomState({
       paused: { startedAt: 100 },
@@ -337,6 +394,13 @@ describe("host controls state helpers", () => {
         totalRounds: 4,
         usedSpectrumIds: [],
       },
+      whoamong: {
+        phase: "results",
+        roundId: "wa",
+        roundNumber: 1,
+        totalRounds: 5,
+        usedPromptIds: [],
+      },
     });
 
     const result = finishPartyState(state);
@@ -349,6 +413,7 @@ describe("host controls state helpers", () => {
     expect(result.phototunt).toBeUndefined();
     expect(result.trackguess).toBeUndefined();
     expect(result.spectrumcourt).toBeUndefined();
+    expect(result.whoamong).toBeUndefined();
     expect(result.teams.find((team) => team.id === "forest")?.score).toBe(12);
     expect(result.players).toHaveLength(2);
   });
