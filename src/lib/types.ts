@@ -44,6 +44,7 @@ export type SoundscapeState = {
   aiFallback?: boolean;
   topic?: string;
   topicVotes?: Record<string, string>;
+  topicsEndsAt?: number;
   recordingEndsAt?: number;
   mixes?: Record<string, SoundscapeMix>; // teamId -> mix
   playback?: {
@@ -72,6 +73,7 @@ export type ChallengeState = {
   task?: string;
   operatorId?: string;
   operatorName?: string;
+  briefingEndsAt?: number;
   recordingEndsAt?: number;
   result?: { score: number; feedback: string; videoUrl: string };
   aiFallback?: boolean;
@@ -98,6 +100,7 @@ export type PhotoHuntState = {
   task?: string;
   intro?: string;
   huntEndsAt?: number;
+  hunterIds?: string[];
   submittedPlayerIds?: string[];
   results?: PhotoHuntResultEntry[];
   aiFallback?: boolean;
@@ -176,6 +179,7 @@ export type SpectrumCourtState = {
   clue?: string;
   guesses?: Record<string, number>;
   appeals?: Record<string, SpectrumCourtAppeal>;
+  clueEndsAt?: number;
   guessEndsAt?: number;
   appealEndsAt?: number;
   revealEndsAt?: number;

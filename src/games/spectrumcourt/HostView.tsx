@@ -3,8 +3,10 @@ import { updateRoomState } from "@/lib/room";
 import { teamColorClasses, formatClock } from "@/lib/team-style";
 import {
   SPECTRUM_COURT_APPEAL_MS,
+  SPECTRUM_COURT_CLUE_MS,
   SPECTRUM_COURT_GUESS_MS,
   SPECTRUM_COURT_REVEAL_MS,
+  spectrumCourtFallbackClue,
 } from "@/lib/host-controls";
 import type { RoomState, SpectrumCourtState, Team } from "@/lib/types";
 import { pickSpectrumPrompt, randomSpectrumTarget } from "./catalog";
@@ -30,6 +32,7 @@ export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: Ro
   const introSpokenRef = useRef(false);
   const scoredRoundRef = useRef<string | null>(null);
   const advancedRoundRef = useRef<string | null>(null);
+  const clueTimeoutRef = useRef<string | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 250);
@@ -56,6 +59,7 @@ export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: Ro
       clue: undefined,
       guesses: {},
       appeals: {},
+      clueEndsAt: Date.now() + SPECTRUM_COURT_CLUE_MS,
       guessEndsAt: undefined,
       appealEndsAt: undefined,
       revealEndsAt: undefined,
@@ -75,6 +79,25 @@ export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: Ro
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.paused, sc.phase]);
+
+  useEffect(() => {
+    if (state.paused) return;
+    if (sc.phase !== "clue" || sc.clue) return;
+    if (!sc.clueEndsAt || now < sc.clueEndsAt) return;
+    const key = `${sc.roundId}:${sc.roundNumber}:clue-timeout`;
+    if (clueTimeoutRef.current === key) return;
+    clueTimeoutRef.current = key;
+    const cluePlayer =
+      state.players.find((player) => player.teamId === sc.clueTeamId)?.id ?? "host";
+    void update({
+      clue: spectrumCourtFallbackClue(sc),
+      cluePlayerId: cluePlayer,
+      phase: "guessing",
+      clueEndsAt: undefined,
+      guessEndsAt: Date.now() + SPECTRUM_COURT_GUESS_MS,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.paused, sc.phase, sc.clue, sc.clueEndsAt, now]);
 
   useEffect(() => {
     if (state.paused) return;
@@ -106,7 +129,13 @@ export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: Ro
     scoredRoundRef.current = key;
 
     const scored = scoreSpectrumCourtRound(state, sc);
-    if (!scored) return;
+    if (!scored) {
+      void update({
+        phase: "reveal",
+        revealEndsAt: Date.now() + SPECTRUM_COURT_REVEAL_MS,
+      });
+      return;
+    }
     speak(`Вердикт суда. Цель была ${sc.target} из 100.`);
     void updateRoomState(roomId, {
       ...state,
@@ -155,6 +184,7 @@ export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: Ro
       clue: undefined,
       guesses: {},
       appeals: {},
+      clueEndsAt: Date.now() + SPECTRUM_COURT_CLUE_MS,
       guessEndsAt: undefined,
       appealEndsAt: undefined,
       revealEndsAt: undefined,
@@ -194,6 +224,11 @@ export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: Ro
               Подсказку дает команда{" "}
               <span className="text-foreground font-medium">{teamName(state, sc.clueTeamId)}</span>.
               Цель скрыта от остальных.
+              {!sc.clue && sc.clueEndsAt && (
+                <span className="block mt-1">
+                  Осталось времени: {formatClock(Math.max(0, sc.clueEndsAt - now))}
+                </span>
+              )}
             </p>
           )}
           {sc.clue && (
@@ -287,13 +322,15 @@ function SpectrumScale({
   const targetVisible = sc.phase === "clue" || sc.phase === "reveal";
   const teamGuesses = teamGuessPositions(state, sc);
   const timer =
-    sc.phase === "guessing" && sc.guessEndsAt
-      ? sc.guessEndsAt - now
-      : sc.phase === "appeal" && sc.appealEndsAt
-        ? sc.appealEndsAt - now
-        : sc.phase === "reveal" && sc.revealEndsAt
-          ? sc.revealEndsAt - now
-          : null;
+    sc.phase === "clue" && sc.clueEndsAt && !sc.clue
+      ? sc.clueEndsAt - now
+      : sc.phase === "guessing" && sc.guessEndsAt
+        ? sc.guessEndsAt - now
+        : sc.phase === "appeal" && sc.appealEndsAt
+          ? sc.appealEndsAt - now
+          : sc.phase === "reveal" && sc.revealEndsAt
+            ? sc.revealEndsAt - now
+            : null;
 
   return (
     <div className="space-y-3">

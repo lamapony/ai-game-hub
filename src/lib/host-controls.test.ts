@@ -1,10 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import {
   canSkipCurrentPhase,
+  CHALLENGE_JUDGING_FALLBACK_FEEDBACK,
   forceBackToHubState,
   pauseRoomState,
   resumeRoomState,
+  SOUNDSCAPE_FALLBACK_TOPIC,
   skipCurrentPhaseState,
+  spectrumCourtFallbackClue,
 } from "./host-controls";
 import type { RoomState } from "./types";
 
@@ -38,6 +41,7 @@ describe("host controls state helpers", () => {
       soundscape: {
         phase: "playback",
         roundId: "snd",
+        topicsEndsAt: 10_500,
         recordingEndsAt: 11_000,
         voteOpenAt: 12_000,
         playback: { teamId: "forest", startAt: 13_000 },
@@ -45,6 +49,7 @@ describe("host controls state helpers", () => {
       challenge: {
         phase: "recording",
         roundId: "ch",
+        briefingEndsAt: 13_500,
         recordingEndsAt: 14_000,
       },
       phototunt: {
@@ -58,6 +63,7 @@ describe("host controls state helpers", () => {
         roundNumber: 1,
         totalRounds: 4,
         usedSpectrumIds: [],
+        clueEndsAt: 15_500,
         guessEndsAt: 16_000,
         appealEndsAt: 17_000,
         revealEndsAt: 18_000,
@@ -68,11 +74,14 @@ describe("host controls state helpers", () => {
     const resumed = resumeRoomState(paused, 25_500);
 
     expect(resumed.paused).toBeUndefined();
+    expect(resumed.soundscape?.topicsEndsAt).toBe(16_000);
     expect(resumed.soundscape?.recordingEndsAt).toBe(16_500);
     expect(resumed.soundscape?.voteOpenAt).toBe(17_500);
     expect(resumed.soundscape?.playback?.startAt).toBe(18_500);
+    expect(resumed.challenge?.briefingEndsAt).toBe(19_000);
     expect(resumed.challenge?.recordingEndsAt).toBe(19_500);
     expect(resumed.phototunt?.huntEndsAt).toBe(20_500);
+    expect(resumed.spectrumcourt?.clueEndsAt).toBe(21_000);
     expect(resumed.spectrumcourt?.guessEndsAt).toBe(21_500);
     expect(resumed.spectrumcourt?.appealEndsAt).toBe(22_500);
     expect(resumed.spectrumcourt?.revealEndsAt).toBe(23_500);
@@ -103,6 +112,65 @@ describe("host controls state helpers", () => {
     expect(result.challenge).toBeUndefined();
     expect(result.phototunt).toBeUndefined();
     expect(result.spectrumcourt).toBeUndefined();
+  });
+
+  test("skip soundscape topics without generated topics uses fallback theme", () => {
+    const state = roomState({
+      soundscape: {
+        phase: "topics",
+        roundId: "snd",
+      },
+    });
+
+    expect(canSkipCurrentPhase(state)).toBe(true);
+
+    const result = skipCurrentPhaseState(state, 2000);
+
+    expect(result.soundscape?.phase).toBe("recording");
+    expect(result.soundscape?.topic).toBe(SOUNDSCAPE_FALLBACK_TOPIC);
+    expect(result.soundscape?.recordingEndsAt).toBe(182_000);
+  });
+
+  test("skip soundscape mixing restarts recording with fresh timer", () => {
+    const state = roomState({
+      soundscape: {
+        phase: "mixing",
+        roundId: "snd",
+        topic: "rain",
+      },
+    });
+
+    expect(canSkipCurrentPhase(state)).toBe(true);
+    const result = skipCurrentPhaseState(state, 5000);
+    expect(result.soundscape?.phase).toBe("recording");
+    expect(result.soundscape?.recordingEndsAt).toBe(185_000);
+  });
+
+  test("skip challenge judging awards fallback score to operator team", () => {
+    const state = roomState({
+      currentGame: "challenge",
+      challenge: {
+        phase: "judging",
+        roundId: "ch",
+        operatorId: "p1",
+      },
+    });
+
+    expect(canSkipCurrentPhase(state)).toBe(true);
+    const result = skipCurrentPhaseState(state, 9000);
+
+    expect(result.challenge?.phase).toBe("results");
+    expect(result.challenge?.result).toEqual({
+      score: 5,
+      feedback: CHALLENGE_JUDGING_FALLBACK_FEEDBACK,
+      videoUrl: "",
+    });
+    expect(result.teams.find((team) => team.id === "forest")?.score).toBe(5);
+  });
+
+  test("spectrumCourtFallbackClue prefers prompt then default text", () => {
+    expect(spectrumCourtFallbackClue({ prompt: "романтика" })).toBe("романтика");
+    expect(spectrumCourtFallbackClue({ prompt: "  " })).toBe("Без подсказки — командная интуиция!");
   });
 
   test("skip soundscape topics picks top voted topic and starts recording", () => {
@@ -184,7 +252,7 @@ describe("host controls state helpers", () => {
     expect(skipCurrentPhaseState(state, now).trackguess?.guessEndsAt).toBe(now);
   });
 
-  test("skip spectrum court clue starts guessing only after clue exists", () => {
+  test("skip spectrum court clue without clue applies fallback and starts guessing", () => {
     const now = 80_000;
     const noClue = roomState({
       currentGame: "spectrumcourt",
@@ -194,6 +262,8 @@ describe("host controls state helpers", () => {
         roundNumber: 1,
         totalRounds: 4,
         usedSpectrumIds: [],
+        prompt: "парная татуировка",
+        clueTeamId: "forest",
       },
     });
     const withClue = roomState({
@@ -208,10 +278,12 @@ describe("host controls state helpers", () => {
       },
     });
 
-    expect(canSkipCurrentPhase(noClue)).toBe(false);
+    expect(canSkipCurrentPhase(noClue)).toBe(true);
     expect(canSkipCurrentPhase(withClue)).toBe(true);
-    const result = skipCurrentPhaseState(withClue, now);
+    const result = skipCurrentPhaseState(noClue, now);
     expect(result.spectrumcourt?.phase).toBe("guessing");
+    expect(result.spectrumcourt?.clue).toBe("парная татуировка");
+    expect(result.spectrumcourt?.cluePlayerId).toBe("p1");
     expect(result.spectrumcourt?.guessEndsAt).toBe(now + 35_000);
   });
 

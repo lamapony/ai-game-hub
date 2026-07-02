@@ -2,12 +2,12 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { updateRoomState, genId } from "@/lib/room";
+import { CHALLENGE_BRIEFING_MS } from "@/lib/host-controls";
 import { generateChallengeTask, judgeChallenge } from "@/lib/ai/challenge.functions";
 import { teamColorClasses, formatClock } from "@/lib/team-style";
 import type { ChallengeState, RoomState, Team } from "@/lib/types";
 
 const RECORDING_MS = 25_000; // 20s record + buffer
-const BRIEFING_MS = 6_000;
 
 type ChallengeRow = {
   id: string;
@@ -118,7 +118,11 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
       });
       // speak intro + task via slot 1
       speak(`${r.intro} ${r.task}`);
-      await update({ task: r.task, aiFallback: r.fallback });
+      await update({
+        task: r.task,
+        aiFallback: r.fallback,
+        briefingEndsAt: Date.now() + CHALLENGE_BRIEFING_MS,
+      });
       // Recording starts when the operator taps "Открыть камеру" on their phone.
     } catch (e) {
       console.error(e);
@@ -126,7 +130,19 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
       setBusy(null);
     }
   }
-  void BRIEFING_MS;
+
+  // Auto-start recording if operator doesn't tap "Открыть камеру"
+  useEffect(() => {
+    if (state.paused) return;
+    if (ch.phase !== "briefing" || !ch.task || !ch.briefingEndsAt) return;
+    if (now < ch.briefingEndsAt) return;
+    void update({
+      phase: "recording",
+      briefingEndsAt: undefined,
+      recordingEndsAt: Date.now() + RECORDING_MS,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.paused, ch.phase, ch.task, ch.briefingEndsAt, now]);
 
   // Auto-end recording (timeout safety; operator usually uploads earlier)
   useEffect(() => {
@@ -185,7 +201,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
           phase: "results",
           result: { score: r.score, feedback: r.feedback, videoUrl: p.videoUrl },
           aiFallback: ch.aiFallback || r.fallback,
-          pastOperatorIds: [...(ch.pastOperatorIds ?? []), p.operatorName],
+          pastOperatorIds: [...(ch.pastOperatorIds ?? []), ch.operatorId ?? ""].filter(Boolean),
         },
       });
       if (spokenForRef.current !== p.roundId) {
@@ -234,7 +250,12 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
 
   const operator = state.players.find((p) => p.id === ch.operatorId);
   const operatorTeam = operator ? state.teams.find((t) => t.id === operator.teamId) : null;
-  const remaining = ch.phase === "recording" ? Math.max(0, (ch.recordingEndsAt ?? now) - now) : 0;
+  const remaining =
+    ch.phase === "recording"
+      ? Math.max(0, (ch.recordingEndsAt ?? now) - now)
+      : ch.phase === "briefing" && ch.briefingEndsAt
+        ? Math.max(0, ch.briefingEndsAt - now)
+        : 0;
 
   return (
     <div className="space-y-4">
@@ -265,6 +286,11 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
             <p className="mt-4 text-sm text-[var(--color-park-bright)]">
               📱 Передай телефон оператору <strong>{ch.operatorName}</strong> — он жмёт «Открыть
               камеру», и поехали.
+              {ch.briefingEndsAt && (
+                <span className="block mt-2 font-display text-2xl tabular-nums">
+                  {formatClock(remaining)}
+                </span>
+              )}
             </p>
           )}
         </Panel>

@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { updateRoomState, genId } from "@/lib/room";
+import { SOUND_RECORDING_MS, SOUND_TOPICS_MS } from "@/lib/host-controls";
 import { generateTopics, composeMix, judgeMix } from "@/lib/ai/soundscape.functions";
 import type { RoomState, SoundscapeMix, SoundscapeState, Team } from "@/lib/types";
 import { Orchestra } from "./Orchestra";
 import { teamColorClasses, formatClock } from "@/lib/team-style";
 
-const RECORDING_MS = 180_000; // 3 min
+const RECORDING_MS = SOUND_RECORDING_MS;
 const VOTING_MS = 30_000;
 const PLAYBACK_TOTAL_MS = 65_000;
 
@@ -44,6 +45,7 @@ export function SoundscapeHost({
   const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
   const [votes, setVotes] = useState<VoteRow[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [mixNotice, setMixNotice] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -113,6 +115,7 @@ export function SoundscapeHost({
     await update({
       phase: "recording",
       topic: winner,
+      topicsEndsAt: undefined,
       recordingEndsAt: Date.now() + RECORDING_MS,
     });
   }
@@ -126,6 +129,7 @@ export function SoundscapeHost({
         topics: result.topics,
         topicVotes: {},
         aiFallback: result.fallback,
+        topicsEndsAt: Date.now() + SOUND_TOPICS_MS,
       });
     } catch (e) {
       console.error(e);
@@ -140,6 +144,15 @@ export function SoundscapeHost({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.paused, snd.phase]);
 
+  // Auto-lock theme when topics timer expires
+  useEffect(() => {
+    if (state.paused) return;
+    if (snd.phase !== "topics" || !snd.topics?.length || !snd.topicsEndsAt) return;
+    if (now < snd.topicsEndsAt) return;
+    void pickTopRatedTopic();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.paused, snd.phase, snd.topics, snd.topicsEndsAt, now]);
+
   // Auto-end recording
   useEffect(() => {
     if (state.paused) return;
@@ -150,28 +163,35 @@ export function SoundscapeHost({
 
   async function startMixing() {
     setBusy("mixing");
+    setMixNotice(null);
     try {
       const mixes: Record<string, SoundscapeMix> = {};
       for (const team of state.teams) {
         const clips = (teamsWithClips[team.id] ?? []).filter((c) => c.audio_url);
         if (clips.length === 0) continue;
-        const mix = await composeMix({
-          data: {
-            teamName: team.name,
-            topic: snd.topic ?? "",
-            clips: clips.map((c) => ({
-              url: c.audio_url!,
-              transcript: c.transcript ?? "",
-              durationMs: (c.duration_seconds ?? 5) * 1000,
-              playerName: c.player_name,
-            })),
-          },
-        });
-        mixes[team.id] = { ...mix, teamId: team.id };
+        try {
+          const mix = await composeMix({
+            data: {
+              teamName: team.name,
+              topic: snd.topic ?? "",
+              clips: clips.map((c) => ({
+                url: c.audio_url!,
+                transcript: c.transcript ?? "",
+                durationMs: (c.duration_seconds ?? 5) * 1000,
+                playerName: c.player_name,
+              })),
+            },
+          });
+          mixes[team.id] = { ...mix, teamId: team.id };
+        } catch (mixError) {
+          console.error(mixError);
+          mixes[team.id] = naiveLocalMix(team.id, team.name, clips);
+        }
       }
       const teamOrder = state.teams.filter((t) => mixes[t.id]);
       if (teamOrder.length === 0) {
         await update({ phase: "idle" });
+        setMixNotice("Ни одна команда не прислала звуки — можно записать ещё раз.");
         return;
       }
       await update({
@@ -181,9 +201,35 @@ export function SoundscapeHost({
       });
     } catch (e) {
       console.error(e);
+      setMixNotice("Сведение не удалось — попробуйте записать звуки ещё раз.");
+      await update({
+        phase: "recording",
+        recordingEndsAt: Date.now() + RECORDING_MS,
+        mixes: undefined,
+        playback: undefined,
+      });
     } finally {
       setBusy(null);
     }
+  }
+
+  function restartRecording() {
+    setMixNotice(null);
+    void update({
+      phase: "recording",
+      recordingEndsAt: Date.now() + RECORDING_MS,
+      mixes: undefined,
+      playback: undefined,
+    });
+  }
+
+  function backToHub() {
+    updateRoomState(roomId, {
+      ...state,
+      currentGame: null,
+      soundscape: undefined,
+      status: "lobby",
+    });
   }
 
   // Advance through playback teams
@@ -300,9 +346,19 @@ export function SoundscapeHost({
         )}
       </div>
 
-      {snd.phase === "topics" && <TopicsPanel snd={snd} onPick={pickTopRatedTopic} />}
+      {snd.phase === "topics" && <TopicsPanel snd={snd} now={now} onPick={pickTopRatedTopic} />}
       {snd.phase === "recording" && (
-        <RecordingPanel snd={snd} state={state} subs={submissions} now={now} onEnd={startMixing} />
+        <RecordingPanel
+          snd={snd}
+          state={state}
+          subs={submissions}
+          now={now}
+          notice={mixNotice}
+          onEnd={startMixing}
+        />
+      )}
+      {snd.phase === "idle" && (
+        <IdleRecoveryPanel notice={mixNotice} onRetry={restartRecording} onHub={backToHub} />
       )}
       {snd.phase === "mixing" && (
         <div className="rounded-3xl bg-card p-8 border text-center">
@@ -336,7 +392,7 @@ export function SoundscapeHost({
 
 function phaseTitle(p: SoundscapeState["phase"]) {
   return {
-    idle: "Loading…",
+    idle: "Пауза",
     topics: "Pick a theme",
     recording: "Recording the park",
     mixing: "Composing",
@@ -346,18 +402,32 @@ function phaseTitle(p: SoundscapeState["phase"]) {
   }[p];
 }
 
-function TopicsPanel({ snd, onPick }: { snd: SoundscapeState; onPick: () => void }) {
+function TopicsPanel({
+  snd,
+  now,
+  onPick,
+}: {
+  snd: SoundscapeState;
+  now: number;
+  onPick: () => void;
+}) {
   const counts: Record<string, number> = {};
   Object.values(snd.topicVotes ?? {}).forEach((t) => {
     counts[t] = (counts[t] ?? 0) + 1;
   });
   const total = Object.keys(snd.topicVotes ?? {}).length;
+  const remaining = snd.topicsEndsAt ? Math.max(0, snd.topicsEndsAt - now) : null;
   return (
     <div className="rounded-3xl bg-card p-6 border space-y-4">
       {snd.aiFallback && <AiFallbackNotice />}
-      <p className="text-sm text-muted-foreground">
-        Players vote on their phones. {total} vote{total === 1 ? "" : "s"} so far.
-      </p>
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          Игроки голосуют с телефонов. Голосов: {total}.
+        </p>
+        {remaining != null && (
+          <div className="font-display text-3xl tabular-nums">{formatClock(remaining)}</div>
+        )}
+      </div>
       <div className="grid sm:grid-cols-3 gap-3">
         {(snd.topics ?? []).map((t) => (
           <div key={t} className="rounded-2xl border bg-background p-4">
@@ -372,7 +442,7 @@ function TopicsPanel({ snd, onPick }: { snd: SoundscapeState; onPick: () => void
         onClick={onPick}
         className="rounded-2xl bg-[var(--color-park-bright)] text-[oklch(0.18_0.05_160)] px-5 py-2.5 font-medium"
       >
-        Lock theme & start recording →
+        Зафиксировать тему и начать запись →
       </button>
     </div>
   );
@@ -383,12 +453,14 @@ function RecordingPanel({
   state,
   subs,
   now,
+  notice,
   onEnd,
 }: {
   snd: SoundscapeState;
   state: RoomState;
   subs: SubmissionRow[];
   now: number;
+  notice: string | null;
   onEnd: () => void;
 }) {
   const remaining = (snd.recordingEndsAt ?? now) - now;
@@ -396,6 +468,11 @@ function RecordingPanel({
   for (const s of subs) per[s.team_id] = (per[s.team_id] ?? 0) + 1;
   return (
     <div className="rounded-3xl bg-card p-6 border">
+      {notice && (
+        <div className="mb-4 rounded-2xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+          {notice}
+        </div>
+      )}
       <div className="flex items-baseline justify-between">
         <div className="font-display text-5xl tabular-num">{formatClock(remaining)}</div>
         <button
@@ -423,6 +500,52 @@ function RecordingPanel({
       </div>
     </div>
   );
+}
+
+function IdleRecoveryPanel({
+  notice,
+  onRetry,
+  onHub,
+}: {
+  notice: string | null;
+  onRetry: () => void;
+  onHub: () => void;
+}) {
+  return (
+    <div className="rounded-3xl bg-card p-6 border space-y-4 text-center">
+      <div className="font-display text-2xl">Звуков не хватило</div>
+      <p className="text-muted-foreground text-sm">
+        {notice ?? "Ни одна команда не прислала клипы. Можно попробовать ещё раз."}
+      </p>
+      <div className="flex flex-wrap justify-center gap-2">
+        <button
+          onClick={onRetry}
+          className="rounded-2xl bg-[var(--color-park-bright)] text-[oklch(0.18_0.05_160)] px-5 py-2.5 font-medium"
+        >
+          Записать ещё раз
+        </button>
+        <button onClick={onHub} className="rounded-2xl border bg-background px-5 py-2.5 text-sm">
+          В hub
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function naiveLocalMix(teamId: string, teamName: string, clips: SubmissionRow[]): SoundscapeMix {
+  return {
+    teamId,
+    intro: `Команда ${teamName} — парк слушает без AI.`,
+    cues: clips.map((clip, index) => ({
+      atMs: index * 6000,
+      slot: 2 + (index % 4),
+      type: "audio" as const,
+      url: clip.audio_url!,
+      durationMs: (clip.duration_seconds ?? 5) * 1000,
+    })),
+    totalMs: 60000,
+    aiFallback: true,
+  };
 }
 
 function PlaybackPanel({

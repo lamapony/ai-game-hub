@@ -94,40 +94,61 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
   }
 
   function startHunt() {
-    update({ phase: "hunting", huntEndsAt: Date.now() + HUNT_MS });
+    update({
+      phase: "hunting",
+      huntEndsAt: Date.now() + HUNT_MS,
+      hunterIds: state.players.map((player) => player.id),
+    });
   }
 
-  // Auto-end hunt when timer runs out OR everyone submitted
+  function latestPhotoPerPlayer(rows: PhotoRow[]) {
+    const map = new Map<string, PhotoRow>();
+    for (const row of rows) map.set(row.player_id, row);
+    return [...map.values()];
+  }
+
+  // Auto-end hunt when timer runs out OR every hunter submitted
   useEffect(() => {
     if (state.paused) return;
     if (ph.phase !== "hunting") return;
-    const allDone = state.players.length > 0 && photos.length >= state.players.length;
+    const hunterIds = ph.hunterIds ?? state.players.map((player) => player.id);
+    const submittedIds = new Set(photos.map((photo) => photo.player_id));
+    const allDone = hunterIds.length > 0 && hunterIds.every((id) => submittedIds.has(id));
     const timeUp = ph.huntEndsAt && now >= ph.huntEndsAt;
+    const uniquePhotos = latestPhotoPerPlayer(photos);
     if (allDone || timeUp) {
-      if (photos.length === 0) {
+      if (uniquePhotos.length === 0) {
         // Nothing to judge → straight to results with empty list.
         update({ phase: "results", results: [] });
       } else if (judgedRef.current !== ph.roundId) {
         judgedRef.current = ph.roundId;
-        runJudgement();
+        runJudgement(uniquePhotos);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.paused, ph.phase, ph.huntEndsAt, now, photos.length, state.players.length]);
+  }, [
+    state.paused,
+    ph.phase,
+    ph.huntEndsAt,
+    ph.hunterIds,
+    now,
+    photos.length,
+    state.players.length,
+  ]);
 
   useEffect(() => {
     if (!state.paused) return;
     audioRef.current?.pause();
   }, [state.paused]);
 
-  async function runJudgement() {
+  async function runJudgement(judgingPhotos: PhotoRow[]) {
     setBusy("AI рассматривает фотографии…");
     try {
       await update({ phase: "judging" });
       const r = await judgePhotos({
         data: {
           task: ph.task ?? "",
-          photos: photos.map((p) => ({
+          photos: judgingPhotos.map((p) => ({
             playerId: p.player_id,
             playerName: p.player_name,
             url: p.photo_url,
@@ -136,7 +157,7 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
       });
 
       const byPlayer = new Map(r.ranking.map((e) => [e.playerId, e]));
-      const results: PhotoHuntResultEntry[] = photos
+      const results: PhotoHuntResultEntry[] = judgingPhotos
         .map((p) => {
           const judged = byPlayer.get(p.player_id);
           const rank = judged?.rank ?? 99;
@@ -156,7 +177,7 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
       // Persist on the photos rows
       await Promise.all(
         results.map((res) => {
-          const row = photos.find((p) => p.player_id === res.playerId);
+          const row = judgingPhotos.find((p) => p.player_id === res.playerId);
           if (!row) return Promise.resolve();
           return supabase
             .from("photos")
@@ -224,8 +245,11 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
   }
 
   const remaining = ph.phase === "hunting" ? Math.max(0, (ph.huntEndsAt ?? now) - now) : 0;
-  const submitted = photos.length;
-  const totalPlayers = state.players.length;
+  const hunterIds = ph.hunterIds ?? state.players.map((player) => player.id);
+  const submittedIds = new Set(photos.map((photo) => photo.player_id));
+  const submitted = hunterIds.filter((id) => submittedIds.has(id)).length;
+  const totalPlayers = hunterIds.length;
+  const displayPhotos = latestPhotoPerPlayer(photos);
 
   return (
     <div className="space-y-4">
@@ -292,9 +316,9 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
               style={{ width: `${totalPlayers ? (submitted / totalPlayers) * 100 : 0}%` }}
             />
           </div>
-          {photos.length > 0 && (
+          {displayPhotos.length > 0 && (
             <div className="mt-4 grid grid-cols-3 gap-2">
-              {photos.map((p) => (
+              {displayPhotos.map((p) => (
                 <div
                   key={p.id}
                   className="aspect-square rounded-xl overflow-hidden bg-black/30 border border-white/10"
@@ -314,11 +338,12 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
       {ph.phase === "judging" && (
         <Panel>
           <div className="font-display text-2xl">
-            AI сравнивает {photos.length} {photos.length === 1 ? "фотографию" : "фотографий"}…
+            AI сравнивает {displayPhotos.length}{" "}
+            {displayPhotos.length === 1 ? "фотографию" : "фотографий"}…
           </div>
           <p className="mt-3 text-white/65 text-sm">Дух парка щурится и придумывает гадости.</p>
           <div className="mt-4 grid grid-cols-3 gap-2">
-            {photos.map((p) => (
+            {displayPhotos.map((p) => (
               <div
                 key={p.id}
                 className="aspect-square rounded-xl overflow-hidden bg-black/30 border border-white/10 animate-pulse"
