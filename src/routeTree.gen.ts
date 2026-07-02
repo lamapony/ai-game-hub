@@ -15,7 +15,13 @@ import { Route as SpeakerCodeRouteImport } from './routes/speaker.$code'
 import { Route as PlayCodeRouteImport } from './routes/play.$code'
 import { Route as HostCodeRouteImport } from './routes/host.$code'
 import { Route as ApiTranscribeRouteImport } from './routes/api/transcribe'
+import { Route as ApiSpeakerStatusRouteImport } from './routes/api/speaker-status'
 import { Route as ApiSpeakRouteImport } from './routes/api/speak'
+import { Route as ApiPlayerUploadTargetRouteImport } from './routes/api/player-upload-target'
+import { Route as ApiPlayerArtifactRouteImport } from './routes/api/player-artifact'
+import { Route as ApiPlayerActionRouteImport } from './routes/api/player-action'
+import { Route as ApiHostStateRouteImport } from './routes/api/host-state'
+import { Route as ApiHostArtifactRouteImport } from './routes/api/host-artifact'
 import { Route as ApiCleanupRouteImport } from './routes/api/cleanup'
 
 const IndexRoute = IndexRouteImport.update({
@@ -48,9 +54,39 @@ const ApiTranscribeRoute = ApiTranscribeRouteImport.update({
   path: '/api/transcribe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSpeakerStatusRoute = ApiSpeakerStatusRouteImport.update({
+  id: '/api/speaker-status',
+  path: '/api/speaker-status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSpeakRoute = ApiSpeakRouteImport.update({
   id: '/api/speak',
   path: '/api/speak',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPlayerUploadTargetRoute = ApiPlayerUploadTargetRouteImport.update({
+  id: '/api/player-upload-target',
+  path: '/api/player-upload-target',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPlayerArtifactRoute = ApiPlayerArtifactRouteImport.update({
+  id: '/api/player-artifact',
+  path: '/api/player-artifact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPlayerActionRoute = ApiPlayerActionRouteImport.update({
+  id: '/api/player-action',
+  path: '/api/player-action',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHostStateRoute = ApiHostStateRouteImport.update({
+  id: '/api/host-state',
+  path: '/api/host-state',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHostArtifactRoute = ApiHostArtifactRouteImport.update({
+  id: '/api/host-artifact',
+  path: '/api/host-artifact',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCleanupRoute = ApiCleanupRouteImport.update({
@@ -62,7 +98,13 @@ const ApiCleanupRoute = ApiCleanupRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/cleanup': typeof ApiCleanupRoute
+  '/api/host-artifact': typeof ApiHostArtifactRoute
+  '/api/host-state': typeof ApiHostStateRoute
+  '/api/player-action': typeof ApiPlayerActionRoute
+  '/api/player-artifact': typeof ApiPlayerArtifactRoute
+  '/api/player-upload-target': typeof ApiPlayerUploadTargetRoute
   '/api/speak': typeof ApiSpeakRoute
+  '/api/speaker-status': typeof ApiSpeakerStatusRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/host/$code': typeof HostCodeRoute
   '/play/$code': typeof PlayCodeRoute
@@ -72,7 +114,13 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/cleanup': typeof ApiCleanupRoute
+  '/api/host-artifact': typeof ApiHostArtifactRoute
+  '/api/host-state': typeof ApiHostStateRoute
+  '/api/player-action': typeof ApiPlayerActionRoute
+  '/api/player-artifact': typeof ApiPlayerArtifactRoute
+  '/api/player-upload-target': typeof ApiPlayerUploadTargetRoute
   '/api/speak': typeof ApiSpeakRoute
+  '/api/speaker-status': typeof ApiSpeakerStatusRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/host/$code': typeof HostCodeRoute
   '/play/$code': typeof PlayCodeRoute
@@ -83,7 +131,13 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/cleanup': typeof ApiCleanupRoute
+  '/api/host-artifact': typeof ApiHostArtifactRoute
+  '/api/host-state': typeof ApiHostStateRoute
+  '/api/player-action': typeof ApiPlayerActionRoute
+  '/api/player-artifact': typeof ApiPlayerArtifactRoute
+  '/api/player-upload-target': typeof ApiPlayerUploadTargetRoute
   '/api/speak': typeof ApiSpeakRoute
+  '/api/speaker-status': typeof ApiSpeakerStatusRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/host/$code': typeof HostCodeRoute
   '/play/$code': typeof PlayCodeRoute
@@ -95,7 +149,13 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/api/cleanup'
+    | '/api/host-artifact'
+    | '/api/host-state'
+    | '/api/player-action'
+    | '/api/player-artifact'
+    | '/api/player-upload-target'
     | '/api/speak'
+    | '/api/speaker-status'
     | '/api/transcribe'
     | '/host/$code'
     | '/play/$code'
@@ -105,7 +165,13 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/api/cleanup'
+    | '/api/host-artifact'
+    | '/api/host-state'
+    | '/api/player-action'
+    | '/api/player-artifact'
+    | '/api/player-upload-target'
     | '/api/speak'
+    | '/api/speaker-status'
     | '/api/transcribe'
     | '/host/$code'
     | '/play/$code'
@@ -115,7 +181,13 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/api/cleanup'
+    | '/api/host-artifact'
+    | '/api/host-state'
+    | '/api/player-action'
+    | '/api/player-artifact'
+    | '/api/player-upload-target'
     | '/api/speak'
+    | '/api/speaker-status'
     | '/api/transcribe'
     | '/host/$code'
     | '/play/$code'
@@ -126,7 +198,13 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiCleanupRoute: typeof ApiCleanupRoute
+  ApiHostArtifactRoute: typeof ApiHostArtifactRoute
+  ApiHostStateRoute: typeof ApiHostStateRoute
+  ApiPlayerActionRoute: typeof ApiPlayerActionRoute
+  ApiPlayerArtifactRoute: typeof ApiPlayerArtifactRoute
+  ApiPlayerUploadTargetRoute: typeof ApiPlayerUploadTargetRoute
   ApiSpeakRoute: typeof ApiSpeakRoute
+  ApiSpeakerStatusRoute: typeof ApiSpeakerStatusRoute
   ApiTranscribeRoute: typeof ApiTranscribeRoute
   HostCodeRoute: typeof HostCodeRoute
   PlayCodeRoute: typeof PlayCodeRoute
@@ -178,11 +256,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTranscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/speaker-status': {
+      id: '/api/speaker-status'
+      path: '/api/speaker-status'
+      fullPath: '/api/speaker-status'
+      preLoaderRoute: typeof ApiSpeakerStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/speak': {
       id: '/api/speak'
       path: '/api/speak'
       fullPath: '/api/speak'
       preLoaderRoute: typeof ApiSpeakRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/player-upload-target': {
+      id: '/api/player-upload-target'
+      path: '/api/player-upload-target'
+      fullPath: '/api/player-upload-target'
+      preLoaderRoute: typeof ApiPlayerUploadTargetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/player-artifact': {
+      id: '/api/player-artifact'
+      path: '/api/player-artifact'
+      fullPath: '/api/player-artifact'
+      preLoaderRoute: typeof ApiPlayerArtifactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/player-action': {
+      id: '/api/player-action'
+      path: '/api/player-action'
+      fullPath: '/api/player-action'
+      preLoaderRoute: typeof ApiPlayerActionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/host-state': {
+      id: '/api/host-state'
+      path: '/api/host-state'
+      fullPath: '/api/host-state'
+      preLoaderRoute: typeof ApiHostStateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/host-artifact': {
+      id: '/api/host-artifact'
+      path: '/api/host-artifact'
+      fullPath: '/api/host-artifact'
+      preLoaderRoute: typeof ApiHostArtifactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/cleanup': {
@@ -198,7 +318,13 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiCleanupRoute: ApiCleanupRoute,
+  ApiHostArtifactRoute: ApiHostArtifactRoute,
+  ApiHostStateRoute: ApiHostStateRoute,
+  ApiPlayerActionRoute: ApiPlayerActionRoute,
+  ApiPlayerArtifactRoute: ApiPlayerArtifactRoute,
+  ApiPlayerUploadTargetRoute: ApiPlayerUploadTargetRoute,
   ApiSpeakRoute: ApiSpeakRoute,
+  ApiSpeakerStatusRoute: ApiSpeakerStatusRoute,
   ApiTranscribeRoute: ApiTranscribeRoute,
   HostCodeRoute: HostCodeRoute,
   PlayCodeRoute: PlayCodeRoute,

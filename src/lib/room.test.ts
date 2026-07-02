@@ -90,6 +90,11 @@ const logEvents: {
   fields: Record<string, unknown>;
 }[] = [];
 
+const mockFetch = {
+  calls: [] as { input: string | URL | Request; init?: RequestInit }[],
+  response: new Response("ok", { status: 200 }),
+};
+
 bunMock.mock.module("@/integrations/supabase/client", () => ({
   supabase: {
     from(table: string) {
@@ -146,6 +151,13 @@ function installMemoryStorage() {
     value: globalThis,
     configurable: true,
   });
+  Object.defineProperty(globalThis, "fetch", {
+    value: async (input: string | URL | Request, init?: RequestInit) => {
+      mockFetch.calls.push({ input, init });
+      return mockFetch.response;
+    },
+    configurable: true,
+  });
 }
 
 function resetMockRooms() {
@@ -162,6 +174,13 @@ function resetMockRooms() {
 function resetTestState() {
   installMemoryStorage();
   resetMockRooms();
+  mockFetch.calls = [];
+  mockFetch.response = new Response("ok", { status: 200 });
+}
+
+function installHostSecret(roomId = "room_1", code = "ABCD", secret = "secret") {
+  localStorage.setItem(`dimas:host-room:${roomId}`, code);
+  localStorage.setItem(`dimas:host:${code}`, secret);
 }
 
 async function rejectedMessage(run: () => Promise<unknown>): Promise<string> {
@@ -257,7 +276,8 @@ describe("room helpers", () => {
     };
     expect(await rejectedMessage(() => fetchRoomByCode("ABCD"))).toContain("network unavailable");
 
-    mockRooms.updateResult = { data: null, error: { message: "write rejected" } };
+    installHostSecret();
+    mockFetch.response = new Response("write rejected", { status: 500 });
     expect(
       await rejectedMessage(() => updateRoomState("room_1", emptyRoomState("Host"))),
     ).toContain("write rejected");
@@ -267,14 +287,21 @@ describe("room helpers", () => {
 
   test("updateRoomState writes the complete state for the target room id", async () => {
     resetTestState();
+    installHostSecret();
 
     const state = emptyRoomState("Host");
 
     await updateRoomState("room_1", state);
 
-    expect(mockRooms.updates.length).toBe(1);
-    expect(mockRooms.updates[0]?.id).toBe("room_1");
-    expect(mockRooms.updates[0]?.state).toBe(state);
+    expect(mockFetch.calls.length).toBe(1);
+    expect(String(mockFetch.calls[0]?.input)).toBe("/api/host-state");
+    expect((mockFetch.calls[0]?.init?.headers as Record<string, string>)["x-host-secret"]).toBe(
+      "secret",
+    );
+    expect(JSON.parse(String(mockFetch.calls[0]?.init?.body))).toEqual({
+      roomId: "room_1",
+      state,
+    });
     expect(logEvents.some((entry) => entry.event === "room.update.success")).toBe(true);
   });
 
@@ -287,9 +314,12 @@ describe("room helpers", () => {
     const stored = JSON.parse(localStorage.getItem("dimas:player:ABCD") ?? "{}") as typeof second;
     expect(/^p_[a-z0-9]{8}$/.test(first.id)).toBe(true);
     expect(second.id).toBe(first.id);
+    expect(second.secret).toBe(first.secret);
+    expect(second.secret.length > 16).toBe(true);
     expect(second.name).toBe("Mila Prime");
     expect(second.teamId).toBe("lake");
     expect(stored.id).toBe(second.id);
+    expect(stored.secret).toBe(second.secret);
     expect(stored.name).toBe(second.name);
     expect(stored.teamId).toBe(second.teamId);
   });

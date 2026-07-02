@@ -2,6 +2,7 @@
 // AI ranks all photos, host awards points to teams and speaks the verdict.
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { postHostArtifact } from "@/lib/host-artifact-client";
 import { updateRoomState, genId } from "@/lib/room";
 import { generatePhotoTask, judgePhotos } from "@/lib/ai/phototunt.functions";
 import { teamColorClasses, formatClock } from "@/lib/team-style";
@@ -174,21 +175,19 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
         })
         .sort((a, b) => a.rank - b.rank);
 
-      // Persist on the photos rows
-      await Promise.all(
-        results.map((res) => {
-          const row = judgingPhotos.find((p) => p.player_id === res.playerId);
-          if (!row) return Promise.resolve();
-          return supabase
-            .from("photos")
-            .update({
-              rank: res.rank,
-              ai_comment: res.comment,
-              points: res.points,
-            })
-            .eq("id", row.id);
-        }),
-      );
+      await postHostArtifact(roomId, {
+        action: "photo-results",
+        results: results
+          .map((res) => {
+            const row = judgingPhotos.find((p) => p.player_id === res.playerId);
+            return row
+              ? { id: row.id, rank: res.rank, comment: res.comment, points: res.points }
+              : null;
+          })
+          .filter((row): row is { id: string; rank: number; comment: string; points: number } =>
+            Boolean(row),
+          ),
+      });
 
       // Award points per team
       const teamDelta = new Map<string, number>();

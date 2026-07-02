@@ -13,6 +13,7 @@ export type Player = {
   name: string;
   teamId: string;
   joinedAt: number;
+  secretHash?: string;
 };
 
 export type SoundscapePhase =

@@ -1,6 +1,7 @@
 // Challenge host orchestration: pick operator, generate task, listen for video, run judge, speak verdict.
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { postHostArtifact } from "@/lib/host-artifact-client";
 import { updateRoomState, genId } from "@/lib/room";
 import { CHALLENGE_BRIEFING_MS } from "@/lib/host-controls";
 import { generateChallengeTask, judgeChallenge } from "@/lib/ai/challenge.functions";
@@ -77,12 +78,16 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
       .on("broadcast", { event: "judge" }, async (msg) => {
         const p = msg.payload as {
           roundId: string;
+          operatorId?: string;
           frames: string[];
           transcript: string;
           videoUrl: string;
           operatorName: string;
           task: string;
         };
+        if (p.roundId !== ch.roundId) return;
+        if (!ch.operatorId || p.operatorId !== ch.operatorId) return;
+        if (ch.task && p.task !== ch.task) return;
         if (judgedForRef.current === p.roundId) return;
         judgedForRef.current = p.roundId;
         await runJudgement(p);
@@ -182,12 +187,12 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
           operatorName: p.operatorName,
         },
       });
-      // persist score/feedback on the row
-      await supabase
-        .from("challenges")
-        .update({ score: r.score, ai_feedback: r.feedback })
-        .eq("room_id", roomId)
-        .eq("round_id", p.roundId);
+      await postHostArtifact(roomId, {
+        action: "challenge-result",
+        roundId: p.roundId,
+        score: r.score,
+        feedback: r.feedback,
+      });
       // add points to operator's team
       const operator = state.players.find((pl) => pl.id === ch.operatorId);
       const teams: Team[] = state.teams.map((t) =>

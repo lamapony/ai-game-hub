@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { updateRoomState } from "@/lib/room";
+import { postPlayerAction } from "@/lib/player-action-client";
 import { formatClock, teamColorClasses } from "@/lib/team-style";
 import { GameRulesChecklist } from "@/components/game-rules-ui";
 import type { RoomState } from "@/lib/types";
@@ -25,8 +25,11 @@ export function WhoAmongPlayer({
   const lastResult = wa.roundResults?.[wa.roundResults.length - 1];
 
   async function vote(targetId: string) {
-    const votes = { ...(wa.votes ?? {}), [me.id]: targetId };
-    await updateRoomState(roomId, { ...state, whoamong: { ...wa, votes } });
+    await postPlayerAction(roomId, {
+      action: "whoamong-vote",
+      playerId: me.id,
+      targetPlayerId: targetId,
+    });
   }
 
   if (wa.phase === "briefing") {

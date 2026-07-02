@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { useRoom, updateRoomState, useBroadcast } from "@/lib/room";
+import { useRoom, useBroadcast } from "@/lib/room";
 import { Orchestra } from "@/games/soundscape/Orchestra";
 import { SPEAKER_NAMES } from "@/lib/types";
 import { SPEAKER_HEARTBEAT_MS } from "@/lib/speaker-status";
+import { postSpeakerStatus } from "@/lib/speaker-status-client";
 
 export const Route = createFileRoute("/speaker/$code")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -30,15 +31,7 @@ function SpeakerPage() {
     function updateSpeakerSlot(connected: boolean) {
       const current = roomRef.current;
       if (!current) return;
-      const slots = { ...(current.state.speakerSlots ?? {}) };
-      const existing = slots[slot] ?? { connected: false, name: SPEAKER_NAMES[slot] };
-      slots[slot] = {
-        ...existing,
-        connected,
-        name: existing.name || SPEAKER_NAMES[slot],
-        lastSeenAt: connected ? Date.now() : existing.lastSeenAt,
-      };
-      updateRoomState(current.id, { ...current.state, speakerSlots: slots }).catch(() => {});
+      postSpeakerStatus(current.code, slot, connected).catch(() => {});
     }
 
     updateSpeakerSlot(true);

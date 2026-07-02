@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { useRoom, updateRoomState, getOrCreatePlayer, genId } from "@/lib/room";
+import { useRoom, getOrCreatePlayer } from "@/lib/room";
 import { playerStorageKey } from "@/lib/event-profile";
+import { postPlayerAction, type StoredPlayer } from "@/lib/player-action-client";
 import {
   computeTeamStandings,
   formatRussianPlace,
@@ -50,13 +51,16 @@ export const Route = createFileRoute("/play/$code")({
 
 function PlayPage() {
   const { code } = Route.useParams();
-  const { room, loading, error } = useRoom(code);
-  const [me, setMe] = useState<{ id: string; name: string; teamId: string } | null>(null);
+  const { room, loading, error, setRoom } = useRoom(code);
+  const [me, setMe] = useState<StoredPlayer | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const stored = localStorage.getItem(playerStorageKey(code));
-    if (stored) setMe(JSON.parse(stored));
+    if (stored) {
+      const parsed = JSON.parse(stored) as StoredPlayer;
+      setMe(getOrCreatePlayer(code, parsed.name, parsed.teamId));
+    }
   }, [code]);
 
   if (loading)
@@ -87,10 +91,27 @@ function PlayPage() {
     );
 
   if (!me) {
-    return <JoinForm code={code} room={room} onJoined={(p) => setMe(p)} />;
+    return (
+      <JoinForm
+        code={code}
+        room={room}
+        onJoined={(player, state) => {
+          setRoom({ ...room, state });
+          setMe(player);
+        }}
+      />
+    );
   }
 
-  return <PlayerScreen code={code} room={room} me={me} onTeamChange={setMe} />;
+  return (
+    <PlayerScreen
+      code={code}
+      room={room}
+      me={me}
+      onTeamChange={setMe}
+      onRoomState={(state) => setRoom({ ...room, state })}
+    />
+  );
 }
 
 function JoinForm({
@@ -100,7 +121,7 @@ function JoinForm({
 }: {
   code: string;
   room: { id: string; code: string; state: import("@/lib/types").RoomState };
-  onJoined: (p: { id: string; name: string; teamId: string }) => void;
+  onJoined: (player: StoredPlayer, state: import("@/lib/types").RoomState) => void;
 }) {
   const state = room.state;
   const [name, setName] = useState("");
@@ -113,13 +134,14 @@ function JoinForm({
     setSubmitting(true);
     const finalName = name.trim() || `Игрок ${state.players.length + 1}`;
     const player = getOrCreatePlayer(code, finalName, teamId);
-    const players = [
-      ...state.players.filter((p) => p.id !== player.id),
-      { ...player, joinedAt: Date.now() },
-    ];
     try {
-      await updateRoomState(room.id, { ...state, players });
-      onJoined(player);
+      const result = await postPlayerAction(room.id, {
+        action: "join",
+        playerId: player.id,
+        name: player.name,
+        teamId,
+      });
+      onJoined({ ...player, ...result.player, secret: player.secret }, result.state);
     } catch (e) {
       console.error(e);
     } finally {
@@ -193,11 +215,13 @@ function PlayerScreen({
   room,
   me,
   onTeamChange,
+  onRoomState,
 }: {
   code: string;
   room: { id: string; code: string; state: import("@/lib/types").RoomState };
-  me: { id: string; name: string; teamId: string };
-  onTeamChange: (p: { id: string; name: string; teamId: string }) => void;
+  me: StoredPlayer;
+  onTeamChange: (p: StoredPlayer) => void;
+  onRoomState: (state: import("@/lib/types").RoomState) => void;
 }) {
   const state = room.state;
   const team = state.teams.find((t) => t.id === me.teamId);
@@ -210,11 +234,16 @@ function PlayerScreen({
 
   // ensure player exists in state list (handles room state lost after reset)
   useEffect(() => {
-    if (state.players.find((p) => p.id === me.id)) return;
-    updateRoomState(room.id, {
-      ...state,
-      players: [...state.players, { ...me, joinedAt: Date.now() }],
-    }).catch(() => {});
+    const statePlayer = state.players.find((p) => p.id === me.id);
+    if (statePlayer?.secretHash) return;
+    postPlayerAction(room.id, {
+      action: "ensure-player",
+      playerId: me.id,
+      name: me.name,
+      teamId: me.teamId,
+    })
+      .then((result) => onRoomState(result.state))
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room.id, me.id]);
 
@@ -259,7 +288,13 @@ function PlayerScreen({
           ) : state.currentGame === "whoamong" && state.whoamong ? (
             <WhoAmongPlayer roomId={room.id} state={state} me={me} />
           ) : (
-            <WaitingPanel room={room} me={me} code={code} onTeamChange={onTeamChange} />
+            <WaitingPanel
+              room={room}
+              me={me}
+              code={code}
+              onTeamChange={onTeamChange}
+              onRoomState={onRoomState}
+            />
           )}
         </Suspense>
       </div>
@@ -295,11 +330,13 @@ function WaitingPanel({
   me,
   code,
   onTeamChange,
+  onRoomState,
 }: {
   room: { id: string; state: import("@/lib/types").RoomState };
-  me: { id: string; name: string; teamId: string };
+  me: StoredPlayer;
   code: string;
-  onTeamChange: (p: { id: string; name: string; teamId: string }) => void;
+  onTeamChange: (p: StoredPlayer) => void;
+  onRoomState: (state: import("@/lib/types").RoomState) => void;
 }) {
   const [switching, setSwitching] = useState(false);
   const state = room.state;
@@ -308,12 +345,15 @@ function WaitingPanel({
     if (switching || teamId === me.teamId) return;
     setSwitching(true);
     const player = getOrCreatePlayer(code, me.name, teamId);
-    const players = state.players.map((p) =>
-      p.id === me.id ? { ...p, teamId, name: player.name } : p,
-    );
     try {
-      await updateRoomState(room.id, { ...state, players });
-      onTeamChange({ ...me, teamId });
+      const result = await postPlayerAction(room.id, {
+        action: "switch-team",
+        playerId: me.id,
+        name: player.name,
+        teamId,
+      });
+      onRoomState(result.state);
+      onTeamChange({ ...me, ...result.player, teamId, secret: me.secret });
     } catch (e) {
       console.error(e);
     } finally {
@@ -464,5 +504,3 @@ function PlayShell({ children, celebratory }: { children: ReactNode; celebratory
     </main>
   );
 }
-
-void genId;

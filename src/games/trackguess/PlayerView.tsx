@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { updateRoomState } from "@/lib/room";
+import { postPlayerAction } from "@/lib/player-action-client";
 import { formatClock } from "@/lib/team-style";
 import { GameRulesChecklist } from "@/components/game-rules-ui";
 import type { RoomState } from "@/lib/types";
@@ -41,8 +41,11 @@ export function TrackGuessPlayer({
   const myGuess = tg.guesses?.[me.id];
 
   async function guess(choice: "real" | "ai") {
-    const guesses = { ...(tg.guesses ?? {}), [me.id]: choice };
-    await updateRoomState(roomId, { ...state, trackguess: { ...tg, guesses } });
+    await postPlayerAction(roomId, {
+      action: "trackguess-guess",
+      playerId: me.id,
+      choice,
+    });
   }
 
   if (tg.phase === "briefing") {
