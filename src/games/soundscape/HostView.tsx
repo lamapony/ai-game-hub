@@ -362,7 +362,7 @@ export function SoundscapeHost({
       )}
       {snd.phase === "mixing" && (
         <div className="rounded-3xl bg-card p-8 border text-center">
-          <div className="font-display text-2xl">Composing the symphony…</div>
+          <div className="font-display text-2xl">Собираем симфонию…</div>
           <p className="text-muted-foreground text-sm mt-2">
             AI is mapping every clip across the park.
           </p>
@@ -393,12 +393,12 @@ export function SoundscapeHost({
 function phaseTitle(p: SoundscapeState["phase"]) {
   return {
     idle: "Пауза",
-    topics: "Pick a theme",
-    recording: "Recording the park",
-    mixing: "Composing",
-    playback: "Listen",
-    voting: "Vote",
-    results: "Results",
+    topics: "Выбор темы",
+    recording: "Запись звуков",
+    mixing: "Сборка микса",
+    playback: "Прослушка",
+    voting: "Голосование",
+    results: "Итоги",
   }[p];
 }
 
@@ -610,7 +610,7 @@ function VotingPanel({
   return (
     <div className="rounded-3xl bg-card p-6 border">
       <div className="flex items-baseline justify-between">
-        <h3 className="font-display text-2xl">Vote on your phones</h3>
+        <h3 className="font-display text-2xl">Голосуйте с телефонов</h3>
         <div className="font-display text-3xl tabular-num">{formatClock(remaining)}</div>
       </div>
       <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2">

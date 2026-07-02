@@ -34,6 +34,8 @@ bun run dev
 
 Dev server: `http://localhost:8080`
 
+Production (публичная ссылка для игроков): `https://ai-game-hub-tau.vercel.app`
+
 Сборка и предпросмотр:
 
 ```bash
@@ -48,6 +50,7 @@ bun run preview
 
 | Переменная                      | Где доступна     | Назначение                             |
 | ------------------------------- | ---------------- | -------------------------------------- |
+| `VITE_PUBLIC_SITE_URL`          | браузер          | Публичный URL для QR и ссылок игрокам  |
 | `VITE_SUPABASE_URL`             | браузер + сервер | URL Supabase-проекта                   |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | браузер + сервер | Anon/publishable key                   |
 | `VITE_SUPABASE_PROJECT_ID`      | браузер          | Ref проекта                            |

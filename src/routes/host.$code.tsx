@@ -39,6 +39,7 @@ import {
 } from "@/lib/teams";
 import type { GameId, RoomState } from "@/lib/types";
 import { GameRulesDialogTrigger } from "@/components/game-rules-ui";
+import { publicJoinUrl, publicSpeakerUrl } from "@/lib/public-site";
 
 const SoundscapeHost = lazy(() =>
   import("@/games/soundscape/HostView").then((module) => ({
@@ -120,10 +121,8 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
   const { send } = useBroadcast(roomId);
 
   const totalPlayers = state.players.length;
-  const joinUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/play/${code}` : `/play/${code}`;
-  const speakerUrlFor = (slot: number) =>
-    typeof window !== "undefined" ? `${window.location.origin}/speaker/${code}?slot=${slot}` : "";
+  const joinUrl = publicJoinUrl(code);
+  const speakerUrlFor = (slot: number) => publicSpeakerUrl(code, slot);
 
   function testSpeaker(slot: number) {
     if (slot === 1) {
@@ -328,6 +327,54 @@ function HostGameLoading() {
   );
 }
 
+function formatRoundPhaseLabel(game: GameId | null | undefined, phase: string | null | undefined) {
+  if (!game || !phase) return null;
+  const labels: Partial<Record<GameId, Record<string, string>>> = {
+    soundscape: {
+      topics: "Тема",
+      recording: "Запись",
+      mixing: "Микс",
+      playback: "Прослушка",
+      voting: "Голосование",
+      results: "Итоги",
+    },
+    challenge: {
+      briefing: "Задание",
+      recording: "Съёмка",
+      judging: "Суд",
+      results: "Вердикт",
+    },
+    phototunt: {
+      briefing: "Задание",
+      hunting: "Охота",
+      judging: "Суд",
+      results: "Итоги",
+    },
+    trackguess: {
+      briefing: "Старт",
+      listening: "Слушаем",
+      guessing: "Голосуем",
+      reveal: "Ответ",
+      results: "Итоги",
+    },
+    spectrumcourt: {
+      briefing: "Старт",
+      clue: "Подсказка",
+      guessing: "Угадывание",
+      appeal: "Апелляция",
+      reveal: "Разбор",
+      results: "Итоги",
+    },
+    whoamong: {
+      briefing: "Старт",
+      voting: "Голосование",
+      reveal: "Разбор",
+      results: "Итоги",
+    },
+  };
+  return labels[game]?.[phase] ?? phase;
+}
+
 function HostControlBar({
   state,
   canSkip,
@@ -348,7 +395,7 @@ function HostControlBar({
     challenge: "Челлендж",
     phototunt: "Фотоохота",
     trackguess: "Настоящий или AI?",
-    spectrumcourt: "Spectrum Court",
+    spectrumcourt: "Спектр-суд",
     whoamong: "Кто из нас",
   }[state.currentGame ?? "soundscape"];
   const phase =
@@ -365,6 +412,7 @@ function HostControlBar({
               : state.currentGame === "whoamong"
                 ? state.whoamong?.phase
                 : null;
+  const phaseLabel = formatRoundPhaseLabel(state.currentGame, phase);
 
   return (
     <div className="mb-4 rounded-3xl border border-white/10 bg-card p-4">
@@ -375,9 +423,9 @@ function HostControlBar({
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <span className="font-display text-xl">{gameLabel}</span>
-            {phase && (
+            {phaseLabel && (
               <span className="rounded-full bg-white/5 px-2.5 py-1 text-xs text-muted-foreground">
-                {phase}
+                {phaseLabel}
               </span>
             )}
             {state.paused && (
@@ -489,12 +537,8 @@ function Lobby({
       <SetupFullscreen
         code={code}
         joinUrl={joinUrl}
-        speakerUrlFor={speakerUrlFor}
-        state={state}
         totalPlayers={totalPlayers}
-        extrasConnected={extrasConnected}
         onClose={() => setFullscreenQr(false)}
-        onTestSpeaker={onTestSpeaker}
       />
     );
   }
@@ -503,8 +547,7 @@ function Lobby({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-card/40 px-4 py-3">
         <div className="text-sm text-muted-foreground">
-          <span className="text-foreground font-medium">{totalPlayers}</span> игроков ·{" "}
-          <span className="text-foreground font-medium">{extrasConnected}</span> доп. колонок
+          <span className="text-foreground font-medium">{totalPlayers}</span> игроков
         </div>
         <button
           type="button"
@@ -534,6 +577,7 @@ function Lobby({
           <div className="mt-2 font-display text-3xl tracking-[0.25em] tabular-nums text-black">
             {code}
           </div>
+          <p className="text-xs text-muted-foreground mt-0.5 break-all">{joinUrl}</p>
           <div className="mt-3 flex gap-2 justify-center">
             <button
               type="button"
@@ -546,37 +590,27 @@ function Lobby({
         </div>
       </section>
 
-      <section className="rounded-3xl border bg-card border-border p-5">
-        <header className="mb-3 flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <h3 className="font-display text-xl">Главная колонка</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Bluetooth к этому телефону · опционально для Challenge и Photo Hunt
-            </p>
-          </div>
+      <details className="rounded-3xl border bg-card border-border p-5 group">
+        <summary className="cursor-pointer font-display text-xl list-none flex items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
+          <span>Колонки</span>
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground rounded-full bg-white/5 px-2 py-0.5">
+            опционально
+          </span>
+        </summary>
+        <p className="text-xs text-muted-foreground mt-3">
+          Нужны только для «Звукового баттла». Bluetooth к телефону ведущего или отдельные
+          телефоны-колонки.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => onTestSpeaker(1)}
             className="rounded-full bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] text-sm font-medium px-4 py-2"
           >
-            🔊 Проверить звук
+            🔊 Проверить главную колонку
           </button>
-        </header>
-      </section>
-
-      <section className="rounded-3xl border bg-card border-border p-5">
-        <header className="mb-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-display text-xl">Духи парка</h3>
-            <span className="text-[10px] uppercase tracking-widest text-muted-foreground rounded-full bg-white/5 px-2 py-0.5">
-              опционально · Soundscape
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Старый телефон + Bluetooth-колонка — сканирует QR и становится «голосом» парка
-          </p>
-        </header>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        </div>
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[2, 3, 4, 5].map((slot) => (
             <SpeakerQrCard
               key={slot}
@@ -587,7 +621,7 @@ function Lobby({
             />
           ))}
         </div>
-      </section>
+      </details>
 
       <div className={`rounded-3xl park-gradient p-6 text-white ${hasPlayers ? "" : "opacity-70"}`}>
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -661,7 +695,7 @@ function Lobby({
           <GameCard
             gameId="spectrumcourt"
             emoji="⚖️"
-            title="Spectrum Court"
+            title="Спектр-суд"
             time="~4 раунда"
             desc="Одна команда даёт подсказку к скрытой точке на шкале, остальные спорят и ставят маркер."
             disabled={!canSpectrumCourt}
@@ -687,21 +721,13 @@ function Lobby({
 function SetupFullscreen({
   code,
   joinUrl,
-  speakerUrlFor,
-  state,
   totalPlayers,
-  extrasConnected,
   onClose,
-  onTestSpeaker,
 }: {
   code: string;
   joinUrl: string;
-  speakerUrlFor: (n: number) => string;
-  state: import("@/lib/types").RoomState;
   totalPlayers: number;
-  extrasConnected: number;
   onClose: () => void;
-  onTestSpeaker: (n: number) => void;
 }) {
   return (
     <div className="fixed inset-0 z-50 park-gradient overflow-auto">
@@ -716,7 +742,8 @@ function SetupFullscreen({
                 {code}
               </h2>
               <p className="text-sm text-white/70 mt-2">
-                {totalPlayers} игроков · {extrasConnected} доп. колонок онлайн
+                {totalPlayers}{" "}
+                {totalPlayers === 1 ? "игрок" : totalPlayers < 5 ? "игрока" : "игроков"}
               </p>
             </div>
             <button
@@ -728,33 +755,16 @@ function SetupFullscreen({
             </button>
           </div>
 
-          <div className="grid lg:grid-cols-[1.2fr_1fr] gap-6">
-            <section className="rounded-3xl bg-white p-6 text-center">
+          <div className="max-w-lg mx-auto">
+            <section className="rounded-3xl bg-white p-6 sm:p-10 text-center">
               <div className="text-xs uppercase tracking-widest text-black/50 mb-3">Игроки</div>
-              <QRCodeSVG value={joinUrl} size={280} level="M" includeMargin={false} />
-              <p className="mt-4 text-sm text-black/60">
+              <QRCodeSVG value={joinUrl} size={320} level="M" includeMargin={false} />
+              <div className="mt-4 font-display text-4xl tracking-[0.25em] tabular-nums text-black">
+                {code}
+              </div>
+              <p className="mt-4 text-sm text-black/60 break-all">{joinUrl}</p>
+              <p className="mt-2 text-sm text-black/60">
                 Сканируй камерой — имя и команда на телефоне
-              </p>
-            </section>
-
-            <section className="rounded-3xl bg-black/35 border border-white/10 p-5">
-              <div className="text-xs uppercase tracking-widest text-white/60 mb-4 text-center">
-                Колонки · опционально
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {[2, 3, 4, 5].map((slot) => (
-                  <SpeakerQrCard
-                    key={slot}
-                    slot={slot}
-                    url={speakerUrlFor(slot)}
-                    state={state}
-                    onTest={() => onTestSpeaker(slot)}
-                    compact
-                  />
-                ))}
-              </div>
-              <p className="text-xs text-white/50 text-center mt-4">
-                Bluetooth-колонка → сканируй QR → одна кнопка «Включить»
               </p>
             </section>
           </div>

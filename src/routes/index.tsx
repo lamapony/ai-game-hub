@@ -128,46 +128,6 @@ function Landing() {
           </button>
           {err && <p className="mt-3 text-sm text-red-300">{err}</p>}
         </section>
-
-        {/* Как это работает — короче и без ноутбука */}
-        <section className="mt-10">
-          <div className="text-[11px] uppercase tracking-[0.25em] text-white/60 mb-3">
-            Как это работает
-          </div>
-          <ol className="space-y-2.5">
-            {[
-              [
-                "1",
-                "Кто-то один создаёт комнату",
-                "Любой телефон. Покажет QR — это и есть «ведущий».",
-              ],
-              [
-                "2",
-                "Остальные сканируют QR",
-                "Камера телефона → попадают в лобби, выбирают команду.",
-              ],
-              [
-                "3",
-                "Колонки — опционально",
-                "Bluetooth-колонка к телефону ведущего, или ещё телефоны как «духи парка».",
-              ],
-              ["4", "AI ведёт раунд", "Темы, голоса персонажей, оценки — всё на ходу."],
-            ].map(([n, t, d]) => (
-              <li
-                key={n}
-                className="flex gap-3 rounded-2xl bg-white/5 border border-white/10 p-3.5"
-              >
-                <span className="shrink-0 size-7 grid place-items-center rounded-full bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] font-display text-sm">
-                  {n}
-                </span>
-                <span>
-                  <span className="block text-white font-medium text-sm">{t}</span>
-                  <span className="block text-white/60 text-sm mt-0.5">{d}</span>
-                </span>
-              </li>
-            ))}
-          </ol>
-        </section>
       </div>
     </main>
   );
