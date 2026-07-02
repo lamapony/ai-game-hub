@@ -12,47 +12,47 @@ function errorMessage(error: unknown) {
 export function friendlyMediaError(error: unknown, kind: MediaKind) {
   const name = errorName(error);
   const device =
-    kind === "microphone" ? "микрофону" : kind === "camera" ? "камере" : "камере и микрофону";
+    kind === "microphone" ? "microphone" : kind === "camera" ? "camera" : "camera and microphone";
 
   if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-    return `Браузер не дал доступ к ${device}. Разреши доступ в настройках сайта и открой экран заново.`;
+    return `Browser denied access to the ${device}. Allow access in site settings and reload the screen.`;
   }
   if (name === "NotFoundError" || name === "DevicesNotFoundError") {
-    return `Устройство не нашло ${device}. Проверь, что камера или микрофон доступны другому приложению.`;
+    return `Device did not find the ${device}. Make sure the camera or microphone is not in use by another app.`;
   }
   if (name === "NotReadableError" || name === "TrackStartError") {
-    return `Не получилось включить ${device}. Закрой другие приложения, которые могут использовать камеру или микрофон.`;
+    return `Could not start the ${device}. Close other apps that might be using the camera or microphone.`;
   }
   if (name === "OverconstrainedError" || name === "ConstraintNotSatisfiedError") {
-    return "Телефон не поддержал выбранный режим записи. Попробуй ещё раз или открой ссылку в другом браузере.";
+    return "Phone did not support the selected recording mode. Try again or open the link in another browser.";
   }
   if (name === "SecurityError") {
-    return "Браузер заблокировал запись. Проверь, что страница открыта по HTTPS.";
+    return "Browser blocked recording. Make sure the page is opened over HTTPS.";
   }
 
   const message = errorMessage(error);
   return message
-    ? `Не удалось включить запись: ${message}`
-    : "Не удалось включить запись. Попробуй обновить страницу.";
+    ? `Failed to start recording: ${message}`
+    : "Failed to start recording. Try reloading the page.";
 }
 
 export function friendlyUploadError(error: unknown, kind: UploadKind) {
-  const label = kind === "audio" ? "звук" : kind === "video" ? "видео" : "кадр";
+  const label = kind === "audio" ? "sound" : kind === "video" ? "video" : "photo";
   const message = errorMessage(error).toLowerCase();
 
   if (message.includes("network") || message.includes("fetch") || message.includes("failed")) {
-    return `Не удалось отправить ${label}: похоже, пропала сеть. Подойди ближе к Wi-Fi и попробуй ещё раз.`;
+    return `Failed to send ${label}: looks like network dropped. Move closer to Wi-Fi and try again.`;
   }
   if (message.includes("storage") || message.includes("bucket")) {
-    return `Не удалось сохранить ${label}. Bucket recordings недоступен, ведущему стоит проверить Supabase Storage.`;
+    return `Failed to save ${label}. Recordings bucket unavailable, host should check Supabase Storage.`;
   }
   if (message.includes("signed url") || message.includes("signed")) {
-    return `Не удалось подготовить ссылку на ${label}. Попробуй отправить ещё раз.`;
+    return `Failed to prepare link for ${label}. Try sending again.`;
   }
   if (message.includes("payload") || message.includes("too large") || message.includes("413")) {
-    return `Не удалось отправить ${label}: файл слишком большой. Запиши короче и попробуй ещё раз.`;
+    return `Failed to send ${label}: file too large. Record shorter and try again.`;
   }
 
   const raw = errorMessage(error);
-  return raw ? `Не удалось отправить ${label}: ${raw}` : `Не удалось отправить ${label}.`;
+  return raw ? `Failed to send ${label}: ${raw}` : `Failed to send ${label}.`;
 }

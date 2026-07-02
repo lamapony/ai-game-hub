@@ -61,17 +61,17 @@ function SpeakerPage() {
   if (loading)
     return (
       <Shell>
-        <div className="text-white/70">Загружаем…</div>
+        <div className="text-white/70">Loading…</div>
       </Shell>
     );
   if (error || !room)
     return (
       <Shell>
         <div className="text-white/80 text-center">
-          Комната не найдена.
+          Room not found.
           <div>
             <Link to="/" className="underline">
-              на главную
+              to home
             </Link>
           </div>
         </div>
@@ -97,14 +97,14 @@ function SpeakerPage() {
 
       <div className="w-full max-w-md text-center text-white">
         <div className="text-[10px] uppercase tracking-[0.25em] text-white/70">
-          Колонка {slot} · комната {code}
+          Speaker {slot} · room {code}
         </div>
         <h1 className="font-display text-5xl mt-2">{SPEAKER_NAMES[slot]}</h1>
 
         {!armed ? (
           <>
             <p className="mt-4 text-white/75 text-sm leading-relaxed">
-              Подключи Bluetooth-колонку, громкость на максимум. Нажми кнопку — и не блокируй экран.
+              Connect Bluetooth speaker, max volume. Tap the button — and keep screen on.
             </p>
             <button
               onClick={() => {
@@ -115,10 +115,10 @@ function SpeakerPage() {
               }}
               className="mt-6 w-full rounded-3xl bg-white text-[oklch(0.18_0.05_160)] py-6 text-xl font-display"
             >
-              ▶ {SPEAKER_NAMES[slot]} — включить
+              ▶ Turn on {SPEAKER_NAMES[slot]}
             </button>
             <p className="mt-3 text-xs text-white/60">
-              Ведущий проверит звук кнопкой «🔊 тест» на своём экране.
+              Host will test sound with the "🔊 test" button on their screen.
             </p>
           </>
         ) : (
@@ -127,22 +127,22 @@ function SpeakerPage() {
           >
             <div className="text-sm uppercase tracking-widest text-white/70">
               {room.state.paused
-                ? "Пауза"
+                ? "Paused"
                 : snd?.phase === "playback"
-                  ? "Выступаю"
+                  ? "Performing"
                   : snd?.phase
-                    ? `Жду · ${snd.phase}`
-                    : "На связи"}
+                    ? `Waiting · ${snd.phase}`
+                    : "Online"}
             </div>
             <div className="font-display text-3xl mt-1">
               {room.state.paused
                 ? "||"
                 : snd?.phase === "playback"
-                  ? (activeMix?.cues.filter((c) => c.slot === slot).length ?? 0) + " реплик"
+                  ? (activeMix?.cues.filter((c) => c.slot === slot).length ?? 0) + " cues"
                   : "✓"}
             </div>
             <p className="text-xs text-white/60 mt-3">
-              Не выключай экран. Колонка ждёт сигнала от AI.
+              Keep screen on. Speaker is waiting for the AI signal.
             </p>
           </div>
         )}

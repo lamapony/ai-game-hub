@@ -201,7 +201,7 @@ export function SoundscapeHost({
       });
     } catch (e) {
       console.error(e);
-      setMixNotice("Сведение не удалось — попробуйте записать звуки ещё раз.");
+      setMixNotice("Mixing failed — try recording sounds again.");
       await update({
         phase: "recording",
         recordingEndsAt: Date.now() + RECORDING_MS,
@@ -522,7 +522,7 @@ function IdleRecoveryPanel({
           onClick={onRetry}
           className="rounded-2xl bg-[var(--color-park-bright)] text-[oklch(0.18_0.05_160)] px-5 py-2.5 font-medium"
         >
-          Записать ещё раз
+          Record again
         </button>
         <button onClick={onHub} className="rounded-2xl border bg-background px-5 py-2.5 text-sm">
           В hub

@@ -79,7 +79,7 @@ async function submitSoundscapeClip(state: RoomState, roomId: string, body: Arti
     roundId,
     playerId: player.id,
   });
-  const audioUrl = await signedRecordingUrl(storagePath, 60 * 60 * 3);
+  const audioUrl = await signedRecordingUrl(storagePath, 60 * 60 * 24);
 
   const { data, error } = await supabaseAdmin
     .from("submissions")

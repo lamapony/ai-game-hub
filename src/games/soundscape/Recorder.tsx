@@ -28,11 +28,14 @@ export function Recorder({ maxMs = 15000, onComplete, disabled }: Props) {
     setErr(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : MediaRecorder.isTypeSupported("audio/mp4")
-          ? "audio/mp4"
-          : "";
+      // Prefer mp4 for better iOS/Safari compatibility + broad STT support.
+      // Fall back to webm/opus for desktop.
+      let mime = "";
+      if (MediaRecorder.isTypeSupported("audio/mp4")) {
+        mime = "audio/mp4";
+      } else if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+        mime = "audio/webm;codecs=opus";
+      }
       const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
       recRef.current = rec;
       chunksRef.current = [];
@@ -45,7 +48,7 @@ export function Recorder({ maxMs = 15000, onComplete, disabled }: Props) {
         const duration = Date.now() - startTimeRef.current;
         if (blob.size < 1024) {
           setState("error");
-          setErr("Запись слишком короткая. Запиши хотя бы пару секунд звука.");
+          setErr("Recording too short. Record at least a couple seconds of sound.");
           return;
         }
         setState("uploading");
@@ -98,7 +101,7 @@ export function Recorder({ maxMs = 15000, onComplete, disabled }: Props) {
         </button>
       ) : state === "uploading" ? (
         <div className="rounded-3xl bg-white/10 text-white/80 py-6 text-center">
-          Отправляем звук и расшифровываем…
+          Uploading sound and transcribing…
         </div>
       ) : state === "done" ? (
         <button
@@ -109,7 +112,7 @@ export function Recorder({ maxMs = 15000, onComplete, disabled }: Props) {
           disabled={disabled}
           className="w-full rounded-3xl bg-[var(--color-park-bright)] text-[oklch(0.18_0.05_160)] py-5 text-lg font-medium"
         >
-          ✓ Отправлено. Записать ещё?
+          ✓ Sent. Record another?
         </button>
       ) : (
         <button
@@ -117,7 +120,7 @@ export function Recorder({ maxMs = 15000, onComplete, disabled }: Props) {
           disabled={disabled}
           className="w-full rounded-3xl bg-red-500 text-white py-6 text-xl font-display disabled:opacity-40"
         >
-          ● Записать звук ({Math.round(maxMs / 1000)}с максимум)
+          ● Record sound ({Math.round(maxMs / 1000)}s max)
         </button>
       )}
       {err && <p className="text-sm text-red-300">{err}</p>}
