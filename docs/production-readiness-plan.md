@@ -98,6 +98,7 @@
   - `bun test`;
   - `bunx tsc --noEmit`;
   - `bun run build`;
+  - `SMOKE_BASE_URL=https://ai-game-hub-tau.vercel.app bun run smoke:http`;
   - `bun run preview`.
 
 - Ручной smoke test:
@@ -112,7 +113,7 @@
 - Минимальный regression pack после live-теста:
   - расширить unit-тесты для поздних game-specific state transitions после field test;
   - расширить AI sanitizer tests после field test новыми edge cases из реальных ответов;
-  - добавить browser smoke test для маршрутов `/`, `/play`, `/host/$code`, `/speaker/$code`.
+  - расширить HTTP smoke до browser smoke для создания комнаты и lobby realtime.
 
 - Базовая observability:
   - AI gateway пишет `ai.chat_json.*`, `ai.tts.*`, `ai.stt.*` с duration/status/model без prompt body;

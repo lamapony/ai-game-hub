@@ -14,6 +14,7 @@
     "lint": "eslint .",
     "verify:prod-env": "bun scripts/verify-production-env.ts",
     "verify:github-prod": "bun scripts/verify-github-production-config.ts",
+    "smoke:http": "bun scripts/smoke-http.ts",
     "setup:supabase": "bun scripts/setup-supabase-project.ts",
     "format": "prettier --write ."
   },
