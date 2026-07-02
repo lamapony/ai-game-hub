@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
-import { useRoom, updateRoomState, useBroadcast } from "@/lib/room";
+import { useEffect, useState } from "react";
+import { useRoom, useBroadcast } from "@/lib/room";
 import { Orchestra } from "@/games/soundscape/Orchestra";
 import { SPEAKER_NAMES } from "@/lib/types";
 import { SPEAKER_HEARTBEAT_MS } from "@/lib/speaker-status";
@@ -17,28 +17,21 @@ function SpeakerPage() {
   const { slot } = Route.useSearch();
   const { room, loading, error } = useRoom(code);
   const [armed, setArmed] = useState(false); // mobile audio needs user gesture
-  const roomRef = useRef(room);
-
-  useEffect(() => {
-    roomRef.current = room;
-  }, [room]);
 
   // Mark slot as connected once user arms
   useEffect(() => {
-    if (!room || !armed) return;
+    if (!room?.id || !armed) return;
 
     function updateSpeakerSlot(connected: boolean) {
-      const current = roomRef.current;
-      if (!current) return;
-      const slots = { ...(current.state.speakerSlots ?? {}) };
-      const existing = slots[slot] ?? { connected: false, name: SPEAKER_NAMES[slot] };
-      slots[slot] = {
-        ...existing,
-        connected,
-        name: existing.name || SPEAKER_NAMES[slot],
-        lastSeenAt: connected ? Date.now() : existing.lastSeenAt,
-      };
-      updateRoomState(current.id, { ...current.state, speakerSlots: slots }).catch(() => {});
+      fetch("/api/speaker-status", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          code,
+          slot,
+          connected,
+        }),
+      }).catch(() => {});
     }
 
     updateSpeakerSlot(true);
@@ -48,8 +41,7 @@ function SpeakerPage() {
       window.clearInterval(heartbeat);
       updateSpeakerSlot(false);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [room?.id, armed, slot]);
+  }, [room?.id, armed, code, slot]);
 
   const { send } = useBroadcast(room?.id, (e) => {
     if (e.type === "test-tone" && e.slot === slot) {

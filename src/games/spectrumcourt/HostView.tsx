@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { updateRoomState } from "@/lib/room";
+import { postHostState } from "@/lib/host-state-client";
 import { teamColorClasses, formatClock } from "@/lib/team-style";
 import {
   SPECTRUM_COURT_APPEAL_MS,
@@ -24,7 +24,15 @@ function teamName(state: RoomState, teamId?: string) {
   return state.teams.find((team) => team.id === teamId)?.name ?? "Команда";
 }
 
-export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: RoomState }) {
+export function SpectrumCourtHost({
+  code,
+  hostSecret,
+  state,
+}: {
+  code: string;
+  hostSecret: string;
+  state: RoomState;
+}) {
   const sc = state.spectrumcourt!;
   const [now, setNow] = useState(Date.now());
   const introSpokenRef = useRef(false);
@@ -36,8 +44,9 @@ export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: Ro
     return () => clearInterval(t);
   }, []);
 
+  const writeState = (nextState: RoomState) => postHostState(code, hostSecret, nextState);
   const update = (patch: Partial<SpectrumCourtState>) =>
-    updateRoomState(roomId, { ...state, spectrumcourt: { ...sc, ...patch } });
+    writeState({ ...state, spectrumcourt: { ...sc, ...patch } });
 
   function startRound() {
     const teams = activeTeams(state);
@@ -108,7 +117,7 @@ export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: Ro
     const scored = scoreSpectrumCourtRound(state, sc);
     if (!scored) return;
     speak(`Вердикт суда. Цель была ${sc.target} из 100.`);
-    void updateRoomState(roomId, {
+    void writeState({
       ...state,
       teams: scored.teams,
       spectrumcourt: {
@@ -233,7 +242,7 @@ export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: Ro
           <button
             type="button"
             onClick={() =>
-              updateRoomState(roomId, {
+              writeState({
                 ...state,
                 status: "lobby",
                 currentGame: null,

@@ -14,8 +14,15 @@ import { Route as PlayIndexRouteImport } from './routes/play.index'
 import { Route as SpeakerCodeRouteImport } from './routes/speaker.$code'
 import { Route as PlayCodeRouteImport } from './routes/play.$code'
 import { Route as HostCodeRouteImport } from './routes/host.$code'
+import { Route as ApiVoiceSessionRouteImport } from './routes/api/voice-session'
 import { Route as ApiTranscribeRouteImport } from './routes/api/transcribe'
+import { Route as ApiSpiritRouteImport } from './routes/api/spirit'
+import { Route as ApiSpeakerStatusRouteImport } from './routes/api/speaker-status'
 import { Route as ApiSpeakRouteImport } from './routes/api/speak'
+import { Route as ApiPlayerActionRouteImport } from './routes/api/player-action'
+import { Route as ApiHostStateRouteImport } from './routes/api/host-state'
+import { Route as ApiHostControlRouteImport } from './routes/api/host-control'
+import { Route as ApiDirectorRouteImport } from './routes/api/director'
 import { Route as ApiCleanupRouteImport } from './routes/api/cleanup'
 
 const IndexRoute = IndexRouteImport.update({
@@ -43,14 +50,49 @@ const HostCodeRoute = HostCodeRouteImport.update({
   path: '/host/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiVoiceSessionRoute = ApiVoiceSessionRouteImport.update({
+  id: '/api/voice-session',
+  path: '/api/voice-session',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTranscribeRoute = ApiTranscribeRouteImport.update({
   id: '/api/transcribe',
   path: '/api/transcribe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSpiritRoute = ApiSpiritRouteImport.update({
+  id: '/api/spirit',
+  path: '/api/spirit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSpeakerStatusRoute = ApiSpeakerStatusRouteImport.update({
+  id: '/api/speaker-status',
+  path: '/api/speaker-status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSpeakRoute = ApiSpeakRouteImport.update({
   id: '/api/speak',
   path: '/api/speak',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPlayerActionRoute = ApiPlayerActionRouteImport.update({
+  id: '/api/player-action',
+  path: '/api/player-action',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHostStateRoute = ApiHostStateRouteImport.update({
+  id: '/api/host-state',
+  path: '/api/host-state',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHostControlRoute = ApiHostControlRouteImport.update({
+  id: '/api/host-control',
+  path: '/api/host-control',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDirectorRoute = ApiDirectorRouteImport.update({
+  id: '/api/director',
+  path: '/api/director',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCleanupRoute = ApiCleanupRouteImport.update({
@@ -62,8 +104,15 @@ const ApiCleanupRoute = ApiCleanupRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/cleanup': typeof ApiCleanupRoute
+  '/api/director': typeof ApiDirectorRoute
+  '/api/host-control': typeof ApiHostControlRoute
+  '/api/host-state': typeof ApiHostStateRoute
+  '/api/player-action': typeof ApiPlayerActionRoute
   '/api/speak': typeof ApiSpeakRoute
+  '/api/speaker-status': typeof ApiSpeakerStatusRoute
+  '/api/spirit': typeof ApiSpiritRoute
   '/api/transcribe': typeof ApiTranscribeRoute
+  '/api/voice-session': typeof ApiVoiceSessionRoute
   '/host/$code': typeof HostCodeRoute
   '/play/$code': typeof PlayCodeRoute
   '/speaker/$code': typeof SpeakerCodeRoute
@@ -72,8 +121,15 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/cleanup': typeof ApiCleanupRoute
+  '/api/director': typeof ApiDirectorRoute
+  '/api/host-control': typeof ApiHostControlRoute
+  '/api/host-state': typeof ApiHostStateRoute
+  '/api/player-action': typeof ApiPlayerActionRoute
   '/api/speak': typeof ApiSpeakRoute
+  '/api/speaker-status': typeof ApiSpeakerStatusRoute
+  '/api/spirit': typeof ApiSpiritRoute
   '/api/transcribe': typeof ApiTranscribeRoute
+  '/api/voice-session': typeof ApiVoiceSessionRoute
   '/host/$code': typeof HostCodeRoute
   '/play/$code': typeof PlayCodeRoute
   '/speaker/$code': typeof SpeakerCodeRoute
@@ -83,8 +139,15 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/cleanup': typeof ApiCleanupRoute
+  '/api/director': typeof ApiDirectorRoute
+  '/api/host-control': typeof ApiHostControlRoute
+  '/api/host-state': typeof ApiHostStateRoute
+  '/api/player-action': typeof ApiPlayerActionRoute
   '/api/speak': typeof ApiSpeakRoute
+  '/api/speaker-status': typeof ApiSpeakerStatusRoute
+  '/api/spirit': typeof ApiSpiritRoute
   '/api/transcribe': typeof ApiTranscribeRoute
+  '/api/voice-session': typeof ApiVoiceSessionRoute
   '/host/$code': typeof HostCodeRoute
   '/play/$code': typeof PlayCodeRoute
   '/speaker/$code': typeof SpeakerCodeRoute
@@ -95,8 +158,15 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/api/cleanup'
+    | '/api/director'
+    | '/api/host-control'
+    | '/api/host-state'
+    | '/api/player-action'
     | '/api/speak'
+    | '/api/speaker-status'
+    | '/api/spirit'
     | '/api/transcribe'
+    | '/api/voice-session'
     | '/host/$code'
     | '/play/$code'
     | '/speaker/$code'
@@ -105,8 +175,15 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/api/cleanup'
+    | '/api/director'
+    | '/api/host-control'
+    | '/api/host-state'
+    | '/api/player-action'
     | '/api/speak'
+    | '/api/speaker-status'
+    | '/api/spirit'
     | '/api/transcribe'
+    | '/api/voice-session'
     | '/host/$code'
     | '/play/$code'
     | '/speaker/$code'
@@ -115,8 +192,15 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/api/cleanup'
+    | '/api/director'
+    | '/api/host-control'
+    | '/api/host-state'
+    | '/api/player-action'
     | '/api/speak'
+    | '/api/speaker-status'
+    | '/api/spirit'
     | '/api/transcribe'
+    | '/api/voice-session'
     | '/host/$code'
     | '/play/$code'
     | '/speaker/$code'
@@ -126,8 +210,15 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiCleanupRoute: typeof ApiCleanupRoute
+  ApiDirectorRoute: typeof ApiDirectorRoute
+  ApiHostControlRoute: typeof ApiHostControlRoute
+  ApiHostStateRoute: typeof ApiHostStateRoute
+  ApiPlayerActionRoute: typeof ApiPlayerActionRoute
   ApiSpeakRoute: typeof ApiSpeakRoute
+  ApiSpeakerStatusRoute: typeof ApiSpeakerStatusRoute
+  ApiSpiritRoute: typeof ApiSpiritRoute
   ApiTranscribeRoute: typeof ApiTranscribeRoute
+  ApiVoiceSessionRoute: typeof ApiVoiceSessionRoute
   HostCodeRoute: typeof HostCodeRoute
   PlayCodeRoute: typeof PlayCodeRoute
   SpeakerCodeRoute: typeof SpeakerCodeRoute
@@ -171,6 +262,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HostCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/voice-session': {
+      id: '/api/voice-session'
+      path: '/api/voice-session'
+      fullPath: '/api/voice-session'
+      preLoaderRoute: typeof ApiVoiceSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/transcribe': {
       id: '/api/transcribe'
       path: '/api/transcribe'
@@ -178,11 +276,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTranscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/spirit': {
+      id: '/api/spirit'
+      path: '/api/spirit'
+      fullPath: '/api/spirit'
+      preLoaderRoute: typeof ApiSpiritRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/speaker-status': {
+      id: '/api/speaker-status'
+      path: '/api/speaker-status'
+      fullPath: '/api/speaker-status'
+      preLoaderRoute: typeof ApiSpeakerStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/speak': {
       id: '/api/speak'
       path: '/api/speak'
       fullPath: '/api/speak'
       preLoaderRoute: typeof ApiSpeakRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/player-action': {
+      id: '/api/player-action'
+      path: '/api/player-action'
+      fullPath: '/api/player-action'
+      preLoaderRoute: typeof ApiPlayerActionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/host-state': {
+      id: '/api/host-state'
+      path: '/api/host-state'
+      fullPath: '/api/host-state'
+      preLoaderRoute: typeof ApiHostStateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/host-control': {
+      id: '/api/host-control'
+      path: '/api/host-control'
+      fullPath: '/api/host-control'
+      preLoaderRoute: typeof ApiHostControlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/director': {
+      id: '/api/director'
+      path: '/api/director'
+      fullPath: '/api/director'
+      preLoaderRoute: typeof ApiDirectorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/cleanup': {
@@ -198,8 +338,15 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiCleanupRoute: ApiCleanupRoute,
+  ApiDirectorRoute: ApiDirectorRoute,
+  ApiHostControlRoute: ApiHostControlRoute,
+  ApiHostStateRoute: ApiHostStateRoute,
+  ApiPlayerActionRoute: ApiPlayerActionRoute,
   ApiSpeakRoute: ApiSpeakRoute,
+  ApiSpeakerStatusRoute: ApiSpeakerStatusRoute,
+  ApiSpiritRoute: ApiSpiritRoute,
   ApiTranscribeRoute: ApiTranscribeRoute,
+  ApiVoiceSessionRoute: ApiVoiceSessionRoute,
   HostCodeRoute: HostCodeRoute,
   PlayCodeRoute: PlayCodeRoute,
   SpeakerCodeRoute: SpeakerCodeRoute,

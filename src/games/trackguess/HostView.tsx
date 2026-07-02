@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { updateRoomState } from "@/lib/room";
+import { postHostState } from "@/lib/host-state-client";
 import { teamColorClasses, formatClock } from "@/lib/team-style";
 import {
   TRACK_GUESS_GUESS_MS,
@@ -15,7 +15,15 @@ function speak(text: string) {
   a.play().catch(() => {});
 }
 
-export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomState }) {
+export function TrackGuessHost({
+  code,
+  hostSecret,
+  state,
+}: {
+  code: string;
+  hostSecret: string;
+  state: RoomState;
+}) {
   const tg = state.trackguess!;
   const [now, setNow] = useState(Date.now());
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -33,8 +41,9 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
     audioRef.current?.pause();
   }, [state.paused]);
 
+  const writeState = (nextState: RoomState) => postHostState(code, hostSecret, nextState);
   const update = (patch: Partial<TrackGuessState>) =>
-    updateRoomState(roomId, { ...state, trackguess: { ...tg, ...patch } });
+    writeState({ ...state, trackguess: { ...tg, ...patch } });
 
   function startRound(nowMs = Date.now()) {
     const track = pickCatalogTrack(tg.usedTrackIds);
@@ -111,7 +120,7 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
         : `Это был настоящий трек: ${roundResult.title}.`,
     );
 
-    void updateRoomState(roomId, {
+    void writeState({
       ...state,
       teams,
       trackguess: {
@@ -141,7 +150,7 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
     }
 
     const track = pickCatalogTrack(tg.usedTrackIds);
-    void updateRoomState(roomId, {
+    void writeState({
       ...state,
       trackguess: {
         ...tg,
@@ -251,7 +260,7 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
           <button
             type="button"
             onClick={() =>
-              updateRoomState(roomId, {
+              writeState({
                 ...state,
                 status: "lobby",
                 currentGame: null,

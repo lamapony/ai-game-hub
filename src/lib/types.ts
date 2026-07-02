@@ -80,6 +80,95 @@ export type ChallengeState = {
 
 export type GameId = "soundscape" | "challenge" | "phototunt" | "trackguess" | "spectrumcourt";
 
+export type VoiceProviderId = "openai" | "xai";
+
+export type EventDirectorMode = "off" | "setup" | "running" | "paused" | "finished";
+
+export type EventDirectorSegmentKind =
+  "opening" | "warmup" | "game" | "interstitial" | "scoreboard" | "finale";
+
+export type EventDirectorSegmentStatus = "pending" | "active" | "complete";
+
+export type EventDirectorSegment = {
+  id: string;
+  kind: EventDirectorSegmentKind;
+  title: string;
+  status: EventDirectorSegmentStatus;
+  gameId?: GameId;
+  startedAt?: number;
+  completedAt?: number;
+};
+
+export type EventDirectorSuggestionIntent =
+  "speak" | "ask-audience" | "launch-game" | "advance" | "finale";
+
+export type EventDirectorSuggestion = {
+  id: string;
+  intent: EventDirectorSuggestionIntent;
+  text: string;
+  createdAt: number;
+  gameId?: GameId;
+  fallback?: boolean;
+  safety: "clear" | "needs-review";
+};
+
+export type EventDirectorTranscriptEntry = {
+  id: string;
+  speaker: "host" | "audience" | "operator" | "system";
+  text: string;
+  at: number;
+  source: "realtime" | "fallback" | "operator" | "player";
+};
+
+export type EventDirectorPlayerMoment = {
+  id: string;
+  mode: "listen" | "react" | "wait";
+  prompt: string;
+  options?: string[];
+  createdAt: number;
+  expiresAt?: number;
+};
+
+export type EventDirectorAudienceResponse = {
+  id: string;
+  momentId?: string;
+  playerId: string;
+  playerName: string;
+  option: string;
+  at: number;
+};
+
+export type EventDirectorMicCapture = {
+  status: "idle" | "listening" | "transcribing";
+  transcript?: string;
+  lastCapturedAt?: number;
+};
+
+export type EventDirectorProviderStatus = {
+  provider: VoiceProviderId | "none";
+  configured: boolean;
+  connected: boolean;
+  sessionStartedAt?: number;
+  lastError?: string;
+};
+
+export type EventDirectorState = {
+  mode: EventDirectorMode;
+  playlist: GameId[];
+  segments: EventDirectorSegment[];
+  currentSegmentId?: string;
+  pendingSuggestion?: EventDirectorSuggestion;
+  spokenTranscript: EventDirectorTranscriptEntry[];
+  playerMoment?: EventDirectorPlayerMoment;
+  audienceResponses?: EventDirectorAudienceResponse[];
+  micCapture: EventDirectorMicCapture;
+  providerStatus: EventDirectorProviderStatus;
+  startedAt?: number;
+  updatedAt?: number;
+  fallback?: boolean;
+  safetyMode: "smart-adult" | "family" | "strict";
+};
+
 export type PhotoHuntPhase = "briefing" | "hunting" | "judging" | "results";
 
 export type PhotoHuntResultEntry = {
@@ -196,6 +285,7 @@ export type RoomState = {
   phototunt?: PhotoHuntState;
   trackguess?: TrackGuessState;
   spectrumcourt?: SpectrumCourtState;
+  eventDirector?: EventDirectorState;
   speakerSlots: Record<number, { connected: boolean; name: string; lastSeenAt?: number }>; // 1..5
 };
 
