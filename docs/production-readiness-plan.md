@@ -1,14 +1,16 @@
 # План стабилизации и подготовки к проду
 
-Дата: 2026-07-01
+Дата: 2026-07-02
 
 ## Текущее состояние
 
+- Production URL: `https://ai-game-hub-tau.vercel.app`.
+- Production deploy идет через Vercel/Nitro prebuilt output из GitHub Actions `Deploy Vercel`.
+- GitHub repository: `https://github.com/lamapony/ai-game-hub`, visibility `PUBLIC`.
 - Production build проходит: `bun run build`.
 - TypeScript-проверка проходит: `bunx tsc --noEmit`.
 - ESLint проходит без ошибок и предупреждений: `bun run lint`.
-- `.env` исключен из git; публично коммитится только `.env.example`.
-- Сборка ориентирована на Cloudflare Workers через TanStack Start и официальный Cloudflare Vite plugin.
+- `.env` и `.env.local` исключены из git; публично коммитится только `.env.example`.
 
 ## Уже закрыто
 
@@ -48,6 +50,11 @@
   проверяет имена обязательных repo vars/secrets без чтения их значений.
 - Fast Refresh правило отключено только для `src/components/ui`, где shadcn/ui ожидаемо экспортирует variants рядом с компонентами.
 - Локальный `.codebase-memory/` исключен из публичного репозитория.
+- Проект отвязан от Lovable/Cloudflare Workers для production path: deploy выполняется напрямую через
+  GitHub Actions -> Vercel project `ai-game-hub`.
+- Vercel project linked locally; runtime env для Production/Preview синхронизирован с GitHub Actions env.
+- Первый Vercel production deploy выполнен и alias назначен на `https://ai-game-hub-tau.vercel.app`.
+- GitHub `CLEANUP_URL` настроен на production alias; cleanup workflow dry-run проходит на production.
 
 ## Стабилизация перед live-тестом
 
@@ -124,7 +131,7 @@
 
 1. Создать отдельный Supabase-проект для production.
 2. Применить миграции: `supabase link --project-ref <prod-ref>` и `supabase db push`.
-3. Настроить production secrets:
+3. Настроить production variables/secrets в GitHub Actions и Vercel runtime:
    - `VITE_SUPABASE_URL`;
    - `VITE_SUPABASE_PUBLISHABLE_KEY`;
    - `VITE_SUPABASE_PROJECT_ID`;
@@ -144,6 +151,7 @@
 7. Выполнить production deploy через GitHub Actions `Deploy Vercel` или локально:
    `bun run deploy:vercel`.
 8. После деплоя пройти smoke test на production URL.
+9. Проверить cleanup workflow в dry-run: `Cleanup old rooms` с `dry_run=true`.
 
 ## GitHub Actions
 
@@ -174,10 +182,12 @@
   - `VERCEL_PROJECT_ID`
   - `VERCEL_TOKEN`
 
-На 2026-07-02 в GitHub уже заведены все required repo variables for first deploy,
-`CLEANUP_SECRET` и `SUPABASE_SERVICE_ROLE_KEY`. Для первого production deploy ещё нужны
-`OPENAI_API_KEY`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` и `VERCEL_TOKEN`. После первого deploy
-нужно добавить repo variable `CLEANUP_URL`.
+На 2026-07-02 GitHub и Vercel production config заведены полностью:
+
+- `bun run verify:github-prod --repo=lamapony/ai-game-hub` проходит без missing vars/secrets.
+- `Deploy Vercel` прошел успешно: run `28570852103`.
+- Production alias: `https://ai-game-hub-tau.vercel.app`.
+- `Cleanup old rooms` dry-run прошел успешно: run `28570895779`, `roomsMatched: 0`, `errors: []`.
 
 ## Риски, которые стоит проверить до публичного мероприятия
 
