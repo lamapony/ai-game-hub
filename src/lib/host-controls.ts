@@ -1,4 +1,4 @@
-import type { RoomState, SpectrumCourtState } from "./types";
+import type { RoomState, SpectrumCourtState, Team } from "./types";
 
 const SOUND_RECORDING_MS = 180_000;
 const SOUND_TOPICS_MS = 45_000;
@@ -122,6 +122,96 @@ export function forceBackToHubState(state: RoomState): RoomState {
     trackguess: undefined,
     spectrumcourt: undefined,
   };
+}
+
+export function finishPartyState(state: RoomState): RoomState {
+  return {
+    ...state,
+    status: "finished",
+    currentGame: null,
+    paused: undefined,
+    soundscape: undefined,
+    challenge: undefined,
+    phototunt: undefined,
+    trackguess: undefined,
+    spectrumcourt: undefined,
+  };
+}
+
+export function resumePartyState(state: RoomState): RoomState {
+  if (state.status !== "finished") return state;
+  return {
+    ...state,
+    status: "lobby",
+    currentGame: null,
+    paused: undefined,
+    soundscape: undefined,
+    challenge: undefined,
+    phototunt: undefined,
+    trackguess: undefined,
+    spectrumcourt: undefined,
+  };
+}
+
+export function resetScoresState(state: RoomState): RoomState {
+  return {
+    ...state,
+    teams: state.teams.map((team) => ({ ...team, score: 0 })),
+  };
+}
+
+export type TeamStanding = {
+  team: Team;
+  place: number;
+  playerCount: number;
+};
+
+export function computeTeamStandings(state: RoomState): TeamStanding[] {
+  const sorted = [...state.teams].sort((a, b) => b.score - a.score);
+  let place = 1;
+  return sorted.map((team, index) => {
+    if (index > 0 && team.score < sorted[index - 1]!.score) {
+      place = index + 1;
+    }
+    return {
+      team,
+      place,
+      playerCount: state.players.filter((player) => player.teamId === team.id).length,
+    };
+  });
+}
+
+export function getWinningStandings(standings: TeamStanding[]): TeamStanding[] {
+  if (standings.length === 0) return [];
+  const topScore = standings[0]!.team.score;
+  return standings.filter((standing) => standing.team.score === topScore);
+}
+
+export function formatRussianPlace(place: number): string {
+  const mod10 = place % 10;
+  const mod100 = place % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${place} место`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${place} места`;
+  return `${place} мест`;
+}
+
+export function formatRussianPoints(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${count} очко`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${count} очка`;
+  return `${count} очков`;
+}
+
+export function buildWinnerAnnouncement(standings: TeamStanding[]): string {
+  const winners = getWinningStandings(standings);
+  if (winners.length === 0) return "Вечеринка окончена!";
+  const scoreText = formatRussianPoints(winners[0]!.team.score);
+  if (winners.length === 1) {
+    return `Победители вечеринки — команда ${winners[0]!.team.name}! ${scoreText}!`;
+  }
+  const names = winners.map((standing) => standing.team.name).join(" и ");
+  return `Ничья между ${names}! По ${scoreText} у каждой!`;
 }
 
 export function canSkipCurrentPhase(state: RoomState): boolean {

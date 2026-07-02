@@ -3,6 +3,12 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useRoom, updateRoomState, getOrCreatePlayer, genId } from "@/lib/room";
 import { playerStorageKey } from "@/lib/event-profile";
+import {
+  computeTeamStandings,
+  formatRussianPlace,
+  formatRussianPoints,
+  getWinningStandings,
+} from "@/lib/host-controls";
 import { teamColorClasses } from "@/lib/team-style";
 import { playersOnTeam } from "@/lib/teams";
 
@@ -190,6 +196,11 @@ function PlayerScreen({
   const state = room.state;
   const team = state.teams.find((t) => t.id === me.teamId);
   const c = team ? teamColorClasses(team.color) : null;
+  const isWinner =
+    state.status === "finished" &&
+    getWinningStandings(computeTeamStandings(state)).some(
+      (standing) => standing.team.id === me.teamId,
+    );
 
   // ensure player exists in state list (handles room state lost after reset)
   useEffect(() => {
@@ -202,7 +213,7 @@ function PlayerScreen({
   }, [room.id, me.id]);
 
   return (
-    <PlayShell>
+    <PlayShell celebratory={isWinner}>
       <div className="w-full max-w-md">
         <div
           className={`rounded-3xl border ${c?.chip ?? ""} p-4 mb-4 flex items-center justify-between`}
@@ -212,6 +223,11 @@ function PlayerScreen({
               {team?.name ?? "Team"}
             </div>
             <div className="font-display text-2xl">{me.name}</div>
+            {state.currentGame && team && (
+              <div className="text-xs mt-1 opacity-80">
+                Твоя команда: {formatRussianPoints(team.score)}
+              </div>
+            )}
           </div>
           <div className="text-right">
             <div className="text-[10px] uppercase tracking-widest opacity-70">Комната</div>
@@ -220,7 +236,9 @@ function PlayerScreen({
         </div>
 
         <Suspense fallback={<PlayerGameLoading />}>
-          {state.paused ? (
+          {state.status === "finished" ? (
+            <PlayerFinale state={state} me={me} />
+          ) : state.paused ? (
             <PausedPanel />
           ) : state.currentGame === "soundscape" && state.soundscape ? (
             <SoundscapePlayer roomId={room.id} state={state} me={me} />
@@ -308,6 +326,10 @@ function WaitingPanel({
       </div>
 
       <div className="mt-6 text-left">
+        <TeamStandingsList state={state} highlightTeamId={me.teamId} compact />
+      </div>
+
+      <div className="mt-6 text-left">
         <div className="text-xs uppercase tracking-widest text-white/50 mb-2">Сменить команду</div>
         <div className="grid grid-cols-2 gap-2">
           {state.teams.map((t) => {
@@ -335,9 +357,103 @@ function WaitingPanel({
   );
 }
 
-function PlayShell({ children }: { children: ReactNode }) {
+function TeamStandingsList({
+  state,
+  highlightTeamId,
+  compact,
+}: {
+  state: import("@/lib/types").RoomState;
+  highlightTeamId?: string;
+  compact?: boolean;
+}) {
+  const standings = computeTeamStandings(state);
+  const hasScores = standings.some((standing) => standing.team.score > 0);
+  if (!hasScores) return null;
+
   return (
-    <main className="min-h-dvh park-gradient flex items-start sm:items-center justify-center px-4 py-6">
+    <div>
+      <div className="text-xs uppercase tracking-widest text-white/50 mb-2">Счёт команд</div>
+      <div className="space-y-1.5">
+        {standings.map((standing) => {
+          const c = teamColorClasses(standing.team.color);
+          const active = highlightTeamId === standing.team.id;
+          return (
+            <div
+              key={standing.team.id}
+              className={`flex items-center justify-between rounded-xl border px-3 py-2 text-sm ${c.chip} ${active ? "ring-2 ring-white/70" : compact ? "opacity-90" : ""}`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-xs tabular-nums opacity-70 w-4">{standing.place}</span>
+                <span className="font-medium truncate">{standing.team.name}</span>
+              </div>
+              <span className="font-display text-lg tabular-nums shrink-0">
+                {standing.team.score}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function PlayerFinale({
+  state,
+  me,
+}: {
+  state: import("@/lib/types").RoomState;
+  me: { id: string; name: string; teamId: string };
+}) {
+  const standings = computeTeamStandings(state);
+  const winners = getWinningStandings(standings);
+  const myStanding = standings.find((standing) => standing.team.id === me.teamId);
+  const isWinner = winners.some((standing) => standing.team.id === me.teamId);
+  const winnerNames = winners.map((standing) => standing.team.name).join(" и ");
+
+  return (
+    <div
+      className={`rounded-3xl backdrop-blur p-6 border text-center text-white ${
+        isWinner
+          ? "bg-gradient-to-b from-[var(--color-park-bright)]/25 to-black/40 border-[var(--color-park-bright)]/40"
+          : "bg-black/40 border-white/10"
+      }`}
+    >
+      <div className="text-4xl">{isWinner ? "🏆" : "🎉"}</div>
+      <div className="text-xs uppercase tracking-[0.25em] text-[var(--color-park-bright)] mt-3">
+        Финал вечеринки
+      </div>
+      {myStanding && (
+        <div className="font-display text-2xl mt-3">
+          Вы заняли {formatRussianPlace(myStanding.place)}
+        </div>
+      )}
+      <p className="text-white/70 text-sm mt-2">
+        {winners.length === 1 ? `Победила команда ${winnerNames}!` : `Ничья: ${winnerNames}!`}
+      </p>
+      {isWinner && (
+        <p className="text-[var(--color-park-bright)] text-sm mt-2 font-medium">
+          Вы в команде-победителе — вы легенда! 🎊
+        </p>
+      )}
+
+      <div className="mt-6 text-left">
+        <TeamStandingsList state={state} highlightTeamId={me.teamId} />
+      </div>
+
+      <p className="text-white/50 text-xs mt-6">Ждём, что решит ведущий дальше…</p>
+    </div>
+  );
+}
+
+function PlayShell({ children, celebratory }: { children: ReactNode; celebratory?: boolean }) {
+  return (
+    <main
+      className={`min-h-dvh flex items-start sm:items-center justify-center px-4 py-6 park-gradient ${
+        celebratory
+          ? "[background-image:linear-gradient(160deg,oklch(0.35_0.12_145),oklch(0.22_0.08_160))]"
+          : ""
+      }`}
+    >
       {children}
     </main>
   );

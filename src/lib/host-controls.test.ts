@@ -1,9 +1,17 @@
 import { describe, expect, test } from "bun:test";
 import {
+  buildWinnerAnnouncement,
   canSkipCurrentPhase,
   CHALLENGE_JUDGING_FALLBACK_FEEDBACK,
+  computeTeamStandings,
+  finishPartyState,
   forceBackToHubState,
+  formatRussianPlace,
+  formatRussianPoints,
+  getWinningStandings,
   pauseRoomState,
+  resetScoresState,
+  resumePartyState,
   resumeRoomState,
   SOUNDSCAPE_FALLBACK_TOPIC,
   skipCurrentPhaseState,
@@ -303,5 +311,139 @@ describe("host controls state helpers", () => {
 
     expect(canSkipCurrentPhase(state)).toBe(true);
     expect(skipCurrentPhaseState(state, now).spectrumcourt?.appealEndsAt).toBe(now);
+  });
+
+  test("finishPartyState sets finished and clears game substates", () => {
+    const state = roomState({
+      paused: { startedAt: 100 },
+      teams: [
+        { id: "forest", name: "Forest", color: "green", score: 12 },
+        { id: "lake", name: "Lake", color: "blue", score: 8 },
+      ],
+      soundscape: { phase: "voting", roundId: "snd" },
+      challenge: { phase: "results", roundId: "ch" },
+      phototunt: { phase: "results", roundId: "ph" },
+      trackguess: {
+        phase: "results",
+        roundId: "tg",
+        roundNumber: 1,
+        totalRounds: 5,
+        usedTrackIds: [],
+      },
+      spectrumcourt: {
+        phase: "results",
+        roundId: "sc",
+        roundNumber: 1,
+        totalRounds: 4,
+        usedSpectrumIds: [],
+      },
+    });
+
+    const result = finishPartyState(state);
+
+    expect(result.status).toBe("finished");
+    expect(result.currentGame).toBeNull();
+    expect(result.paused).toBeUndefined();
+    expect(result.soundscape).toBeUndefined();
+    expect(result.challenge).toBeUndefined();
+    expect(result.phototunt).toBeUndefined();
+    expect(result.trackguess).toBeUndefined();
+    expect(result.spectrumcourt).toBeUndefined();
+    expect(result.teams.find((team) => team.id === "forest")?.score).toBe(12);
+    expect(result.players).toHaveLength(2);
+  });
+
+  test("resumePartyState returns finished room to lobby", () => {
+    const state = roomState({
+      status: "finished",
+      currentGame: null,
+      teams: [
+        { id: "forest", name: "Forest", color: "green", score: 15 },
+        { id: "lake", name: "Lake", color: "blue", score: 3 },
+      ],
+    });
+
+    const result = resumePartyState(state);
+
+    expect(result.status).toBe("lobby");
+    expect(result.currentGame).toBeNull();
+    expect(result.teams.find((team) => team.id === "forest")?.score).toBe(15);
+  });
+
+  test("resumePartyState leaves non-finished room unchanged", () => {
+    const state = roomState({ status: "playing" });
+    expect(resumePartyState(state)).toBe(state);
+  });
+
+  test("resetScoresState zeroes all team scores", () => {
+    const state = roomState({
+      teams: [
+        { id: "forest", name: "Forest", color: "green", score: 20 },
+        { id: "lake", name: "Lake", color: "blue", score: 7 },
+      ],
+    });
+
+    const result = resetScoresState(state);
+
+    expect(result.teams.every((team) => team.score === 0)).toBe(true);
+    expect(result.players).toHaveLength(2);
+  });
+
+  test("computeTeamStandings handles ties with shared places", () => {
+    const state = roomState({
+      teams: [
+        { id: "forest", name: "Forest", color: "green", score: 10 },
+        { id: "lake", name: "Lake", color: "blue", score: 10 },
+        { id: "fire", name: "Fire", color: "red", score: 5 },
+      ],
+      players: [
+        { id: "p1", name: "One", teamId: "forest", joinedAt: 1 },
+        { id: "p2", name: "Two", teamId: "lake", joinedAt: 2 },
+        { id: "p3", name: "Three", teamId: "fire", joinedAt: 3 },
+      ],
+    });
+
+    const standings = computeTeamStandings(state);
+
+    expect(standings.map((s) => [s.team.id, s.place])).toEqual([
+      ["forest", 1],
+      ["lake", 1],
+      ["fire", 3],
+    ]);
+    expect(standings[0]?.playerCount).toBe(1);
+  });
+
+  test("winner announcement handles single winner and ties", () => {
+    const tied = computeTeamStandings(
+      roomState({
+        teams: [
+          { id: "forest", name: "Лисы", color: "green", score: 10 },
+          { id: "lake", name: "Ежи", color: "blue", score: 10 },
+          { id: "fire", name: "Сова", color: "red", score: 3 },
+        ],
+      }),
+    );
+    expect(getWinningStandings(tied)).toHaveLength(2);
+    expect(buildWinnerAnnouncement(tied)).toBe("Ничья между Лисы и Ежи! По 10 очков у каждой!");
+
+    const solo = computeTeamStandings(
+      roomState({
+        teams: [
+          { id: "forest", name: "Лисы", color: "green", score: 12 },
+          { id: "lake", name: "Ежи", color: "blue", score: 4 },
+        ],
+      }),
+    );
+    expect(buildWinnerAnnouncement(solo)).toBe("Победители вечеринки — команда Лисы! 12 очков!");
+  });
+
+  test("Russian place and points formatting", () => {
+    expect(formatRussianPlace(1)).toBe("1 место");
+    expect(formatRussianPlace(2)).toBe("2 места");
+    expect(formatRussianPlace(5)).toBe("5 мест");
+    expect(formatRussianPlace(21)).toBe("21 место");
+    expect(formatRussianPoints(1)).toBe("1 очко");
+    expect(formatRussianPoints(3)).toBe("3 очка");
+    expect(formatRussianPoints(11)).toBe("11 очков");
   });
 });
