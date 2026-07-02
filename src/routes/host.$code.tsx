@@ -8,6 +8,7 @@ import {
   launchChallengeState,
   launchPhotoHuntState,
   launchSoundscapeState,
+  launchTrackGuessState,
 } from "@/lib/game-state";
 import { teamColorClasses } from "@/lib/team-style";
 import {
@@ -17,7 +18,15 @@ import {
   resumeRoomState,
   skipCurrentPhaseState,
 } from "@/lib/host-controls";
-import { formatSpeakerHeartbeatAge, speakerReadiness } from "@/lib/speaker-status";
+import { speakerReadiness } from "@/lib/speaker-status";
+import {
+  addTeamToState,
+  MAX_TEAMS,
+  playersOnTeam,
+  removeTeamFromState,
+  renameTeamInState,
+  suggestTeamName,
+} from "@/lib/teams";
 import type { RoomState } from "@/lib/types";
 
 const SoundscapeHost = lazy(() =>
@@ -33,6 +42,11 @@ const ChallengeHost = lazy(() =>
 const PhotoHuntHost = lazy(() =>
   import("@/games/phototunt/HostView").then((module) => ({
     default: module.PhotoHuntHost,
+  })),
+);
+const TrackGuessHost = lazy(() =>
+  import("@/games/trackguess/HostView").then((module) => ({
+    default: module.TrackGuessHost,
   })),
 );
 
@@ -116,6 +130,12 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
     await updateRoomState(roomId, next);
   }
 
+  async function launchTrackGuess() {
+    const next = launchTrackGuessState(state, genId("tg"));
+    if (!next) return;
+    await updateRoomState(roomId, next);
+  }
+
   async function resetGame() {
     await updateRoomState(roomId, forceBackToHubState(state));
   }
@@ -135,10 +155,29 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
     if (state.currentGame === "soundscape") await launchSoundscape();
     if (state.currentGame === "challenge") await launchChallenge();
     if (state.currentGame === "phototunt") await launchPhotoHunt();
+    if (state.currentGame === "trackguess") await launchTrackGuess();
   }
 
   async function forceBackToHub() {
     await updateRoomState(roomId, forceBackToHubState(state));
+  }
+
+  async function addTeam(name: string) {
+    const next = addTeamToState(state, name, genId("team"));
+    if (!next) return;
+    await updateRoomState(roomId, next);
+  }
+
+  async function renameTeam(teamId: string, name: string) {
+    const next = renameTeamInState(state, teamId, name);
+    if (!next) return;
+    await updateRoomState(roomId, next);
+  }
+
+  async function removeTeam(teamId: string) {
+    const next = removeTeamFromState(state, teamId);
+    if (!next) return;
+    await updateRoomState(roomId, next);
   }
 
   return (
@@ -179,6 +218,8 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
                 <ChallengeHost roomId={roomId} state={state} />
               ) : state.currentGame === "phototunt" && state.phototunt ? (
                 <PhotoHuntHost roomId={roomId} state={state} />
+              ) : state.currentGame === "trackguess" && state.trackguess ? (
+                <TrackGuessHost roomId={roomId} state={state} />
               ) : (
                 <HostGameLoading />
               )}
@@ -191,8 +232,12 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
               onLaunchSoundscape={launchSoundscape}
               onLaunchChallenge={launchChallenge}
               onLaunchPhotoHunt={launchPhotoHunt}
+              onLaunchTrackGuess={launchTrackGuess}
               speakerUrlFor={speakerUrlFor}
               onTestSpeaker={testSpeaker}
+              onAddTeam={addTeam}
+              onRenameTeam={renameTeam}
+              onRemoveTeam={removeTeam}
               state={state}
             />
           )}
@@ -241,6 +286,7 @@ function HostControlBar({
     soundscape: "Звуковой баттл",
     challenge: "Челлендж",
     phototunt: "Фотоохота",
+    trackguess: "Настоящий или AI?",
   }[state.currentGame ?? "soundscape"];
   const phase =
     state.currentGame === "soundscape"
@@ -249,7 +295,9 @@ function HostControlBar({
         ? state.challenge?.phase
         : state.currentGame === "phototunt"
           ? state.phototunt?.phase
-          : null;
+          : state.currentGame === "trackguess"
+            ? state.trackguess?.phase
+            : null;
 
   return (
     <div className="mb-4 rounded-3xl border border-white/10 bg-card p-4">
@@ -311,8 +359,12 @@ function Lobby({
   onLaunchSoundscape,
   onLaunchChallenge,
   onLaunchPhotoHunt,
+  onLaunchTrackGuess,
   speakerUrlFor,
   onTestSpeaker,
+  onAddTeam,
+  onRenameTeam,
+  onRemoveTeam,
   state,
 }: {
   totalPlayers: number;
@@ -321,14 +373,25 @@ function Lobby({
   onLaunchSoundscape: () => void;
   onLaunchChallenge: () => void;
   onLaunchPhotoHunt: () => void;
+  onLaunchTrackGuess: () => void;
   speakerUrlFor: (n: number) => string;
   onTestSpeaker: (n: number) => void;
+  onAddTeam: (name: string) => Promise<void>;
+  onRenameTeam: (teamId: string, name: string) => Promise<void>;
+  onRemoveTeam: (teamId: string) => Promise<void>;
   state: import("@/lib/types").RoomState;
 }) {
   const [copied, setCopied] = useState(false);
-  const [mainTested, setMainTested] = useState(false);
-  const [extrasOpen, setExtrasOpen] = useState(false);
-  const [extrasSkipped, setExtrasSkipped] = useState(false);
+  const [fullscreenQr, setFullscreenQr] = useState(false);
+
+  const extrasConnected = [2, 3, 4, 5].filter(
+    (s) => speakerReadiness(s, state.speakerSlots?.[s]).status === "ready",
+  ).length;
+  const hasPlayers = totalPlayers > 0;
+  const canChallenge = totalPlayers >= 2;
+  const canPhoto = totalPlayers >= 1;
+  const canSoundscape = totalPlayers >= 1;
+  const canTrackGuess = totalPlayers >= 1;
 
   function copyLink() {
     navigator.clipboard?.writeText(joinUrl).then(() => {
@@ -336,155 +399,121 @@ function Lobby({
       setTimeout(() => setCopied(false), 1500);
     });
   }
-  async function share() {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: eventProfile.title,
-          text: `Заходи в парк, код ${code}`,
-          url: joinUrl,
-        });
-      } catch {
-        // Native share was cancelled or unavailable after opening.
-      }
-    } else copyLink();
-  }
-  function testMain() {
-    onTestSpeaker(1);
-    setMainTested(true);
-  }
 
-  const extrasConnected = [2, 3, 4, 5].filter(
-    (s) => speakerReadiness(s, state.speakerSlots?.[s]).status === "ready",
-  ).length;
-  const step1Done = mainTested;
-  const step2Done = totalPlayers > 0;
-  const step3Done = extrasConnected > 0 || extrasSkipped;
-  const canLaunch = step1Done && step2Done;
+  if (fullscreenQr) {
+    return (
+      <SetupFullscreen
+        code={code}
+        joinUrl={joinUrl}
+        speakerUrlFor={speakerUrlFor}
+        state={state}
+        totalPlayers={totalPlayers}
+        extrasConnected={extrasConnected}
+        onClose={() => setFullscreenQr(false)}
+        onTestSpeaker={onTestSpeaker}
+      />
+    );
+  }
 
   return (
     <div className="space-y-4">
-      {/* STEP 1 — главная колонка */}
-      <Step
-        n={1}
-        done={step1Done}
-        title="Подключи главную колонку"
-        subtitle="Bluetooth-колонка к этому телефону"
-      >
-        <p className="text-sm text-muted-foreground">
-          Открой настройки Bluetooth на этом телефоне, найди колонку, выкрути громкость на максимум.
-          Потом проверь — должно сказать «главная колонка на связи».
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            onClick={testMain}
-            className="rounded-full bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] text-sm font-medium px-4 py-2"
-          >
-            🔊 {mainTested ? "Ещё раз" : "Проверить колонку"}
-          </button>
-          {!mainTested && (
-            <button
-              onClick={() => setMainTested(true)}
-              className="rounded-full bg-white/5 text-white/70 text-sm px-4 py-2"
-            >
-              Пропустить (играю без колонки)
-            </button>
-          )}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-card/40 px-4 py-3">
+        <div className="text-sm text-muted-foreground">
+          <span className="text-foreground font-medium">{totalPlayers}</span> игроков ·{" "}
+          <span className="text-foreground font-medium">{extrasConnected}</span> доп. колонок
         </div>
-      </Step>
+        <button
+          type="button"
+          onClick={() => setFullscreenQr(true)}
+          className="rounded-full bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] text-sm font-medium px-4 py-2"
+        >
+          QR на весь экран
+        </button>
+      </div>
 
-      {/* STEP 2 — игроки */}
-      <Step
-        n={2}
-        done={step2Done}
-        title="Позови друзей"
-        subtitle={step2Done ? `${totalPlayers} в комнате` : "Они сканируют QR"}
-      >
+      <TeamManager
+        state={state}
+        onAddTeam={onAddTeam}
+        onRenameTeam={onRenameTeam}
+        onRemoveTeam={onRemoveTeam}
+      />
+
+      <section className="rounded-3xl border bg-card border-border p-5">
+        <header className="mb-3">
+          <h3 className="font-display text-xl">Игроки</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Сканируют QR — попадают в лобби</p>
+        </header>
         <div className="rounded-2xl bg-white p-4 text-center">
           <div className="inline-block rounded-xl bg-white p-2 ring-1 ring-black/10">
             <QRCodeSVG value={joinUrl} size={220} level="M" includeMargin={false} />
           </div>
-          <div className="mt-2 font-display text-3xl tracking-[0.25em] tabular-num text-black">
+          <div className="mt-2 font-display text-3xl tracking-[0.25em] tabular-nums text-black">
             {code}
-          </div>
-          <div className="mt-0.5 text-[11px] text-black/50 break-all">
-            {joinUrl.replace(/^https?:\/\//, "")}
           </div>
           <div className="mt-3 flex gap-2 justify-center">
             <button
-              onClick={share}
-              className="rounded-full bg-black text-white text-xs px-3 py-1.5"
-            >
-              Поделиться
-            </button>
-            <button
+              type="button"
               onClick={copyLink}
               className="rounded-full bg-black/5 text-black text-xs px-3 py-1.5"
             >
-              {copied ? "✓" : "Копировать"}
+              {copied ? "✓ скопировано" : "Копировать ссылку"}
             </button>
           </div>
         </div>
-      </Step>
+      </section>
 
-      {/* STEP 3 — духи парка (опционально) */}
-      <Step
-        n={3}
-        done={step3Done}
-        optional
-        title="Духи парка"
-        subtitle={extrasConnected > 0 ? `${extrasConnected} доп. колонок` : "Можно пропустить"}
-      >
-        <p className="text-sm text-muted-foreground">
-          Хочешь объёмный звук? Возьми ещё телефоны, открой на каждом ссылку ниже — они станут
-          отдельными «голосами» парка. Подключи к ним Bluetooth-колонки и расставь у деревьев.
-        </p>
-        {!extrasOpen && !extrasSkipped && (
-          <div className="mt-3 flex gap-2">
-            <button
-              onClick={() => setExtrasOpen(true)}
-              className="rounded-full bg-white/10 hover:bg-white/15 text-white text-sm px-4 py-2"
-            >
-              Показать ссылки
-            </button>
-            <button
-              onClick={() => setExtrasSkipped(true)}
-              className="rounded-full bg-white/5 text-white/70 text-sm px-4 py-2"
-            >
-              Пропустить
-            </button>
-          </div>
-        )}
-        {(extrasOpen || extrasConnected > 0) && (
-          <div className="grid sm:grid-cols-2 gap-2 mt-3">
-            {[2, 3, 4, 5].map((slot) => (
-              <SpeakerSetupRow
-                key={slot}
-                slot={slot}
-                url={speakerUrlFor(slot)}
-                state={state}
-                onTest={() => onTestSpeaker(slot)}
-              />
-            ))}
-          </div>
-        )}
-      </Step>
-
-      {/* STEP 4 — выбор игры */}
-      <div className={`rounded-3xl park-gradient p-6 text-white ${canLaunch ? "" : "opacity-70"}`}>
-        <div className="flex items-center gap-3">
-          <span className="size-7 grid place-items-center rounded-full bg-white/15 font-display text-sm">
-            4
-          </span>
+      <section className="rounded-3xl border bg-card border-border p-5">
+        <header className="mb-3 flex flex-wrap items-start justify-between gap-2">
           <div>
-            <div className="text-xs uppercase tracking-[0.25em] text-white/80">Выбери игру</div>
-            <h3 className="font-display text-2xl mt-0.5">Что играем первым?</h3>
+            <h3 className="font-display text-xl">Главная колонка</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Bluetooth к этому телефону · опционально для Challenge и Photo Hunt
+            </p>
           </div>
+          <button
+            type="button"
+            onClick={() => onTestSpeaker(1)}
+            className="rounded-full bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] text-sm font-medium px-4 py-2"
+          >
+            🔊 Проверить звук
+          </button>
+        </header>
+      </section>
+
+      <section className="rounded-3xl border bg-card border-border p-5">
+        <header className="mb-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-display text-xl">Духи парка</h3>
+            <span className="text-[10px] uppercase tracking-widest text-muted-foreground rounded-full bg-white/5 px-2 py-0.5">
+              опционально · Soundscape
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Старый телефон + Bluetooth-колонка — сканирует QR и становится «голосом» парка
+          </p>
+        </header>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[2, 3, 4, 5].map((slot) => (
+            <SpeakerQrCard
+              key={slot}
+              slot={slot}
+              url={speakerUrlFor(slot)}
+              state={state}
+              onTest={() => onTestSpeaker(slot)}
+            />
+          ))}
+        </div>
+      </section>
+
+      <div className={`rounded-3xl park-gradient p-6 text-white ${hasPlayers ? "" : "opacity-70"}`}>
+        <div>
+          <div className="text-xs uppercase tracking-[0.25em] text-white/80">Старт</div>
+          <h3 className="font-display text-2xl mt-0.5">Что играем первым?</h3>
         </div>
 
-        {!canLaunch && (
+        {!hasPlayers && (
           <p className="mt-3 text-white/80 text-sm">
-            {!step2Done ? "Сначала позови хотя бы одного игрока." : "Проверь колонку выше."}
+            Сначала пусть хотя бы один друг отсканирует QR.
           </p>
         )}
 
@@ -493,30 +522,317 @@ function Lobby({
             emoji="🎚️"
             title="Звуковой баттл"
             time="~7 минут"
-            desc="Команды ловят звуки парка, AI собирает 60-сек спатиальный микс между колонками."
-            disabled={!canLaunch}
+            desc="Команды ловят звуки парка, AI собирает 60-сек микс между колонками."
+            disabled={!canSoundscape}
+            disabledHint={
+              !canSoundscape
+                ? "нужен ≥ 1 игрок"
+                : extrasConnected === 0
+                  ? "можно без доп. колонок"
+                  : undefined
+            }
             onClick={onLaunchSoundscape}
           />
           <GameCard
             emoji="🎬"
             title="Челлендж духа парка"
             time="~3 минуты на раунд"
-            desc="Один снимает на телефон, остальные играют сценку по заданию AI. Судья ставит 1-10."
-            disabled={!canLaunch || totalPlayers < 2}
-            disabledHint={totalPlayers < 2 ? "нужно ≥ 2 игроков" : undefined}
+            desc="Один снимает на телефон, остальные играют сценку. AI судит 1–10."
+            disabled={!canChallenge}
+            disabledHint={!canChallenge ? "нужно ≥ 2 игроков" : undefined}
             onClick={onLaunchChallenge}
           />
           <GameCard
             emoji="📸"
             title="Фотоохота"
             time="~2 минуты на раунд"
-            desc="AI даёт абсурдное фото-задание. У всех 60 сек снять ОДИН кадр. AI ранжирует и язвит."
-            disabled={!canLaunch}
+            desc="AI даёт абсурдное задание. У всех 60 сек на один кадр."
+            disabled={!canPhoto}
+            disabledHint={!canPhoto ? "нужен ≥ 1 игрок" : undefined}
             onClick={onLaunchPhotoHunt}
+          />
+          <GameCard
+            emoji="🎧"
+            title="Настоящий или AI?"
+            time="~5 раундов"
+            desc="Слушаете трек и угадываете: живой или сгенерированный нейросетью."
+            disabled={!canTrackGuess}
+            disabledHint={!canTrackGuess ? "нужен ≥ 1 игрок" : undefined}
+            onClick={onLaunchTrackGuess}
           />
         </div>
       </div>
     </div>
+  );
+}
+
+function SetupFullscreen({
+  code,
+  joinUrl,
+  speakerUrlFor,
+  state,
+  totalPlayers,
+  extrasConnected,
+  onClose,
+  onTestSpeaker,
+}: {
+  code: string;
+  joinUrl: string;
+  speakerUrlFor: (n: number) => string;
+  state: import("@/lib/types").RoomState;
+  totalPlayers: number;
+  extrasConnected: number;
+  onClose: () => void;
+  onTestSpeaker: (n: number) => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 park-gradient overflow-auto">
+      <div className="min-h-dvh px-4 py-6 sm:px-8">
+        <div className="mx-auto max-w-5xl">
+          <div className="flex items-start justify-between gap-4 mb-6">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.25em] text-white/70">
+                {eventProfile.title}
+              </div>
+              <h2 className="font-display text-4xl sm:text-5xl text-white mt-1 tracking-[0.2em]">
+                {code}
+              </h2>
+              <p className="text-sm text-white/70 mt-2">
+                {totalPlayers} игроков · {extrasConnected} доп. колонок онлайн
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full bg-white/10 hover:bg-white/15 text-white text-sm px-4 py-2"
+            >
+              Закрыть
+            </button>
+          </div>
+
+          <div className="grid lg:grid-cols-[1.2fr_1fr] gap-6">
+            <section className="rounded-3xl bg-white p-6 text-center">
+              <div className="text-xs uppercase tracking-widest text-black/50 mb-3">Игроки</div>
+              <QRCodeSVG value={joinUrl} size={280} level="M" includeMargin={false} />
+              <p className="mt-4 text-sm text-black/60">
+                Сканируй камерой — имя и команда на телефоне
+              </p>
+            </section>
+
+            <section className="rounded-3xl bg-black/35 border border-white/10 p-5">
+              <div className="text-xs uppercase tracking-widest text-white/60 mb-4 text-center">
+                Колонки · опционально
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {[2, 3, 4, 5].map((slot) => (
+                  <SpeakerQrCard
+                    key={slot}
+                    slot={slot}
+                    url={speakerUrlFor(slot)}
+                    state={state}
+                    onTest={() => onTestSpeaker(slot)}
+                    compact
+                  />
+                ))}
+              </div>
+              <p className="text-xs text-white/50 text-center mt-4">
+                Bluetooth-колонка → сканируй QR → одна кнопка «Включить»
+              </p>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SpeakerQrCard({
+  slot,
+  url,
+  state,
+  onTest,
+  compact,
+}: {
+  slot: number;
+  url: string;
+  state: import("@/lib/types").RoomState;
+  onTest: () => void;
+  compact?: boolean;
+}) {
+  const sp = state.speakerSlots?.[slot];
+  const readiness = speakerReadiness(slot, sp);
+  const ready = readiness.status === "ready";
+  const readyClass =
+    readiness.status === "ready"
+      ? "bg-[var(--color-park-bright)]/20 text-[var(--color-park-bright)]"
+      : readiness.status === "stale"
+        ? "bg-amber-300/15 text-amber-100"
+        : "bg-white/5 text-white/50";
+
+  if (!url) return null;
+
+  return (
+    <div
+      className={`rounded-2xl border p-3 text-center ${compact ? "bg-white/95 border-white/20" : "bg-background/40 border-border"}`}
+    >
+      <div
+        className={`inline-block rounded-lg p-1.5 ${compact ? "bg-white" : "bg-white ring-1 ring-black/10"}`}
+      >
+        <QRCodeSVG value={url} size={compact ? 88 : 100} level="M" includeMargin={false} />
+      </div>
+      <div className={`mt-2 text-xs font-medium truncate ${compact ? "text-black" : ""}`}>
+        {sp?.name ?? `Колонка ${slot}`}
+      </div>
+      <div className="mt-1 flex items-center justify-center gap-1.5 flex-wrap">
+        <span className={`text-[10px] px-2 py-0.5 rounded-full ${readyClass}`}>
+          {readiness.label}
+        </span>
+        {ready && (
+          <button
+            type="button"
+            onClick={onTest}
+            className="text-[10px] rounded-full bg-white/10 hover:bg-white/20 px-2 py-0.5"
+          >
+            🔊 тест
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TeamManager({
+  state,
+  onAddTeam,
+  onRenameTeam,
+  onRemoveTeam,
+}: {
+  state: RoomState;
+  onAddTeam: (name: string) => Promise<void>;
+  onRenameTeam: (teamId: string, name: string) => Promise<void>;
+  onRemoveTeam: (teamId: string) => Promise<void>;
+}) {
+  const [newName, setNewName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const canAdd = state.teams.length < MAX_TEAMS;
+
+  async function submitNewTeam(name: string) {
+    if (!canAdd || busy) return;
+    setBusy(true);
+    try {
+      await onAddTeam(name.trim() || suggestTeamName(state.teams));
+      setNewName("");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="rounded-3xl border bg-card border-border p-5">
+      <header className="mb-3 flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h3 className="font-display text-xl">Команды</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Игроки выбирают команду на телефоне — названия обновляются сразу
+          </p>
+        </div>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          {state.teams.length}/{MAX_TEAMS}
+        </span>
+      </header>
+
+      <div className="space-y-2">
+        {state.teams.map((t) => {
+          const c = teamColorClasses(t.color);
+          const members = playersOnTeam(state, t.id);
+          const canRemove = state.teams.length > 1 && members.length === 0;
+          return (
+            <div
+              key={t.id}
+              className={`flex items-center gap-2 rounded-2xl border px-3 py-2 ${c.chip}`}
+            >
+              <span className={`size-3 shrink-0 rounded-full ${c.bg}`} />
+              <input
+                key={`${t.id}:${t.name}`}
+                defaultValue={t.name}
+                onBlur={(e) => {
+                  const next = e.target.value.trim();
+                  if (next && next !== t.name) void onRenameTeam(t.id, next);
+                }}
+                className="min-w-0 flex-1 bg-transparent font-medium outline-none"
+              />
+              <span className="hidden sm:inline text-[10px] uppercase tracking-wide opacity-70 shrink-0">
+                {members.length === 0
+                  ? "пусто"
+                  : `${members.length} ${members.length === 1 ? "игрок" : members.length < 5 ? "игрока" : "игроков"}`}
+              </span>
+              {canRemove && (
+                <button
+                  type="button"
+                  onClick={() => void onRemoveTeam(t.id)}
+                  className="shrink-0 rounded-full bg-black/10 hover:bg-black/20 size-7 text-sm"
+                  aria-label={`Удалить ${t.name}`}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {canAdd ? (
+        <form
+          className="mt-3 flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submitNewTeam(newName);
+          }}
+        >
+          <input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder={suggestTeamName(state.teams)}
+            className="min-w-0 flex-1 rounded-2xl border border-border bg-background/60 px-3 py-2 text-sm outline-none focus:border-[var(--color-park-bright)]/50"
+          />
+          <button
+            type="submit"
+            disabled={busy}
+            className="shrink-0 rounded-2xl bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] px-4 py-2 text-sm font-medium disabled:opacity-50"
+          >
+            + Добавить
+          </button>
+        </form>
+      ) : (
+        <p className="mt-3 text-xs text-muted-foreground">Максимум {MAX_TEAMS} команд.</p>
+      )}
+
+      {canAdd && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {["Лисы", "Ежи", "Сова", "Волки"].map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              disabled={
+                busy || state.teams.some((t) => t.name.toLowerCase() === preset.toLowerCase())
+              }
+              onClick={() => void submitNewTeam(preset)}
+              className="rounded-full border border-border bg-background/40 px-3 py-1 text-xs hover:bg-background/70 disabled:opacity-40"
+            >
+              + {preset}
+            </button>
+          ))}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void submitNewTeam(suggestTeamName(state.teams))}
+            className="rounded-full border border-border bg-background/40 px-3 py-1 text-xs hover:bg-background/70 disabled:opacity-50"
+          >
+            + Быстрая команда
+          </button>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -551,119 +867,6 @@ function GameCard({
       <p className="text-sm text-white/75 mt-1">{desc}</p>
       {disabled && disabledHint && <div className="mt-2 text-xs text-white/55">{disabledHint}</div>}
     </button>
-  );
-}
-
-function Step({
-  n,
-  done,
-  optional,
-  title,
-  subtitle,
-  children,
-}: {
-  n: number;
-  done: boolean;
-  optional?: boolean;
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section
-      className={`rounded-3xl border p-5 transition ${done ? "bg-card/60 border-[var(--color-park-bright)]/30" : "bg-card border-border"}`}
-    >
-      <header className="flex items-start gap-3">
-        <span
-          className={`shrink-0 size-8 grid place-items-center rounded-full font-display text-sm ${done ? "bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)]" : "bg-white/10 text-white"}`}
-        >
-          {done ? "✓" : n}
-        </span>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-display text-lg">{title}</h3>
-            {optional && (
-              <span className="text-[10px] uppercase tracking-widest text-muted-foreground rounded-full bg-white/5 px-2 py-0.5">
-                опционально
-              </span>
-            )}
-          </div>
-          {subtitle && <div className="text-xs text-muted-foreground">{subtitle}</div>}
-        </div>
-      </header>
-      <div className="mt-3 pl-11">{children}</div>
-    </section>
-  );
-}
-
-function SpeakerSetupRow({
-  slot,
-  url,
-  state,
-  onTest,
-}: {
-  slot: number;
-  url: string;
-  state: import("@/lib/types").RoomState;
-  onTest: () => void;
-}) {
-  const sp = state.speakerSlots?.[slot];
-  const isMain = slot === 1;
-  const readiness = speakerReadiness(slot, sp);
-  const readyClass =
-    readiness.status === "ready" || readiness.status === "host"
-      ? "bg-[var(--color-park-bright)]/20 text-[var(--color-park-bright)]"
-      : readiness.status === "stale"
-        ? "bg-amber-300/15 text-amber-100"
-        : "bg-white/5 text-white/40";
-  const [copied, setCopied] = useState(false);
-  function copy() {
-    if (!url) return;
-    navigator.clipboard?.writeText(url).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  }
-  return (
-    <div className="rounded-2xl bg-background/40 border p-3 text-sm">
-      <div className="flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          <div className="font-medium truncate">
-            Колонка {slot} · {sp?.name}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {isMain
-              ? "Это устройство ведущего"
-              : readiness.status === "ready"
-                ? `heartbeat ${formatSpeakerHeartbeatAge(readiness.ageMs)}`
-                : readiness.status === "stale"
-                  ? `нужно проверить · ${formatSpeakerHeartbeatAge(readiness.ageMs)}`
-                  : "Открой ссылку на другом телефоне"}
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          {(isMain || sp?.connected) && (
-            <button
-              onClick={onTest}
-              className="text-xs rounded-full bg-white/10 hover:bg-white/20 px-2.5 py-1"
-            >
-              🔊 тест
-            </button>
-          )}
-          <span className={`text-xs px-2 py-0.5 rounded-full ${readyClass}`}>
-            {readiness.label}
-          </span>
-        </div>
-      </div>
-      {!isMain && (
-        <button
-          onClick={copy}
-          className="mt-2 w-full rounded-xl bg-white/5 hover:bg-white/10 px-3 py-2 text-xs text-left font-mono truncate"
-        >
-          {copied ? "✓ скопировано" : url}
-        </button>
-      )}
-    </div>
   );
 }
 

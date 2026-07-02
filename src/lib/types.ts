@@ -78,7 +78,7 @@ export type ChallengeState = {
   pastOperatorIds?: string[];
 };
 
-export type GameId = "soundscape" | "challenge" | "phototunt";
+export type GameId = "soundscape" | "challenge" | "phototunt" | "trackguess";
 
 export type PhotoHuntPhase = "briefing" | "hunting" | "judging" | "results";
 
@@ -104,6 +104,34 @@ export type PhotoHuntState = {
   pastTasks?: string[];
 };
 
+export type TrackGuessPhase = "briefing" | "listening" | "guessing" | "reveal" | "results";
+
+export type TrackGuessRoundResult = {
+  trackId: string;
+  title: string;
+  genre: string;
+  isAi: boolean;
+  correctPlayerIds: string[];
+};
+
+export type TrackGuessState = {
+  phase: TrackGuessPhase;
+  roundId: string;
+  roundNumber: number;
+  totalRounds: number;
+  usedTrackIds: string[];
+  trackId?: string;
+  trackTitle?: string;
+  trackGenre?: string;
+  trackUrl?: string;
+  listeningEndsAt?: number;
+  guessEndsAt?: number;
+  revealEndsAt?: number;
+  guesses?: Record<string, "real" | "ai">;
+  isAi?: boolean;
+  roundResults?: TrackGuessRoundResult[];
+};
+
 export type RoomState = {
   hostName: string;
   status: "lobby" | "playing" | "finished";
@@ -116,6 +144,7 @@ export type RoomState = {
   soundscape?: SoundscapeState;
   challenge?: ChallengeState;
   phototunt?: PhotoHuntState;
+  trackguess?: TrackGuessState;
   speakerSlots: Record<number, { connected: boolean; name: string; lastSeenAt?: number }>; // 1..5
 };
 

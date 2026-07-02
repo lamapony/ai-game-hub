@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { launchChallengeState, launchPhotoHuntState, launchSoundscapeState } from "./game-state";
+import {
+  launchChallengeState,
+  launchPhotoHuntState,
+  launchSoundscapeState,
+  launchTrackGuessState,
+} from "./game-state";
 import type { RoomState } from "./types";
 
 function roomState(overrides: Partial<RoomState> = {}): RoomState {
@@ -84,6 +89,16 @@ describe("game state launch helpers", () => {
     expect(withPlayer?.phototunt?.phase).toBe("briefing");
     expect(withPlayer?.phototunt?.roundId).toBe("ph_1");
     expect(withPlayer?.phototunt?.pastTasks?.length).toBe(0);
+    expect(withoutPlayers).toBeNull();
+  });
+
+  test("launchTrackGuess starts briefing with five rounds", () => {
+    const withPlayer = launchTrackGuessState(roomState(), "tg_1");
+    const withoutPlayers = launchTrackGuessState(roomState({ players: [] }), "tg_2");
+
+    expect(withPlayer?.currentGame).toBe("trackguess");
+    expect(withPlayer?.trackguess?.phase).toBe("briefing");
+    expect(withPlayer?.trackguess?.totalRounds).toBe(5);
     expect(withoutPlayers).toBeNull();
   });
 });

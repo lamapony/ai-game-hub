@@ -110,21 +110,9 @@ function SpeakerPage() {
 
         {!armed ? (
           <>
-            <p className="mt-3 text-white/70 text-sm">
-              3 шага — и этот телефон станет «голосом» парка.
+            <p className="mt-4 text-white/75 text-sm leading-relaxed">
+              Подключи Bluetooth-колонку, громкость на максимум. Нажми кнопку — и не блокируй экран.
             </p>
-            <ol className="mt-5 text-left space-y-3">
-              <SpeakerStep n={1} title="Подключи Bluetooth-колонку">
-                Настройки → Bluetooth → найди колонку → подключись. Громкость на максимум.
-              </SpeakerStep>
-              <SpeakerStep n={2} title="Поставь у дерева">
-                Чем дальше друг от друга колонки, тем интереснее. Не оставляй без присмотра 😉
-              </SpeakerStep>
-              <SpeakerStep n={3} title="Нажми кнопку и не блокируй экран">
-                Браузеры не дают играть звук, пока ты не разрешишь. Жми кнопку — и спрячь телефон в
-                карман, не выключая экран.
-              </SpeakerStep>
-            </ol>
             <button
               onClick={() => {
                 const a = new Audio();
@@ -132,12 +120,12 @@ function SpeakerPage() {
                 a.play().catch(() => {});
                 setArmed(true);
               }}
-              className="mt-5 w-full rounded-3xl bg-white text-[oklch(0.18_0.05_160)] py-6 text-xl font-display"
+              className="mt-6 w-full rounded-3xl bg-white text-[oklch(0.18_0.05_160)] py-6 text-xl font-display"
             >
-              ▶ Включить колонку
+              ▶ {SPEAKER_NAMES[slot]} — включить
             </button>
             <p className="mt-3 text-xs text-white/60">
-              Ведущий нажмёт «🔊 тест» — ты должен услышать голос.
+              Ведущий проверит звук кнопкой «🔊 тест» на своём экране.
             </p>
           </>
         ) : (
@@ -167,28 +155,6 @@ function SpeakerPage() {
         )}
       </div>
     </Shell>
-  );
-}
-
-function SpeakerStep({
-  n,
-  title,
-  children,
-}: {
-  n: number;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <li className="flex gap-3 rounded-2xl bg-black/30 backdrop-blur border border-white/10 p-3.5">
-      <span className="shrink-0 size-7 grid place-items-center rounded-full bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] font-display text-sm">
-        {n}
-      </span>
-      <div>
-        <div className="font-medium text-white text-sm">{title}</div>
-        <div className="text-white/70 text-xs mt-0.5">{children}</div>
-      </div>
-    </li>
   );
 }
 

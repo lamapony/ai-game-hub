@@ -24,14 +24,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Validate cleanup config
+        id: config
         env:
           CLEANUP_URL: ${{ vars.CLEANUP_URL }}
           CLEANUP_SECRET: ${{ secrets.CLEANUP_SECRET }}
         run: |
-          test -n "$CLEANUP_URL"
-          test -n "$CLEANUP_SECRET"
+          if [ -z "$CLEANUP_URL" ]; then
+            echo "Cleanup URL is not configured yet; skipping cleanup until first deploy sets CLEANUP_URL."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -z "$CLEANUP_SECRET" ]; then
+            echo "CLEANUP_SECRET is missing."
+            exit 1
+          fi
+          echo "configured=true" >> "$GITHUB_OUTPUT"
 
       - name: Run cleanup
+        if: steps.config.outputs.configured == 'true'
         env:
           CLEANUP_URL: ${{ vars.CLEANUP_URL }}
           CLEANUP_SECRET: ${{ secrets.CLEANUP_SECRET }}

@@ -141,14 +141,14 @@
 4. Проверить GitHub Actions config: `bun run verify:github-prod --repo=lamapony/ai-game-hub`.
 5. Выполнить preflight: `bun run verify:prod-env`.
 6. Выполнить `bun run build`.
-7. Подготовить runtime env: `bun run verify:prod-env --write-dotenv=dist/server/.deploy.env`.
-8. Задеплоить prebuilt Worker output: `npx wrangler deploy --config wrangler.json --cwd dist/server --secrets-file .deploy.env --keep-vars`.
-9. После деплоя пройти smoke test на production URL.
+7. Выполнить production deploy через GitHub Actions `Deploy Vercel` или локально:
+   `bun run deploy:vercel`.
+8. После деплоя пройти smoke test на production URL.
 
 ## GitHub Actions
 
 - `CI` запускается на push и pull request в `main`: install, lint, test, typecheck, build.
-- `Deploy Cloudflare` запускается вручную через GitHub Actions после настройки secrets.
+- `Deploy Vercel` запускается вручную через GitHub Actions после настройки secrets.
   Workflow сначала запускает `bun run verify:prod-env`, чтобы показать конкретные отсутствующие
   keys до build/deploy.
 - Required repo variables for first deploy:
@@ -170,12 +170,14 @@
   - `SUPABASE_SERVICE_ROLE_KEY`
   - `CLEANUP_SECRET`
   - `OPENAI_API_KEY`
-  - `CLOUDFLARE_ACCOUNT_ID`
-  - `CLOUDFLARE_API_TOKEN`
+  - `VERCEL_ORG_ID`
+  - `VERCEL_PROJECT_ID`
+  - `VERCEL_TOKEN`
 
-На 2026-07-01 в GitHub уже заведены `CLEANUP_SECRET` и `CLOUDFLARE_ACCOUNT_ID`.
-Для первого production deploy ещё нужны `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY` и
-`CLOUDFLARE_API_TOKEN`. После первого deploy нужно добавить repo variable `CLEANUP_URL`.
+На 2026-07-02 в GitHub уже заведены все required repo variables for first deploy,
+`CLEANUP_SECRET` и `SUPABASE_SERVICE_ROLE_KEY`. Для первого production deploy ещё нужны
+`OPENAI_API_KEY`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` и `VERCEL_TOKEN`. После первого deploy
+нужно добавить repo variable `CLEANUP_URL`.
 
 ## Риски, которые стоит проверить до публичного мероприятия
 

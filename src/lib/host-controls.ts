@@ -5,6 +5,9 @@ const SOUND_VOTING_MS = 30_000;
 const CHALLENGE_RECORDING_MS = 25_000;
 const CHALLENGE_UPLOAD_GRACE_MS = 30_000;
 const PHOTO_HUNT_MS = 60_000;
+const TRACK_GUESS_LISTEN_MS = 25_000;
+const TRACK_GUESS_GUESS_MS = 20_000;
+const TRACK_GUESS_REVEAL_MS = 8_000;
 
 function shiftTime(value: number | undefined, deltaMs: number) {
   return typeof value === "number" ? value + deltaMs : value;
@@ -46,6 +49,14 @@ export function resumeRoomState(state: RoomState, now = Date.now()): RoomState {
           huntEndsAt: shiftTime(state.phototunt.huntEndsAt, deltaMs),
         }
       : undefined,
+    trackguess: state.trackguess
+      ? {
+          ...state.trackguess,
+          listeningEndsAt: shiftTime(state.trackguess.listeningEndsAt, deltaMs),
+          guessEndsAt: shiftTime(state.trackguess.guessEndsAt, deltaMs),
+          revealEndsAt: shiftTime(state.trackguess.revealEndsAt, deltaMs),
+        }
+      : undefined,
   };
 }
 
@@ -58,6 +69,7 @@ export function forceBackToHubState(state: RoomState): RoomState {
     soundscape: undefined,
     challenge: undefined,
     phototunt: undefined,
+    trackguess: undefined,
   };
 }
 
@@ -77,6 +89,9 @@ export function canSkipCurrentPhase(state: RoomState): boolean {
       (state.phototunt.phase === "briefing" && !!state.phototunt.task) ||
       state.phototunt.phase === "hunting"
     );
+  }
+  if (state.currentGame === "trackguess" && state.trackguess) {
+    return ["listening", "guessing", "reveal"].includes(state.trackguess.phase);
   }
   return false;
 }
@@ -158,5 +173,29 @@ export function skipCurrentPhaseState(state: RoomState, now = Date.now()): RoomS
     }
   }
 
+  if (state.currentGame === "trackguess" && state.trackguess) {
+    const tg = state.trackguess;
+    if (tg.phase === "listening") {
+      return {
+        ...state,
+        trackguess: { ...tg, listeningEndsAt: now },
+      };
+    }
+    if (tg.phase === "guessing") {
+      return {
+        ...state,
+        trackguess: { ...tg, guessEndsAt: now },
+      };
+    }
+    if (tg.phase === "reveal") {
+      return {
+        ...state,
+        trackguess: { ...tg, revealEndsAt: now },
+      };
+    }
+  }
+
   return state;
 }
+
+export { TRACK_GUESS_LISTEN_MS, TRACK_GUESS_GUESS_MS, TRACK_GUESS_REVEAL_MS };

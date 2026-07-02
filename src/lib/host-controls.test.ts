@@ -143,4 +143,23 @@ describe("host controls state helpers", () => {
     expect(result.phototunt?.phase).toBe("hunting");
     expect(result.phototunt?.huntEndsAt).toBe(44_000);
   });
+
+  test("skip trackguess guessing ends vote timer immediately", () => {
+    const now = 50_000;
+    const state = roomState({
+      currentGame: "trackguess",
+      trackguess: {
+        phase: "guessing",
+        roundId: "tg",
+        roundNumber: 1,
+        totalRounds: 5,
+        usedTrackIds: [],
+        trackId: "real-lounge",
+        guessEndsAt: now + 20_000,
+      },
+    });
+
+    expect(canSkipCurrentPhase(state)).toBe(true);
+    expect(skipCurrentPhaseState(state, now).trackguess?.guessEndsAt).toBe(now);
+  });
 });

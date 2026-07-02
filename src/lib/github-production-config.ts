@@ -21,6 +21,9 @@ export const REQUIRED_GITHUB_SECRETS_FOR_DEPLOY = [
   "SUPABASE_SERVICE_ROLE_KEY",
   "CLEANUP_SECRET",
   "OPENAI_API_KEY",
+  "VERCEL_ORG_ID",
+  "VERCEL_PROJECT_ID",
+  "VERCEL_TOKEN",
 ] as const;
 
 export type GitHubProductionConfigAudit = {

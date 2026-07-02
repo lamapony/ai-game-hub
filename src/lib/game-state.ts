@@ -8,6 +8,7 @@ function basePlayingState(state: RoomState): RoomState {
     soundscape: undefined,
     challenge: undefined,
     phototunt: undefined,
+    trackguess: undefined,
   };
 }
 
@@ -53,6 +54,24 @@ export function launchPhotoHuntState(state: RoomState, roundId: string): RoomSta
       phase: "briefing",
       roundId,
       pastTasks: [],
+    },
+  };
+}
+
+export const TRACK_GUESS_TOTAL_ROUNDS = 5;
+
+export function launchTrackGuessState(state: RoomState, roundId: string): RoomState | null {
+  if (state.players.length < 1) return null;
+  return {
+    ...basePlayingState(state),
+    currentGame: "trackguess",
+    trackguess: {
+      phase: "briefing",
+      roundId,
+      roundNumber: 1,
+      totalRounds: TRACK_GUESS_TOTAL_ROUNDS,
+      usedTrackIds: [],
+      roundResults: [],
     },
   };
 }
