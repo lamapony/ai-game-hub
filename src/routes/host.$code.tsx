@@ -36,7 +36,8 @@ import {
   renameTeamInState,
   suggestTeamName,
 } from "@/lib/teams";
-import type { RoomState } from "@/lib/types";
+import type { GameId, RoomState } from "@/lib/types";
+import { GameRulesDialogTrigger } from "@/components/game-rules-ui";
 
 const SoundscapeHost = lazy(() =>
   import("@/games/soundscape/HostView").then((module) => ({
@@ -590,6 +591,7 @@ function Lobby({
 
         <div className="mt-5 grid sm:grid-cols-2 gap-3">
           <GameCard
+            gameId="soundscape"
             emoji="🎚️"
             title="Звуковой баттл"
             time="~7 минут"
@@ -605,6 +607,7 @@ function Lobby({
             onClick={onLaunchSoundscape}
           />
           <GameCard
+            gameId="challenge"
             emoji="🎬"
             title="Челлендж духа парка"
             time="~3 минуты на раунд"
@@ -614,6 +617,7 @@ function Lobby({
             onClick={onLaunchChallenge}
           />
           <GameCard
+            gameId="phototunt"
             emoji="📸"
             title="Фотоохота"
             time="~2 минуты на раунд"
@@ -623,6 +627,7 @@ function Lobby({
             onClick={onLaunchPhotoHunt}
           />
           <GameCard
+            gameId="trackguess"
             emoji="🎧"
             title="Настоящий или AI?"
             time="~5 раундов"
@@ -632,6 +637,7 @@ function Lobby({
             onClick={onLaunchTrackGuess}
           />
           <GameCard
+            gameId="spectrumcourt"
             emoji="⚖️"
             title="Spectrum Court"
             time="~4 раунда"
@@ -917,6 +923,7 @@ function TeamManager({
 }
 
 function GameCard({
+  gameId,
   emoji,
   title,
   time,
@@ -925,6 +932,7 @@ function GameCard({
   disabledHint,
   onClick,
 }: {
+  gameId: GameId;
   emoji: string;
   title: string;
   time: string;
@@ -939,9 +947,12 @@ function GameCard({
       disabled={disabled}
       className="text-left rounded-2xl bg-white/10 hover:bg-white/15 active:bg-white/20 border border-white/15 p-4 disabled:opacity-40 disabled:cursor-not-allowed transition"
     >
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-baseline justify-between gap-2">
         <div className="text-3xl">{emoji}</div>
-        <div className="text-[10px] uppercase tracking-widest text-white/60">{time}</div>
+        <div className="flex items-center gap-2 shrink-0">
+          <GameRulesDialogTrigger gameId={gameId} />
+          <div className="text-[10px] uppercase tracking-widest text-white/60">{time}</div>
+        </div>
       </div>
       <div className="font-display text-xl mt-2">{title}</div>
       <p className="text-sm text-white/75 mt-1">{desc}</p>

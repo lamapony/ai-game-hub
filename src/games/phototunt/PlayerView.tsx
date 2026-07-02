@@ -8,6 +8,7 @@ import { logError } from "@/lib/structured-log";
 import type { RoomState } from "@/lib/types";
 import { PhotoCapture } from "./PhotoCapture";
 import { downscaleImage } from "./image-utils";
+import { GameRulesChecklist } from "@/components/game-rules-ui";
 
 export function PhotoHuntPlayer({
   roomId,
@@ -69,9 +70,13 @@ export function PhotoHuntPlayer({
             <P>
               Когда ведущий нажмёт старт — у тебя будет 60 секунд, чтобы найти и снять ОДИН кадр.
             </P>
+            <GameRulesChecklist gameId="phototunt" />
           </>
         ) : (
-          <H>Дух парка придумывает охоту…</H>
+          <>
+            <H>Дух парка придумывает охоту…</H>
+            <GameRulesChecklist gameId="phototunt" />
+          </>
         )}
       </Card>
     );

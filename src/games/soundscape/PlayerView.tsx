@@ -6,6 +6,7 @@ import { isRetryableError, retryOperation } from "@/lib/retry";
 import { logError } from "@/lib/structured-log";
 import { Recorder } from "./Recorder";
 import { teamColorClasses, formatClock } from "@/lib/team-style";
+import { GameRulesChecklist } from "@/components/game-rules-ui";
 import type { RoomState } from "@/lib/types";
 
 export function SoundscapePlayer({
@@ -75,6 +76,7 @@ function TopicVote({
         <p className="text-sm text-white/70 mt-1">
           The host locks the most-voted theme in a moment.
         </p>
+        <GameRulesChecklist gameId="soundscape" />
       </div>
       {(snd.topics ?? []).map((t) => (
         <button

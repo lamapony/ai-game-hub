@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { updateRoomState } from "@/lib/room";
 import { formatClock } from "@/lib/team-style";
+import { GameRulesChecklist } from "@/components/game-rules-ui";
 import type { RoomState, SpectrumCourtAppeal } from "@/lib/types";
 
 export function SpectrumCourtPlayer({
@@ -72,6 +73,7 @@ export function SpectrumCourtPlayer({
           Одна команда даст подсказку к скрытой точке. Остальные спорят, ставят маркер и могут
           подать апелляцию.
         </P>
+        <GameRulesChecklist gameId="spectrumcourt" />
       </Card>
     );
   }

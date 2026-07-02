@@ -11,6 +11,7 @@ import {
 } from "@/lib/host-controls";
 import { teamColorClasses } from "@/lib/team-style";
 import { playersOnTeam } from "@/lib/teams";
+import { GameRulesBrowser } from "@/components/game-rules-ui";
 
 const SoundscapePlayer = lazy(() =>
   import("@/games/soundscape/PlayerView").then((module) => ({
@@ -316,9 +317,7 @@ function WaitingPanel({
   return (
     <div className="rounded-3xl bg-black/40 backdrop-blur p-6 border border-white/10 text-center text-white">
       <div className="font-display text-2xl">Ждём ведущего…</div>
-      <p className="text-white/60 text-sm mt-2">
-        Когда стартует раунд, инструкции появятся прямо здесь.
-      </p>
+      <GameRulesBrowser />
       <div className="mt-6 inline-flex gap-1.5">
         <span className="size-2 rounded-full bg-white/70 animate-pulse" />
         <span className="size-2 rounded-full bg-white/70 animate-pulse [animation-delay:150ms]" />

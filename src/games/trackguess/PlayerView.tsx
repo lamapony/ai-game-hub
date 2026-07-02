@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { updateRoomState } from "@/lib/room";
 import { formatClock } from "@/lib/team-style";
+import { GameRulesChecklist } from "@/components/game-rules-ui";
 import type { RoomState } from "@/lib/types";
 
 export function TrackGuessPlayer({
@@ -53,6 +54,7 @@ export function TrackGuessPlayer({
           Скоро пойдёт трек. Слушай внимательно — потом выбери: живой трек или сгенерированный
           нейросетью. {tg.totalRounds} раундов, +2 очка команде за угадывание.
         </P>
+        <GameRulesChecklist gameId="trackguess" />
       </Card>
     );
   }

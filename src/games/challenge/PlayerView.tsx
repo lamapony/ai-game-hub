@@ -8,6 +8,7 @@ import { VideoRecorder } from "./VideoRecorder";
 import { extractFrames } from "./video-utils";
 import { formatClock } from "@/lib/team-style";
 import { friendlyMediaError } from "@/lib/media-errors";
+import { GameRulesChecklist } from "@/components/game-rules-ui";
 import type { RoomState } from "@/lib/types";
 
 const RECORDING_MS = 25_000;
@@ -35,6 +36,7 @@ export function ChallengePlayer({
         <Card>
           <Pill>Раунд готовится</Pill>
           <H>Дух парка придумывает задание…</H>
+          <GameRulesChecklist gameId="challenge" />
         </Card>
       );
     }
@@ -50,6 +52,7 @@ export function ChallengePlayer({
           Снимает <strong className="text-white">{ch.operatorName}</strong>. Как только он откроет
           камеру — погнали.
         </P>
+        <GameRulesChecklist gameId="challenge" />
       </Card>
     );
   }
@@ -150,6 +153,7 @@ function OperatorReady({
         <p className="text-white/60 text-xs mt-3">
           Прочитай вслух задание, наведи камеру — и жми кнопку.
         </p>
+        <GameRulesChecklist gameId="challenge" />
       </div>
       <button
         onClick={start}
