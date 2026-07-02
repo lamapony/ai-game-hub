@@ -2,7 +2,7 @@
 // runs AI composition, and plays slot-1 cues itself.
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { updateRoomState, genId } from "@/lib/room";
+import { postHostState } from "@/lib/host-state-client";
 import { generateTopics, composeMix, judgeMix } from "@/lib/ai/soundscape.functions";
 import type { RoomState, SoundscapeMix, SoundscapeState, Team } from "@/lib/types";
 import { Orchestra } from "./Orchestra";
@@ -34,10 +34,12 @@ type VoteRow = {
 export function SoundscapeHost({
   roomId,
   code,
+  hostSecret,
   state,
 }: {
   roomId: string;
   code: string;
+  hostSecret: string;
   state: RoomState;
 }) {
   const snd = state.soundscape!;
@@ -90,8 +92,9 @@ export function SoundscapeHost({
     };
   }, [roomId, snd.roundId]);
 
+  const writeState = (nextState: RoomState) => postHostState(code, hostSecret, nextState);
   const update = (patch: Partial<SoundscapeState>) =>
-    updateRoomState(roomId, { ...state, soundscape: { ...snd, ...patch } });
+    writeState({ ...state, soundscape: { ...snd, ...patch } });
 
   const teamsWithClips = useMemo(() => {
     const map: Record<string, SubmissionRow[]> = {};
@@ -254,7 +257,7 @@ export function SoundscapeHost({
         ...t,
         score: t.score + (perTeam[t.id] ?? 0),
       }));
-      await updateRoomState(roomId, {
+      await writeState({
         ...state,
         teams: newTeams,
         soundscape: { ...snd, phase: "results", mixes: updatedMixes },
@@ -321,7 +324,7 @@ export function SoundscapeHost({
           state={state}
           snd={snd}
           onClose={() =>
-            updateRoomState(roomId, {
+            writeState({
               ...state,
               currentGame: null,
               soundscape: undefined,

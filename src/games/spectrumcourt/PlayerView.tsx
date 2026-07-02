@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
-import { updateRoomState } from "@/lib/room";
+import { postPlayerAction } from "@/lib/player-action-client";
 import { formatClock } from "@/lib/team-style";
 import type { RoomState, SpectrumCourtAppeal } from "@/lib/types";
 
 export function SpectrumCourtPlayer({
-  roomId,
+  code,
   state,
   me,
 }: {
-  roomId: string;
+  code: string;
   state: RoomState;
   me: { id: string; name: string; teamId: string };
 }) {
@@ -33,33 +33,26 @@ export function SpectrumCourtPlayer({
   async function submitClue() {
     const trimmed = clue.trim();
     if (!trimmed) return;
-    await updateRoomState(roomId, {
-      ...state,
-      spectrumcourt: {
-        ...sc,
-        clue: trimmed.slice(0, 80),
-        cluePlayerId: me.id,
-      },
+    await postPlayerAction(code, {
+      action: "spectrumcourt-clue",
+      playerId: me.id,
+      clue: trimmed,
     });
   }
 
   async function submitGuess(value: number) {
-    await updateRoomState(roomId, {
-      ...state,
-      spectrumcourt: {
-        ...sc,
-        guesses: { ...(sc.guesses ?? {}), [me.id]: value },
-      },
+    await postPlayerAction(code, {
+      action: "spectrumcourt-guess",
+      playerId: me.id,
+      value,
     });
   }
 
   async function submitAppeal(direction: SpectrumCourtAppeal["direction"]) {
-    await updateRoomState(roomId, {
-      ...state,
-      spectrumcourt: {
-        ...sc,
-        appeals: { ...(sc.appeals ?? {}), [me.id]: { direction } },
-      },
+    await postPlayerAction(code, {
+      action: "spectrumcourt-appeal",
+      playerId: me.id,
+      direction,
     });
   }
 

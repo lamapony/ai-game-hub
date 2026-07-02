@@ -1,8 +1,14 @@
 // Challenge host orchestration: pick operator, generate task, listen for video, run judge, speak verdict.
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { updateRoomState, genId } from "@/lib/room";
+import { genId } from "@/lib/room";
 import { generateChallengeTask, judgeChallenge } from "@/lib/ai/challenge.functions";
+import {
+  canAcceptChallengeJudgePayload,
+  normalizeChallengeJudgePayload,
+  type ChallengeJudgePayload,
+} from "@/lib/challenge-integrity";
+import { postHostState } from "@/lib/host-state-client";
 import { teamColorClasses, formatClock } from "@/lib/team-style";
 import type { ChallengeState, RoomState, Team } from "@/lib/types";
 
@@ -22,7 +28,17 @@ type ChallengeRow = {
   created_at: string;
 };
 
-export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomState }) {
+export function ChallengeHost({
+  roomId,
+  code,
+  hostSecret,
+  state,
+}: {
+  roomId: string;
+  code: string;
+  hostSecret: string;
+  state: RoomState;
+}) {
   const ch = state.challenge!;
   const [history, setHistory] = useState<ChallengeRow[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
@@ -30,11 +46,16 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const spokenForRef = useRef<string | null>(null);
   const judgedForRef = useRef<string | null>(null);
+  const stateRef = useRef(state);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   // Load past challenges for this room.
   useEffect(() => {
@@ -75,27 +96,22 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
     const channel = supabase
       .channel(`judge:${roomId}`)
       .on("broadcast", { event: "judge" }, async (msg) => {
-        const p = msg.payload as {
-          roundId: string;
-          frames: string[];
-          transcript: string;
-          videoUrl: string;
-          operatorName: string;
-          task: string;
-        };
+        const p = normalizeChallengeJudgePayload(msg.payload);
+        if (!p || !canAcceptChallengeJudgePayload(stateRef.current, p)) return;
         if (judgedForRef.current === p.roundId) return;
         judgedForRef.current = p.roundId;
-        await runJudgement(p);
+        await runJudgement(p, stateRef.current);
       })
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId, ch.roundId]);
+  }, [roomId]);
 
+  const writeState = (nextState: RoomState) => postHostState(code, hostSecret, nextState);
   const update = (patch: Partial<ChallengeState>) =>
-    updateRoomState(roomId, { ...state, challenge: { ...ch, ...patch } });
+    writeState({ ...state, challenge: { ...ch, ...patch } });
 
   // Auto-generate task on briefing entry
   useEffect(() => {
@@ -147,17 +163,15 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
     audioRef.current?.pause();
   }, [state.paused]);
 
-  async function runJudgement(p: {
-    roundId: string;
-    frames: string[];
-    transcript: string;
-    videoUrl: string;
-    operatorName: string;
-    task: string;
-  }) {
+  async function runJudgement(p: ChallengeJudgePayload, acceptedState: RoomState) {
+    const acceptedChallenge = acceptedState.challenge;
+    if (!acceptedChallenge) return;
     setBusy("AI смотрит видео…");
     try {
-      await update({ phase: "judging" });
+      await writeState({
+        ...acceptedState,
+        challenge: { ...acceptedChallenge, phase: "judging" },
+      });
       const r = await judgeChallenge({
         data: {
           task: p.task,
@@ -173,19 +187,21 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
         .eq("room_id", roomId)
         .eq("round_id", p.roundId);
       // add points to operator's team
-      const operator = state.players.find((pl) => pl.id === ch.operatorId);
-      const teams: Team[] = state.teams.map((t) =>
+      const operator = acceptedState.players.find((pl) => pl.id === acceptedChallenge.operatorId);
+      const teams: Team[] = acceptedState.teams.map((t) =>
         operator && t.id === operator.teamId ? { ...t, score: t.score + r.score } : t,
       );
-      await updateRoomState(roomId, {
-        ...state,
+      await writeState({
+        ...acceptedState,
         teams,
         challenge: {
-          ...ch,
+          ...acceptedChallenge,
           phase: "results",
-          result: { score: r.score, feedback: r.feedback, videoUrl: p.videoUrl },
-          aiFallback: ch.aiFallback || r.fallback,
-          pastOperatorIds: [...(ch.pastOperatorIds ?? []), p.operatorName],
+          result: { score: r.score, feedback: r.feedback, videoUrl: p.videoUrl ?? "" },
+          aiFallback: acceptedChallenge.aiFallback || r.fallback,
+          pastOperatorIds: acceptedChallenge.operatorId
+            ? [...(acceptedChallenge.pastOperatorIds ?? []), acceptedChallenge.operatorId]
+            : (acceptedChallenge.pastOperatorIds ?? []),
         },
       });
       if (spokenForRef.current !== p.roundId) {
@@ -215,7 +231,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
     const candidates = pool.length > 0 ? pool : state.players;
     const nextOp = candidates[Math.floor(Math.random() * candidates.length)];
     if (!nextOp) return;
-    updateRoomState(roomId, {
+    writeState({
       ...state,
       challenge: {
         phase: "briefing",
@@ -229,7 +245,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
   }
 
   function backToHub() {
-    updateRoomState(roomId, { ...state, currentGame: null, challenge: undefined, status: "lobby" });
+    writeState({ ...state, currentGame: null, challenge: undefined, status: "lobby" });
   }
 
   const operator = state.players.find((p) => p.id === ch.operatorId);

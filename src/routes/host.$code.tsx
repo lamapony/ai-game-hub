@@ -1,34 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { useRoom, useBroadcast, updateRoomState, getHostSecret, genId } from "@/lib/room";
-import { supabase } from "@/integrations/supabase/client";
+import { DirectorPanel } from "@/components/DirectorPanel";
+import { useRoom, useBroadcast, getHostSecret } from "@/lib/room";
 import { eventProfile } from "@/lib/event-profile";
-import {
-  launchChallengeState,
-  launchPhotoHuntState,
-  launchSoundscapeState,
-  launchSpectrumCourtState,
-  launchTrackGuessState,
-} from "@/lib/game-state";
 import { teamColorClasses } from "@/lib/team-style";
-import {
-  canSkipCurrentPhase,
-  forceBackToHubState,
-  pauseRoomState,
-  resumeRoomState,
-  skipCurrentPhaseState,
-} from "@/lib/host-controls";
+import { canSkipCurrentPhase } from "@/lib/host-controls";
 import { speakerReadiness } from "@/lib/speaker-status";
-import {
-  addTeamToState,
-  MAX_TEAMS,
-  playersOnTeam,
-  removeTeamFromState,
-  renameTeamInState,
-  suggestTeamName,
-} from "@/lib/teams";
-import type { RoomState } from "@/lib/types";
+import { MAX_TEAMS, playersOnTeam, suggestTeamName } from "@/lib/teams";
+import type { GameId, RoomState } from "@/lib/types";
 
 const SoundscapeHost = lazy(() =>
   import("@/games/soundscape/HostView").then((module) => ({
@@ -62,11 +42,14 @@ export const Route = createFileRoute("/host/$code")({
 
 function HostPage() {
   const { code } = Route.useParams();
-  const { room, loading, error } = useRoom(code);
+  const { room, loading, error, setRoom } = useRoom(code);
   const [isHost, setIsHost] = useState(false);
+  const [hostSecret, setHostSecret] = useState<string | null>(null);
 
   useEffect(() => {
-    setIsHost(!!getHostSecret(code));
+    const secret = getHostSecret(code);
+    setHostSecret(secret);
+    setIsHost(!!secret);
   }, [code]);
 
   if (loading) return <Center>Загружаем комнату…</Center>;
@@ -98,11 +81,32 @@ function HostPage() {
       </Center>
     );
 
-  return <HostInner roomId={room.id} code={room.code} state={room.state} />;
+  return (
+    <HostInner
+      roomId={room.id}
+      code={room.code}
+      state={room.state}
+      hostSecret={hostSecret}
+      onState={(state) => setRoom({ ...room, state })}
+    />
+  );
 }
 
-function HostInner({ roomId, code, state }: { roomId: string; code: string; state: RoomState }) {
+function HostInner({
+  roomId,
+  code,
+  state,
+  hostSecret,
+  onState,
+}: {
+  roomId: string;
+  code: string;
+  state: RoomState;
+  hostSecret: string | null;
+  onState: (state: RoomState) => void;
+}) {
   const { send } = useBroadcast(roomId);
+  const [hostControlError, setHostControlError] = useState<string | null>(null);
 
   const totalPlayers = state.players.length;
   const joinUrl =
@@ -120,77 +124,86 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
     }
   }
 
+  async function callHostControl(payload: {
+    action: string;
+    gameId?: GameId;
+    teamId?: string;
+    name?: string;
+  }) {
+    if (!hostSecret) {
+      setHostControlError("Host authorization is missing on this device.");
+      return;
+    }
+    setHostControlError(null);
+    try {
+      const response = await fetch("/api/host-control", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-host-secret": hostSecret,
+        },
+        body: JSON.stringify({ code, ...payload }),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const data = (await response.json()) as { state: RoomState };
+      onState(data.state);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Host control failed";
+      console.error("[host-control]", error);
+      setHostControlError(message);
+    }
+  }
+
   async function launchSoundscape() {
-    await updateRoomState(roomId, launchSoundscapeState(state, genId("snd")));
+    await callHostControl({ action: "launch-game", gameId: "soundscape" });
   }
 
   async function launchChallenge() {
-    const next = launchChallengeState(state, genId("ch"));
-    if (!next) return;
-    await updateRoomState(roomId, next);
+    await callHostControl({ action: "launch-game", gameId: "challenge" });
   }
 
   async function launchPhotoHunt() {
-    const next = launchPhotoHuntState(state, genId("ph"));
-    if (!next) return;
-    await updateRoomState(roomId, next);
+    await callHostControl({ action: "launch-game", gameId: "phototunt" });
   }
 
   async function launchTrackGuess() {
-    const next = launchTrackGuessState(state, genId("tg"));
-    if (!next) return;
-    await updateRoomState(roomId, next);
+    await callHostControl({ action: "launch-game", gameId: "trackguess" });
   }
 
   async function launchSpectrumCourt() {
-    const next = launchSpectrumCourtState(state, genId("sc"));
-    if (!next) return;
-    await updateRoomState(roomId, next);
+    await callHostControl({ action: "launch-game", gameId: "spectrumcourt" });
   }
 
   async function resetGame() {
-    await updateRoomState(roomId, forceBackToHubState(state));
+    await callHostControl({ action: "force-back-to-hub" });
   }
 
   async function togglePause() {
-    await updateRoomState(
-      roomId,
-      state.paused ? resumeRoomState(state, Date.now()) : pauseRoomState(state, Date.now()),
-    );
+    await callHostControl({ action: "pause-toggle" });
   }
 
   async function skipPhase() {
-    await updateRoomState(roomId, skipCurrentPhaseState(state, Date.now()));
+    await callHostControl({ action: "skip-phase" });
   }
 
   async function restartCurrentGame() {
-    if (state.currentGame === "soundscape") await launchSoundscape();
-    if (state.currentGame === "challenge") await launchChallenge();
-    if (state.currentGame === "phototunt") await launchPhotoHunt();
-    if (state.currentGame === "trackguess") await launchTrackGuess();
-    if (state.currentGame === "spectrumcourt") await launchSpectrumCourt();
+    await callHostControl({ action: "restart-game" });
   }
 
   async function forceBackToHub() {
-    await updateRoomState(roomId, forceBackToHubState(state));
+    await callHostControl({ action: "force-back-to-hub" });
   }
 
   async function addTeam(name: string) {
-    const next = addTeamToState(state, name, genId("team"));
-    if (!next) return;
-    await updateRoomState(roomId, next);
+    await callHostControl({ action: "add-team", name });
   }
 
   async function renameTeam(teamId: string, name: string) {
-    const next = renameTeamInState(state, teamId, name);
-    if (!next) return;
-    await updateRoomState(roomId, next);
+    await callHostControl({ action: "rename-team", teamId, name });
   }
 
   async function removeTeam(teamId: string) {
-    const next = removeTeamFromState(state, teamId);
-    if (!next) return;
-    await updateRoomState(roomId, next);
+    await callHostControl({ action: "remove-team", teamId });
   }
 
   return (
@@ -210,7 +223,7 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-5 py-6 grid lg:grid-cols-[1fr_320px] gap-6">
+      <div className="mx-auto max-w-7xl px-5 py-6 grid lg:grid-cols-[minmax(0,1fr)_380px] gap-6">
         <section>
           {state.currentGame && (
             <HostControlBar
@@ -223,18 +236,39 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
             />
           )}
 
+          {hostControlError && (
+            <div className="mb-4 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+              {hostControlError}
+            </div>
+          )}
+
           {state.currentGame ? (
             <Suspense fallback={<HostGameLoading />}>
               {state.currentGame === "soundscape" && state.soundscape ? (
-                <SoundscapeHost roomId={roomId} code={code} state={state} />
+                <SoundscapeHost
+                  roomId={roomId}
+                  code={code}
+                  hostSecret={hostSecret ?? ""}
+                  state={state}
+                />
               ) : state.currentGame === "challenge" && state.challenge ? (
-                <ChallengeHost roomId={roomId} state={state} />
+                <ChallengeHost
+                  roomId={roomId}
+                  code={code}
+                  hostSecret={hostSecret ?? ""}
+                  state={state}
+                />
               ) : state.currentGame === "phototunt" && state.phototunt ? (
-                <PhotoHuntHost roomId={roomId} state={state} />
+                <PhotoHuntHost
+                  roomId={roomId}
+                  code={code}
+                  hostSecret={hostSecret ?? ""}
+                  state={state}
+                />
               ) : state.currentGame === "trackguess" && state.trackguess ? (
-                <TrackGuessHost roomId={roomId} state={state} />
+                <TrackGuessHost code={code} hostSecret={hostSecret ?? ""} state={state} />
               ) : state.currentGame === "spectrumcourt" && state.spectrumcourt ? (
-                <SpectrumCourtHost roomId={roomId} state={state} />
+                <SpectrumCourtHost code={code} hostSecret={hostSecret ?? ""} state={state} />
               ) : (
                 <HostGameLoading />
               )}
@@ -260,6 +294,7 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
         </section>
 
         <aside className="space-y-4">
+          <DirectorPanel code={code} hostSecret={hostSecret} state={state} onState={onState} />
           <Scoreboard state={state} />
           <PlayersList state={state} />
           <button
@@ -967,7 +1002,3 @@ function Center({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-
-// reference to satisfy TS unused-import check (broadcast used inside HostView later)
-void useBroadcast;
-void supabase;

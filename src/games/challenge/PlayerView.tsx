@@ -1,7 +1,7 @@
 // Challenge game player view. Operator films; others perform.
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { updateRoomState } from "@/lib/room";
+import { postPlayerAction } from "@/lib/player-action-client";
 import { isRetryableError, retryOperation } from "@/lib/retry";
 import { logError } from "@/lib/structured-log";
 import { VideoRecorder } from "./VideoRecorder";
@@ -10,13 +10,13 @@ import { formatClock } from "@/lib/team-style";
 import { friendlyMediaError } from "@/lib/media-errors";
 import type { RoomState } from "@/lib/types";
 
-const RECORDING_MS = 25_000;
-
 export function ChallengePlayer({
+  code,
   roomId,
   state,
   me,
 }: {
+  code: string;
   roomId: string;
   state: RoomState;
   me: { id: string; name: string; teamId: string };
@@ -39,7 +39,7 @@ export function ChallengePlayer({
       );
     }
     if (isOperator) {
-      return <OperatorReady roomId={roomId} state={state} task={ch.task} />;
+      return <OperatorReady code={code} me={me} task={ch.task} />;
     }
     return (
       <Card>
@@ -103,16 +103,7 @@ export function ChallengePlayer({
   );
 }
 
-function OperatorReady({
-  roomId,
-  state,
-  task,
-}: {
-  roomId: string;
-  state: RoomState;
-  task: string;
-}) {
-  const ch = state.challenge!;
+function OperatorReady({ code, me, task }: { code: string; me: { id: string }; task: string }) {
   const [starting, setStarting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -127,9 +118,9 @@ function OperatorReady({
         audio: true,
       });
       stream.getTracks().forEach((t) => t.stop());
-      await updateRoomState(roomId, {
-        ...state,
-        challenge: { ...ch, phase: "recording", recordingEndsAt: Date.now() + RECORDING_MS },
+      await postPlayerAction(code, {
+        action: "challenge-start-recording",
+        playerId: me.id,
       });
     } catch (e) {
       console.error(e);
@@ -267,6 +258,7 @@ function OperatorRecord({
       event: "judge",
       payload: {
         roundId: ch.roundId,
+        operatorId: me.id,
         frames,
         transcript,
         videoUrl: video_url,

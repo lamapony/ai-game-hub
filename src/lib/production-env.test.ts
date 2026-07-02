@@ -31,6 +31,12 @@ describe("production env validation", () => {
     expect(result.runtimeEnv.OPENAI_BASE_URL).toBe("https://api.openai.com/v1");
     expect(result.runtimeEnv.OPENAI_CHAT_MODEL).toBe("gpt-4o-mini");
     expect(result.runtimeEnv.OPENAI_RETRY_ATTEMPTS).toBe("3");
+    expect(result.runtimeEnv.SPIRIT_PROVIDER).toBe("auto");
+    expect(result.runtimeEnv.VOICE_PROVIDER).toBe("auto");
+    expect(result.runtimeEnv.OPENAI_REALTIME_MODEL).toBe("gpt-realtime-2");
+    expect(result.runtimeEnv.XAI_CHAT_MODEL).toBe("grok-4.3");
+    expect(result.runtimeEnv.XAI_REALTIME_MODEL).toBe("grok-voice-latest");
+    expect(result.runtimeEnv.XAI_API_KEY).toBeUndefined();
   });
 
   test("serializes dotenv values with quoting", () => {

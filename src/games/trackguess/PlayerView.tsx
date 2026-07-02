@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { updateRoomState } from "@/lib/room";
+import { postPlayerAction } from "@/lib/player-action-client";
 import { formatClock } from "@/lib/team-style";
 import type { RoomState } from "@/lib/types";
 
 export function TrackGuessPlayer({
-  roomId,
+  code,
   state,
   me,
 }: {
-  roomId: string;
+  code: string;
   state: RoomState;
   me: { id: string; name: string; teamId: string };
 }) {
@@ -40,8 +40,11 @@ export function TrackGuessPlayer({
   const myGuess = tg.guesses?.[me.id];
 
   async function guess(choice: "real" | "ai") {
-    const guesses = { ...(tg.guesses ?? {}), [me.id]: choice };
-    await updateRoomState(roomId, { ...state, trackguess: { ...tg, guesses } });
+    await postPlayerAction(code, {
+      action: "trackguess-guess",
+      playerId: me.id,
+      choice,
+    });
   }
 
   if (tg.phase === "briefing") {

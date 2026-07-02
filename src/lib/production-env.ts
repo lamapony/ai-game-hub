@@ -24,6 +24,13 @@ export const RUNTIME_ENV_KEYS = [
   "OPENAI_TTS_MODEL",
   "OPENAI_TRANSCRIBE_MODEL",
   "OPENAI_RETRY_ATTEMPTS",
+  "SPIRIT_PROVIDER",
+  "VOICE_PROVIDER",
+  "OPENAI_REALTIME_MODEL",
+  "OPENAI_REALTIME_VOICE",
+  "XAI_API_KEY",
+  "XAI_CHAT_MODEL",
+  "XAI_REALTIME_MODEL",
 ] as const;
 
 const OPTIONAL_DEFAULTS: Record<string, string> = {
@@ -33,6 +40,12 @@ const OPTIONAL_DEFAULTS: Record<string, string> = {
   OPENAI_TTS_MODEL: "gpt-4o-mini-tts",
   OPENAI_TRANSCRIBE_MODEL: "gpt-4o-mini-transcribe",
   OPENAI_RETRY_ATTEMPTS: "3",
+  SPIRIT_PROVIDER: "auto",
+  VOICE_PROVIDER: "auto",
+  OPENAI_REALTIME_MODEL: "gpt-realtime-2",
+  OPENAI_REALTIME_VOICE: "marin",
+  XAI_CHAT_MODEL: "grok-4.3",
+  XAI_REALTIME_MODEL: "grok-voice-latest",
 };
 
 export type ProductionEnvValidation = {

@@ -1,7 +1,7 @@
 // Soundscape player view: topic vote, recording, voting.
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { updateRoomState } from "@/lib/room";
+import { postPlayerAction } from "@/lib/player-action-client";
 import { isRetryableError, retryOperation } from "@/lib/retry";
 import { logError } from "@/lib/structured-log";
 import { Recorder } from "./Recorder";
@@ -9,10 +9,12 @@ import { teamColorClasses, formatClock } from "@/lib/team-style";
 import type { RoomState } from "@/lib/types";
 
 export function SoundscapePlayer({
+  code,
   roomId,
   state,
   me,
 }: {
+  code: string;
   roomId: string;
   state: RoomState;
   me: { id: string; name: string; teamId: string };
@@ -24,7 +26,7 @@ export function SoundscapePlayer({
     return () => clearInterval(t);
   }, []);
 
-  if (snd.phase === "topics") return <TopicVote state={state} roomId={roomId} me={me} />;
+  if (snd.phase === "topics") return <TopicVote code={code} state={state} me={me} />;
   if (snd.phase === "recording")
     return <RecordPhase state={state} roomId={roomId} me={me} now={now} />;
   if (snd.phase === "mixing")
@@ -51,20 +53,15 @@ function PassiveCard({ title, sub }: { title: string; sub: string }) {
   );
 }
 
-function TopicVote({
-  state,
-  roomId,
-  me,
-}: {
-  state: RoomState;
-  roomId: string;
-  me: { id: string };
-}) {
+function TopicVote({ code, state, me }: { code: string; state: RoomState; me: { id: string } }) {
   const snd = state.soundscape!;
   const myVote = snd.topicVotes?.[me.id];
   async function vote(t: string) {
-    const topicVotes = { ...(snd.topicVotes ?? {}), [me.id]: t };
-    await updateRoomState(roomId, { ...state, soundscape: { ...snd, topicVotes } });
+    await postPlayerAction(code, {
+      action: "soundscape-topic-vote",
+      playerId: me.id,
+      topic: t,
+    });
   }
   return (
     <div className="space-y-3">

@@ -2,8 +2,9 @@
 // AI ranks all photos, host awards points to teams and speaks the verdict.
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { updateRoomState, genId } from "@/lib/room";
+import { genId } from "@/lib/room";
 import { generatePhotoTask, judgePhotos } from "@/lib/ai/phototunt.functions";
+import { postHostState } from "@/lib/host-state-client";
 import { teamColorClasses, formatClock } from "@/lib/team-style";
 import type { PhotoHuntState, RoomState, Team, PhotoHuntResultEntry } from "@/lib/types";
 
@@ -23,7 +24,17 @@ type PhotoRow = {
   points: number | null;
 };
 
-export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomState }) {
+export function PhotoHuntHost({
+  roomId,
+  code,
+  hostSecret,
+  state,
+}: {
+  roomId: string;
+  code: string;
+  hostSecret: string;
+  state: RoomState;
+}) {
   const ph = state.phototunt!;
   const [photos, setPhotos] = useState<PhotoRow[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
@@ -64,8 +75,9 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
     };
   }, [roomId, ph.roundId]);
 
+  const writeState = (nextState: RoomState) => postHostState(code, hostSecret, nextState);
   const update = (patch: Partial<PhotoHuntState>) =>
-    updateRoomState(roomId, { ...state, phototunt: { ...ph, ...patch } });
+    writeState({ ...state, phototunt: { ...ph, ...patch } });
 
   // Briefing → auto-generate task
   useEffect(() => {
@@ -178,7 +190,7 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
         teamDelta.has(t.id) ? { ...t, score: t.score + (teamDelta.get(t.id) ?? 0) } : t,
       );
 
-      await updateRoomState(roomId, {
+      await writeState({
         ...state,
         teams,
         phototunt: {
@@ -208,7 +220,7 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
   }
 
   function nextRound() {
-    updateRoomState(roomId, {
+    writeState({
       ...state,
       phototunt: {
         phase: "briefing",
@@ -220,7 +232,7 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
   }
 
   function backToHub() {
-    updateRoomState(roomId, { ...state, currentGame: null, phototunt: undefined, status: "lobby" });
+    writeState({ ...state, currentGame: null, phototunt: undefined, status: "lobby" });
   }
 
   const remaining = ph.phase === "hunting" ? Math.max(0, (ph.huntEndsAt ?? now) - now) : 0;
