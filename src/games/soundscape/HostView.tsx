@@ -191,7 +191,7 @@ export function SoundscapeHost({
       const teamOrder = state.teams.filter((t) => mixes[t.id]);
       if (teamOrder.length === 0) {
         await update({ phase: "idle" });
-        setMixNotice("Ни одна команда не прислала звуки — можно записать ещё раз.");
+        setMixNotice("No team submitted sounds — you can record again.");
         return;
       }
       await update({
@@ -362,7 +362,7 @@ export function SoundscapeHost({
       )}
       {snd.phase === "mixing" && (
         <div className="rounded-3xl bg-card p-8 border text-center">
-          <div className="font-display text-2xl">Собираем симфонию…</div>
+          <div className="font-display text-2xl">Building the symphony…</div>
           <p className="text-muted-foreground text-sm mt-2">
             AI is mapping every clip across the park.
           </p>
@@ -392,13 +392,13 @@ export function SoundscapeHost({
 
 function phaseTitle(p: SoundscapeState["phase"]) {
   return {
-    idle: "Пауза",
-    topics: "Выбор темы",
-    recording: "Запись звуков",
-    mixing: "Сборка микса",
-    playback: "Прослушка",
-    voting: "Голосование",
-    results: "Итоги",
+    idle: "Paused",
+    topics: "Theme selection",
+    recording: "Sound recording",
+    mixing: "Mix assembly",
+    playback: "Playback",
+    voting: "Voting",
+    results: "Results",
   }[p];
 }
 
@@ -422,7 +422,7 @@ function TopicsPanel({
       {snd.aiFallback && <AiFallbackNotice />}
       <div className="flex items-baseline justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          Игроки голосуют с телефонов. Голосов: {total}.
+          Players vote from their phones. Votes: {total}.
         </p>
         {remaining != null && (
           <div className="font-display text-3xl tabular-nums">{formatClock(remaining)}</div>
@@ -442,7 +442,7 @@ function TopicsPanel({
         onClick={onPick}
         className="rounded-2xl bg-[var(--color-park-bright)] text-[oklch(0.18_0.05_160)] px-5 py-2.5 font-medium"
       >
-        Зафиксировать тему и начать запись →
+        Lock theme and start recording →
       </button>
     </div>
   );
@@ -513,9 +513,9 @@ function IdleRecoveryPanel({
 }) {
   return (
     <div className="rounded-3xl bg-card p-6 border space-y-4 text-center">
-      <div className="font-display text-2xl">Звуков не хватило</div>
+      <div className="font-display text-2xl">Not enough sounds</div>
       <p className="text-muted-foreground text-sm">
-        {notice ?? "Ни одна команда не прислала клипы. Можно попробовать ещё раз."}
+        {notice ?? "No team submitted clips. You can try again."}
       </p>
       <div className="flex flex-wrap justify-center gap-2">
         <button
@@ -525,7 +525,7 @@ function IdleRecoveryPanel({
           Record again
         </button>
         <button onClick={onHub} className="rounded-2xl border bg-background px-5 py-2.5 text-sm">
-          В hub
+          To hub
         </button>
       </div>
     </div>
@@ -535,7 +535,7 @@ function IdleRecoveryPanel({
 function naiveLocalMix(teamId: string, teamName: string, clips: SubmissionRow[]): SoundscapeMix {
   return {
     teamId,
-    intro: `Команда ${teamName} — парк слушает без AI.`,
+    intro: `Team ${teamName} — the park listens without AI.`,
     cues: clips.map((clip, index) => ({
       atMs: index * 6000,
       slot: 2 + (index % 4),
@@ -610,7 +610,7 @@ function VotingPanel({
   return (
     <div className="rounded-3xl bg-card p-6 border">
       <div className="flex items-baseline justify-between">
-        <h3 className="font-display text-2xl">Голосуйте с телефонов</h3>
+        <h3 className="font-display text-2xl">Vote from your phones</h3>
         <div className="font-display text-3xl tabular-num">{formatClock(remaining)}</div>
       </div>
       <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2">
