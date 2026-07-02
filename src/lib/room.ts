@@ -1,7 +1,7 @@
 // Client-side room helpers. All anonymous; host control gated by host_secret in localStorage.
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { hostStorageKey, playerStorageKey } from "./event-profile";
+import { eventProfile, hostStorageKey, playerStorageKey } from "./event-profile";
 import { logError, logInfo, logWarn } from "./structured-log";
 import { type RoomRow, type RoomState, emptyRoomState } from "./types";
 
@@ -13,6 +13,42 @@ export function genCode(): string {
 }
 export function genId(prefix = "id"): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function hostRoomCodeStorageKey(roomId: string) {
+  return `${eventProfile.storagePrefix}:host-room:${roomId}`;
+}
+
+function rememberRoomCode(roomId: string, code: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(hostRoomCodeStorageKey(roomId), code.toUpperCase());
+}
+
+export function hostSecretCandidates(roomId: string) {
+  if (typeof window === "undefined") return [];
+  const candidates: string[] = [];
+  const rememberedCode = localStorage.getItem(hostRoomCodeStorageKey(roomId));
+  if (rememberedCode) {
+    const secret = getHostSecret(rememberedCode);
+    if (secret) candidates.push(secret);
+  }
+  const hostPrefix = `${eventProfile.storagePrefix}:host:`;
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key?.startsWith(hostPrefix)) continue;
+    const secret = localStorage.getItem(key);
+    if (secret && !candidates.includes(secret)) candidates.push(secret);
+  }
+  return candidates;
+}
+
+function genPlayerSecret() {
+  if (typeof crypto !== "undefined" && "getRandomValues" in crypto) {
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    return `ps_${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+  }
+  return `${genId("ps")}_${genId("ps")}`;
 }
 
 export async function createRoom(hostName: string): Promise<{ code: string; id: string }> {
@@ -27,6 +63,7 @@ export async function createRoom(hostName: string): Promise<{ code: string; id: 
       .single();
     if (!error && data) {
       localStorage.setItem(hostStorageKey(code), host_secret);
+      rememberRoomCode(data.id, data.code);
       logInfo("room.create.success", {
         roomId: data.id,
         code: data.code,
@@ -60,15 +97,14 @@ export async function fetchRoomByCode(code: string): Promise<RoomRow | null> {
     return null;
   }
   logInfo("room.fetch.success", { roomId: data.id, code: data.code });
+  rememberRoomCode(data.id, data.code);
   return { id: data.id, code: data.code, state: data.state as unknown as RoomState };
 }
 
 export async function updateRoomState(id: string, state: RoomState): Promise<void> {
-  const { error } = await supabase
-    .from("rooms")
-    .update({ state: state as never })
-    .eq("id", id);
-  if (error) {
+  const secrets = hostSecretCandidates(id);
+  if (secrets.length === 0) {
+    const error = new Error("host authorization required");
     logError("room.update.failure", error, {
       roomId: id,
       status: state.status,
@@ -76,12 +112,37 @@ export async function updateRoomState(id: string, state: RoomState): Promise<voi
     });
     throw error;
   }
-  logInfo("room.update.success", {
+
+  let lastError: Error | null = null;
+  for (const secret of secrets) {
+    const response = await fetch("/api/host-state", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-host-secret": secret,
+      },
+      body: JSON.stringify({ roomId: id, state }),
+    });
+    if (response.ok) {
+      logInfo("room.update.success", {
+        roomId: id,
+        status: state.status,
+        currentGame: state.currentGame ?? undefined,
+        playerCount: state.players.length,
+      });
+      return;
+    }
+    lastError = new Error(await response.text());
+    if (response.status !== 403) break;
+  }
+
+  const error = lastError ?? new Error("host state failed");
+  logError("room.update.failure", error, {
     roomId: id,
     status: state.status,
     currentGame: state.currentGame ?? undefined,
-    playerCount: state.players.length,
   });
+  throw error;
 }
 
 export function getHostSecret(code: string): string | null {
@@ -92,18 +153,26 @@ export function getOrCreatePlayer(
   code: string,
   name?: string,
   teamId?: string,
-): { id: string; name: string; teamId: string } {
+): { id: string; name: string; teamId: string; secret: string } {
   const key = playerStorageKey(code);
-  if (typeof window === "undefined") return { id: "ssr", name: name ?? "", teamId: teamId ?? "" };
+  if (typeof window === "undefined") {
+    return { id: "ssr", name: name ?? "", teamId: teamId ?? "", secret: "ssr-player-secret" };
+  }
   const raw = localStorage.getItem(key);
   if (raw) {
-    const p = JSON.parse(raw);
+    const p = JSON.parse(raw) as { id: string; name: string; teamId: string; secret?: string };
     if (name && p.name !== name) p.name = name;
     if (teamId && p.teamId !== teamId) p.teamId = teamId;
+    if (!p.secret) p.secret = genPlayerSecret();
     localStorage.setItem(key, JSON.stringify(p));
-    return p;
+    return { id: p.id, name: p.name, teamId: p.teamId, secret: p.secret };
   }
-  const p = { id: genId("p"), name: name ?? "Player", teamId: teamId ?? "forest" };
+  const p = {
+    id: genId("p"),
+    name: name ?? "Player",
+    teamId: teamId ?? "forest",
+    secret: genPlayerSecret(),
+  };
   localStorage.setItem(key, JSON.stringify(p));
   return p;
 }

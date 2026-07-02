@@ -1,10 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { useRoom, updateRoomState, getOrCreatePlayer, genId } from "@/lib/room";
+import { useRoom, getOrCreatePlayer } from "@/lib/room";
 import { playerStorageKey } from "@/lib/event-profile";
+import { postPlayerAction, type StoredPlayer } from "@/lib/player-action-client";
+import {
+  computeTeamStandings,
+  formatRussianPlace,
+  formatRussianPoints,
+  getWinningStandings,
+} from "@/lib/host-controls";
 import { teamColorClasses } from "@/lib/team-style";
 import { playersOnTeam } from "@/lib/teams";
+import { GameRulesBrowser } from "@/components/game-rules-ui";
 
 const SoundscapePlayer = lazy(() =>
   import("@/games/soundscape/PlayerView").then((module) => ({
@@ -31,6 +39,11 @@ const SpectrumCourtPlayer = lazy(() =>
     default: module.SpectrumCourtPlayer,
   })),
 );
+const WhoAmongPlayer = lazy(() =>
+  import("@/games/whoamong/PlayerView").then((module) => ({
+    default: module.WhoAmongPlayer,
+  })),
+);
 
 export const Route = createFileRoute("/play/$code")({
   component: PlayPage,
@@ -38,13 +51,16 @@ export const Route = createFileRoute("/play/$code")({
 
 function PlayPage() {
   const { code } = Route.useParams();
-  const { room, loading, error } = useRoom(code);
-  const [me, setMe] = useState<{ id: string; name: string; teamId: string } | null>(null);
+  const { room, loading, error, setRoom } = useRoom(code);
+  const [me, setMe] = useState<StoredPlayer | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const stored = localStorage.getItem(playerStorageKey(code));
-    if (stored) setMe(JSON.parse(stored));
+    if (stored) {
+      const parsed = JSON.parse(stored) as StoredPlayer;
+      setMe(getOrCreatePlayer(code, parsed.name, parsed.teamId));
+    }
   }, [code]);
 
   if (loading)
@@ -75,10 +91,27 @@ function PlayPage() {
     );
 
   if (!me) {
-    return <JoinForm code={code} room={room} onJoined={(p) => setMe(p)} />;
+    return (
+      <JoinForm
+        code={code}
+        room={room}
+        onJoined={(player, state) => {
+          setRoom({ ...room, state });
+          setMe(player);
+        }}
+      />
+    );
   }
 
-  return <PlayerScreen code={code} room={room} me={me} onTeamChange={setMe} />;
+  return (
+    <PlayerScreen
+      code={code}
+      room={room}
+      me={me}
+      onTeamChange={setMe}
+      onRoomState={(state) => setRoom({ ...room, state })}
+    />
+  );
 }
 
 function JoinForm({
@@ -88,7 +121,7 @@ function JoinForm({
 }: {
   code: string;
   room: { id: string; code: string; state: import("@/lib/types").RoomState };
-  onJoined: (p: { id: string; name: string; teamId: string }) => void;
+  onJoined: (player: StoredPlayer, state: import("@/lib/types").RoomState) => void;
 }) {
   const state = room.state;
   const [name, setName] = useState("");
@@ -101,13 +134,14 @@ function JoinForm({
     setSubmitting(true);
     const finalName = name.trim() || `Игрок ${state.players.length + 1}`;
     const player = getOrCreatePlayer(code, finalName, teamId);
-    const players = [
-      ...state.players.filter((p) => p.id !== player.id),
-      { ...player, joinedAt: Date.now() },
-    ];
     try {
-      await updateRoomState(room.id, { ...state, players });
-      onJoined(player);
+      const result = await postPlayerAction(room.id, {
+        action: "join",
+        playerId: player.id,
+        name: player.name,
+        teamId,
+      });
+      onJoined({ ...player, ...result.player, secret: player.secret }, result.state);
     } catch (e) {
       console.error(e);
     } finally {
@@ -181,28 +215,40 @@ function PlayerScreen({
   room,
   me,
   onTeamChange,
+  onRoomState,
 }: {
   code: string;
   room: { id: string; code: string; state: import("@/lib/types").RoomState };
-  me: { id: string; name: string; teamId: string };
-  onTeamChange: (p: { id: string; name: string; teamId: string }) => void;
+  me: StoredPlayer;
+  onTeamChange: (p: StoredPlayer) => void;
+  onRoomState: (state: import("@/lib/types").RoomState) => void;
 }) {
   const state = room.state;
   const team = state.teams.find((t) => t.id === me.teamId);
   const c = team ? teamColorClasses(team.color) : null;
+  const isWinner =
+    state.status === "finished" &&
+    getWinningStandings(computeTeamStandings(state)).some(
+      (standing) => standing.team.id === me.teamId,
+    );
 
   // ensure player exists in state list (handles room state lost after reset)
   useEffect(() => {
-    if (state.players.find((p) => p.id === me.id)) return;
-    updateRoomState(room.id, {
-      ...state,
-      players: [...state.players, { ...me, joinedAt: Date.now() }],
-    }).catch(() => {});
+    const statePlayer = state.players.find((p) => p.id === me.id);
+    if (statePlayer?.secretHash) return;
+    postPlayerAction(room.id, {
+      action: "ensure-player",
+      playerId: me.id,
+      name: me.name,
+      teamId: me.teamId,
+    })
+      .then((result) => onRoomState(result.state))
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room.id, me.id]);
 
   return (
-    <PlayShell>
+    <PlayShell celebratory={isWinner}>
       <div className="w-full max-w-md">
         <div
           className={`rounded-3xl border ${c?.chip ?? ""} p-4 mb-4 flex items-center justify-between`}
@@ -212,6 +258,11 @@ function PlayerScreen({
               {team?.name ?? "Team"}
             </div>
             <div className="font-display text-2xl">{me.name}</div>
+            {state.currentGame && team && (
+              <div className="text-xs mt-1 opacity-80">
+                Твоя команда: {formatRussianPoints(team.score)}
+              </div>
+            )}
           </div>
           <div className="text-right">
             <div className="text-[10px] uppercase tracking-widest opacity-70">Комната</div>
@@ -220,7 +271,9 @@ function PlayerScreen({
         </div>
 
         <Suspense fallback={<PlayerGameLoading />}>
-          {state.paused ? (
+          {state.status === "finished" ? (
+            <PlayerFinale state={state} me={me} />
+          ) : state.paused ? (
             <PausedPanel />
           ) : state.currentGame === "soundscape" && state.soundscape ? (
             <SoundscapePlayer roomId={room.id} state={state} me={me} />
@@ -232,8 +285,16 @@ function PlayerScreen({
             <TrackGuessPlayer roomId={room.id} state={state} me={me} />
           ) : state.currentGame === "spectrumcourt" && state.spectrumcourt ? (
             <SpectrumCourtPlayer roomId={room.id} state={state} me={me} />
+          ) : state.currentGame === "whoamong" && state.whoamong ? (
+            <WhoAmongPlayer roomId={room.id} state={state} me={me} />
           ) : (
-            <WaitingPanel room={room} me={me} code={code} onTeamChange={onTeamChange} />
+            <WaitingPanel
+              room={room}
+              me={me}
+              code={code}
+              onTeamChange={onTeamChange}
+              onRoomState={onRoomState}
+            />
           )}
         </Suspense>
       </div>
@@ -269,11 +330,13 @@ function WaitingPanel({
   me,
   code,
   onTeamChange,
+  onRoomState,
 }: {
   room: { id: string; state: import("@/lib/types").RoomState };
-  me: { id: string; name: string; teamId: string };
+  me: StoredPlayer;
   code: string;
-  onTeamChange: (p: { id: string; name: string; teamId: string }) => void;
+  onTeamChange: (p: StoredPlayer) => void;
+  onRoomState: (state: import("@/lib/types").RoomState) => void;
 }) {
   const [switching, setSwitching] = useState(false);
   const state = room.state;
@@ -282,12 +345,15 @@ function WaitingPanel({
     if (switching || teamId === me.teamId) return;
     setSwitching(true);
     const player = getOrCreatePlayer(code, me.name, teamId);
-    const players = state.players.map((p) =>
-      p.id === me.id ? { ...p, teamId, name: player.name } : p,
-    );
     try {
-      await updateRoomState(room.id, { ...state, players });
-      onTeamChange({ ...me, teamId });
+      const result = await postPlayerAction(room.id, {
+        action: "switch-team",
+        playerId: me.id,
+        name: player.name,
+        teamId,
+      });
+      onRoomState(result.state);
+      onTeamChange({ ...me, ...result.player, teamId, secret: me.secret });
     } catch (e) {
       console.error(e);
     } finally {
@@ -298,13 +364,15 @@ function WaitingPanel({
   return (
     <div className="rounded-3xl bg-black/40 backdrop-blur p-6 border border-white/10 text-center text-white">
       <div className="font-display text-2xl">Ждём ведущего…</div>
-      <p className="text-white/60 text-sm mt-2">
-        Когда стартует раунд, инструкции появятся прямо здесь.
-      </p>
+      <GameRulesBrowser />
       <div className="mt-6 inline-flex gap-1.5">
         <span className="size-2 rounded-full bg-white/70 animate-pulse" />
         <span className="size-2 rounded-full bg-white/70 animate-pulse [animation-delay:150ms]" />
         <span className="size-2 rounded-full bg-white/70 animate-pulse [animation-delay:300ms]" />
+      </div>
+
+      <div className="mt-6 text-left">
+        <TeamStandingsList state={state} highlightTeamId={me.teamId} compact />
       </div>
 
       <div className="mt-6 text-left">
@@ -335,12 +403,104 @@ function WaitingPanel({
   );
 }
 
-function PlayShell({ children }: { children: ReactNode }) {
+function TeamStandingsList({
+  state,
+  highlightTeamId,
+  compact,
+}: {
+  state: import("@/lib/types").RoomState;
+  highlightTeamId?: string;
+  compact?: boolean;
+}) {
+  const standings = computeTeamStandings(state);
+  const hasScores = standings.some((standing) => standing.team.score > 0);
+  if (!hasScores) return null;
+
   return (
-    <main className="min-h-dvh park-gradient flex items-start sm:items-center justify-center px-4 py-6">
+    <div>
+      <div className="text-xs uppercase tracking-widest text-white/50 mb-2">Счёт команд</div>
+      <div className="space-y-1.5">
+        {standings.map((standing) => {
+          const c = teamColorClasses(standing.team.color);
+          const active = highlightTeamId === standing.team.id;
+          return (
+            <div
+              key={standing.team.id}
+              className={`flex items-center justify-between rounded-xl border px-3 py-2 text-sm ${c.chip} ${active ? "ring-2 ring-white/70" : compact ? "opacity-90" : ""}`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-xs tabular-nums opacity-70 w-4">{standing.place}</span>
+                <span className="font-medium truncate">{standing.team.name}</span>
+              </div>
+              <span className="font-display text-lg tabular-nums shrink-0">
+                {standing.team.score}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function PlayerFinale({
+  state,
+  me,
+}: {
+  state: import("@/lib/types").RoomState;
+  me: { id: string; name: string; teamId: string };
+}) {
+  const standings = computeTeamStandings(state);
+  const winners = getWinningStandings(standings);
+  const myStanding = standings.find((standing) => standing.team.id === me.teamId);
+  const isWinner = winners.some((standing) => standing.team.id === me.teamId);
+  const winnerNames = winners.map((standing) => standing.team.name).join(" и ");
+
+  return (
+    <div
+      className={`rounded-3xl backdrop-blur p-6 border text-center text-white ${
+        isWinner
+          ? "bg-gradient-to-b from-[var(--color-park-bright)]/25 to-black/40 border-[var(--color-park-bright)]/40"
+          : "bg-black/40 border-white/10"
+      }`}
+    >
+      <div className="text-4xl">{isWinner ? "🏆" : "🎉"}</div>
+      <div className="text-xs uppercase tracking-[0.25em] text-[var(--color-park-bright)] mt-3">
+        Финал вечеринки
+      </div>
+      {myStanding && (
+        <div className="font-display text-2xl mt-3">
+          Вы заняли {formatRussianPlace(myStanding.place)}
+        </div>
+      )}
+      <p className="text-white/70 text-sm mt-2">
+        {winners.length === 1 ? `Победила команда ${winnerNames}!` : `Ничья: ${winnerNames}!`}
+      </p>
+      {isWinner && (
+        <p className="text-[var(--color-park-bright)] text-sm mt-2 font-medium">
+          Вы в команде-победителе — вы легенда! 🎊
+        </p>
+      )}
+
+      <div className="mt-6 text-left">
+        <TeamStandingsList state={state} highlightTeamId={me.teamId} />
+      </div>
+
+      <p className="text-white/50 text-xs mt-6">Ждём, что решит ведущий дальше…</p>
+    </div>
+  );
+}
+
+function PlayShell({ children, celebratory }: { children: ReactNode; celebratory?: boolean }) {
+  return (
+    <main
+      className={`min-h-dvh flex items-start sm:items-center justify-center px-4 py-6 park-gradient ${
+        celebratory
+          ? "[background-image:linear-gradient(160deg,oklch(0.35_0.12_145),oklch(0.22_0.08_160))]"
+          : ""
+      }`}
+    >
       {children}
     </main>
   );
 }
-
-void genId;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { updateRoomState } from "@/lib/room";
+import { postPlayerAction } from "@/lib/player-action-client";
 import { formatClock } from "@/lib/team-style";
+import { GameRulesChecklist } from "@/components/game-rules-ui";
 import type { RoomState, SpectrumCourtAppeal } from "@/lib/types";
 
 export function SpectrumCourtPlayer({
@@ -33,33 +34,26 @@ export function SpectrumCourtPlayer({
   async function submitClue() {
     const trimmed = clue.trim();
     if (!trimmed) return;
-    await updateRoomState(roomId, {
-      ...state,
-      spectrumcourt: {
-        ...sc,
-        clue: trimmed.slice(0, 80),
-        cluePlayerId: me.id,
-      },
+    await postPlayerAction(roomId, {
+      action: "spectrumcourt-clue",
+      playerId: me.id,
+      clue: trimmed,
     });
   }
 
   async function submitGuess(value: number) {
-    await updateRoomState(roomId, {
-      ...state,
-      spectrumcourt: {
-        ...sc,
-        guesses: { ...(sc.guesses ?? {}), [me.id]: value },
-      },
+    await postPlayerAction(roomId, {
+      action: "spectrumcourt-guess",
+      playerId: me.id,
+      value,
     });
   }
 
   async function submitAppeal(direction: SpectrumCourtAppeal["direction"]) {
-    await updateRoomState(roomId, {
-      ...state,
-      spectrumcourt: {
-        ...sc,
-        appeals: { ...(sc.appeals ?? {}), [me.id]: { direction } },
-      },
+    await postPlayerAction(roomId, {
+      action: "spectrumcourt-appeal",
+      playerId: me.id,
+      direction,
     });
   }
 
@@ -72,6 +66,7 @@ export function SpectrumCourtPlayer({
           Одна команда даст подсказку к скрытой точке. Остальные спорят, ставят маркер и могут
           подать апелляцию.
         </P>
+        <GameRulesChecklist gameId="spectrumcourt" />
       </Card>
     );
   }

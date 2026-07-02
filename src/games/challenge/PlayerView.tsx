@@ -1,16 +1,16 @@
 // Challenge game player view. Operator films; others perform.
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { updateRoomState } from "@/lib/room";
-import { isRetryableError, retryOperation } from "@/lib/retry";
+import { postPlayerArtifact } from "@/lib/player-artifact-client";
+import { postPlayerAction } from "@/lib/player-action-client";
+import { uploadPlayerMedia } from "@/lib/player-upload-client";
 import { logError } from "@/lib/structured-log";
 import { VideoRecorder } from "./VideoRecorder";
 import { extractFrames } from "./video-utils";
 import { formatClock } from "@/lib/team-style";
 import { friendlyMediaError } from "@/lib/media-errors";
+import { GameRulesChecklist } from "@/components/game-rules-ui";
 import type { RoomState } from "@/lib/types";
-
-const RECORDING_MS = 25_000;
 
 export function ChallengePlayer({
   roomId,
@@ -35,11 +35,12 @@ export function ChallengePlayer({
         <Card>
           <Pill>Раунд готовится</Pill>
           <H>Дух парка придумывает задание…</H>
+          <GameRulesChecklist gameId="challenge" />
         </Card>
       );
     }
     if (isOperator) {
-      return <OperatorReady roomId={roomId} state={state} task={ch.task} />;
+      return <OperatorReady roomId={roomId} me={me} task={ch.task} />;
     }
     return (
       <Card>
@@ -50,6 +51,7 @@ export function ChallengePlayer({
           Снимает <strong className="text-white">{ch.operatorName}</strong>. Как только он откроет
           камеру — погнали.
         </P>
+        <GameRulesChecklist gameId="challenge" />
       </Card>
     );
   }
@@ -103,16 +105,7 @@ export function ChallengePlayer({
   );
 }
 
-function OperatorReady({
-  roomId,
-  state,
-  task,
-}: {
-  roomId: string;
-  state: RoomState;
-  task: string;
-}) {
-  const ch = state.challenge!;
+function OperatorReady({ roomId, me, task }: { roomId: string; me: { id: string }; task: string }) {
   const [starting, setStarting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -127,9 +120,9 @@ function OperatorReady({
         audio: true,
       });
       stream.getTracks().forEach((t) => t.stop());
-      await updateRoomState(roomId, {
-        ...state,
-        challenge: { ...ch, phase: "recording", recordingEndsAt: Date.now() + RECORDING_MS },
+      await postPlayerAction(roomId, {
+        action: "challenge-start-recording",
+        playerId: me.id,
       });
     } catch (e) {
       console.error(e);
@@ -150,6 +143,7 @@ function OperatorReady({
         <p className="text-white/60 text-xs mt-3">
           Прочитай вслух задание, наведи камеру — и жми кнопку.
         </p>
+        <GameRulesChecklist gameId="challenge" />
       </div>
       <button
         onClick={start}
@@ -179,7 +173,6 @@ function OperatorRecord({
 
   async function handleUpload(blob: Blob, mime: string) {
     const ext = mime.includes("mp4") ? "mp4" : "webm";
-    const path = `${roomId}/challenge/${ch.roundId}/${me.id}-${Date.now()}.${ext}`;
     const uploadLogFields = {
       game: "challenge",
       stage: "video_upload",
@@ -190,35 +183,19 @@ function OperatorRecord({
       mimeType: mime,
       blobSize: blob.size,
     };
-    const up = await retryOperation(
-      async () => {
-        const result = await supabase.storage
-          .from("recordings")
-          .upload(path, blob, { contentType: mime });
-        if (result.error && isRetryableError(result.error)) throw result.error;
-        return result;
+    const storagePath = await uploadPlayerMedia(
+      roomId,
+      {
+        action: "challenge-video",
+        playerId: me.id,
+        roundId: ch.roundId,
+        mimeType: mime,
       },
-      { shouldRetry: (error) => isRetryableError(error) },
-    );
-    if (up.error) {
-      logError("upload.failure", up.error, uploadLogFields);
-      throw up.error;
-    }
-    const signed = await retryOperation(
-      async () => {
-        const result = await supabase.storage
-          .from("recordings")
-          .createSignedUrl(path, 60 * 60 * 24);
-        if (result.error && isRetryableError(result.error)) throw result.error;
-        return result;
-      },
-      { shouldRetry: (error) => isRetryableError(error) },
-    );
-    if (signed.error) {
-      logError("upload.failure", signed.error, { ...uploadLogFields, stage: "signed_url" });
-      throw signed.error;
-    }
-    const video_url = signed.data?.signedUrl ?? null;
+      blob,
+    ).catch((error) => {
+      logError("upload.failure", error, uploadLogFields);
+      throw error;
+    });
 
     // transcribe audio track (whisper can pull audio from webm/mp4)
     let transcript = "";
@@ -240,19 +217,14 @@ function OperatorRecord({
       /* */
     }
 
-    const inserted = await supabase.from("challenges").insert({
-      room_id: roomId,
-      round_id: ch.roundId,
-      task: ch.task ?? "",
-      operator_id: me.id,
-      operator_name: me.name,
-      video_url,
+    const submitted = await postPlayerArtifact(roomId, {
+      action: "challenge-submission",
+      playerId: me.id,
+      roundId: ch.roundId,
+      storagePath,
       transcript,
     });
-    if (inserted.error) {
-      logError("upload.failure", inserted.error, { ...uploadLogFields, stage: "challenge_insert" });
-      throw inserted.error;
-    }
+    const videoUrl = submitted.videoUrl ?? "";
 
     // Host listens for INSERT and runs the judge. Pass frames out-of-band via broadcast.
     const channel = supabase.channel(`judge:${roomId}`);
@@ -267,9 +239,10 @@ function OperatorRecord({
       event: "judge",
       payload: {
         roundId: ch.roundId,
+        operatorId: me.id,
         frames,
         transcript,
-        videoUrl: video_url,
+        videoUrl,
         operatorName: me.name,
         task: ch.task,
       },

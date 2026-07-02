@@ -13,6 +13,7 @@ export type Player = {
   name: string;
   teamId: string;
   joinedAt: number;
+  secretHash?: string;
 };
 
 export type SoundscapePhase =
@@ -44,6 +45,7 @@ export type SoundscapeState = {
   aiFallback?: boolean;
   topic?: string;
   topicVotes?: Record<string, string>;
+  topicsEndsAt?: number;
   recordingEndsAt?: number;
   mixes?: Record<string, SoundscapeMix>; // teamId -> mix
   playback?: {
@@ -72,13 +74,39 @@ export type ChallengeState = {
   task?: string;
   operatorId?: string;
   operatorName?: string;
+  briefingEndsAt?: number;
   recordingEndsAt?: number;
   result?: { score: number; feedback: string; videoUrl: string };
   aiFallback?: boolean;
   pastOperatorIds?: string[];
 };
 
-export type GameId = "soundscape" | "challenge" | "phototunt" | "trackguess" | "spectrumcourt";
+export type GameId =
+  "soundscape" | "challenge" | "phototunt" | "trackguess" | "spectrumcourt" | "whoamong";
+
+export type WhoAmongPhase = "briefing" | "voting" | "reveal" | "results";
+
+export type WhoAmongRoundResult = {
+  promptId: string;
+  prompt: string;
+  starIds: string[];
+  voteCounts: Record<string, number>;
+  correctVoterIds: string[];
+};
+
+export type WhoAmongState = {
+  phase: WhoAmongPhase;
+  roundId: string;
+  roundNumber: number;
+  totalRounds: number;
+  usedPromptIds: string[];
+  promptId?: string;
+  prompt?: string;
+  votes?: Record<string, string>;
+  voteEndsAt?: number;
+  revealEndsAt?: number;
+  roundResults?: WhoAmongRoundResult[];
+};
 
 export type PhotoHuntPhase = "briefing" | "hunting" | "judging" | "results";
 
@@ -98,6 +126,7 @@ export type PhotoHuntState = {
   task?: string;
   intro?: string;
   huntEndsAt?: number;
+  hunterIds?: string[];
   submittedPlayerIds?: string[];
   results?: PhotoHuntResultEntry[];
   aiFallback?: boolean;
@@ -176,6 +205,7 @@ export type SpectrumCourtState = {
   clue?: string;
   guesses?: Record<string, number>;
   appeals?: Record<string, SpectrumCourtAppeal>;
+  clueEndsAt?: number;
   guessEndsAt?: number;
   appealEndsAt?: number;
   revealEndsAt?: number;
@@ -196,6 +226,7 @@ export type RoomState = {
   phototunt?: PhotoHuntState;
   trackguess?: TrackGuessState;
   spectrumcourt?: SpectrumCourtState;
+  whoamong?: WhoAmongState;
   speakerSlots: Record<number, { connected: boolean; name: string; lastSeenAt?: number }>; // 1..5
 };
 

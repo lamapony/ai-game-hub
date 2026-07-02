@@ -1,13 +1,15 @@
 // Photo Hunt player view: see task, snap one photo within timer, upload, wait for verdict.
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { postPlayerArtifact } from "@/lib/player-artifact-client";
+import { uploadPlayerMedia } from "@/lib/player-upload-client";
 import { formatClock } from "@/lib/team-style";
 import { friendlyUploadError } from "@/lib/media-errors";
-import { isRetryableError, retryOperation } from "@/lib/retry";
 import { logError } from "@/lib/structured-log";
 import type { RoomState } from "@/lib/types";
 import { PhotoCapture } from "./PhotoCapture";
 import { downscaleImage } from "./image-utils";
+import { GameRulesChecklist } from "@/components/game-rules-ui";
 
 export function PhotoHuntPlayer({
   roomId,
@@ -69,9 +71,13 @@ export function PhotoHuntPlayer({
             <P>
               Когда ведущий нажмёт старт — у тебя будет 60 секунд, чтобы найти и снять ОДИН кадр.
             </P>
+            <GameRulesChecklist gameId="phototunt" />
           </>
         ) : (
-          <H>Дух парка придумывает охоту…</H>
+          <>
+            <H>Дух парка придумывает охоту…</H>
+            <GameRulesChecklist gameId="phototunt" />
+          </>
         )}
       </Card>
     );
@@ -122,7 +128,6 @@ export function PhotoHuntPlayer({
             try {
               const { blob, dataUrl } = await downscaleImage(file, 1024, 0.82);
               setMyPhotoUrl(dataUrl);
-              const path = `${roomId}/photos/${ph.roundId}/${me.id}-${Date.now()}.jpg`;
               const uploadLogFields = {
                 game: "phototunt",
                 stage: "photo_upload",
@@ -133,58 +138,26 @@ export function PhotoHuntPlayer({
                 mimeType: "image/jpeg",
                 blobSize: blob.size,
               };
-              const up = await retryOperation(
-                async () => {
-                  const result = await supabase.storage
-                    .from("recordings")
-                    .upload(path, blob, { contentType: "image/jpeg" });
-                  if (result.error && isRetryableError(result.error)) throw result.error;
-                  return result;
+              const storagePath = await uploadPlayerMedia(
+                roomId,
+                {
+                  action: "photo",
+                  playerId: me.id,
+                  roundId: ph.roundId,
+                  mimeType: "image/jpeg",
                 },
-                { shouldRetry: (error) => isRetryableError(error) },
-              );
-              if (up.error) {
-                logError("upload.failure", up.error, uploadLogFields);
-                throw up.error;
-              }
-              const signed = await retryOperation(
-                async () => {
-                  const result = await supabase.storage
-                    .from("recordings")
-                    .createSignedUrl(path, 60 * 60 * 24);
-                  if (result.error && isRetryableError(result.error)) throw result.error;
-                  return result;
-                },
-                { shouldRetry: (error) => isRetryableError(error) },
-              );
-              if (signed.error) {
-                logError("upload.failure", signed.error, {
-                  ...uploadLogFields,
-                  stage: "signed_url",
-                });
-                throw signed.error;
-              }
-              const photo_url = signed.data?.signedUrl;
-              if (!photo_url) {
-                const error = new Error("no signed url");
-                logError("upload.failure", error, { ...uploadLogFields, stage: "signed_url" });
+                blob,
+              ).catch((error) => {
+                logError("upload.failure", error, uploadLogFields);
                 throw error;
-              }
-              const ins = await supabase.from("photos").insert({
-                room_id: roomId,
-                round_id: ph.roundId,
-                player_id: me.id,
-                player_name: me.name,
-                team_id: me.teamId,
-                photo_url,
               });
-              if (ins.error) {
-                logError("upload.failure", ins.error, {
-                  ...uploadLogFields,
-                  stage: "photo_insert",
-                });
-                throw ins.error;
-              }
+              const submitted = await postPlayerArtifact(roomId, {
+                action: "photo-submission",
+                playerId: me.id,
+                roundId: ph.roundId,
+                storagePath,
+              });
+              if (submitted.photoUrl) setMyPhotoUrl(submitted.photoUrl);
               setSubmitted(true);
             } catch (e) {
               console.error(e);

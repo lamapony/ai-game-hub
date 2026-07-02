@@ -1,10 +1,21 @@
 import { describe, expect, test } from "bun:test";
 import {
+  buildWinnerAnnouncement,
   canSkipCurrentPhase,
+  CHALLENGE_JUDGING_FALLBACK_FEEDBACK,
+  computeTeamStandings,
+  finishPartyState,
   forceBackToHubState,
+  formatRussianPlace,
+  formatRussianPoints,
+  getWinningStandings,
   pauseRoomState,
+  resetScoresState,
+  resumePartyState,
   resumeRoomState,
+  SOUNDSCAPE_FALLBACK_TOPIC,
   skipCurrentPhaseState,
+  spectrumCourtFallbackClue,
 } from "./host-controls";
 import type { RoomState } from "./types";
 
@@ -38,6 +49,7 @@ describe("host controls state helpers", () => {
       soundscape: {
         phase: "playback",
         roundId: "snd",
+        topicsEndsAt: 10_500,
         recordingEndsAt: 11_000,
         voteOpenAt: 12_000,
         playback: { teamId: "forest", startAt: 13_000 },
@@ -45,6 +57,7 @@ describe("host controls state helpers", () => {
       challenge: {
         phase: "recording",
         roundId: "ch",
+        briefingEndsAt: 13_500,
         recordingEndsAt: 14_000,
       },
       phototunt: {
@@ -58,9 +71,19 @@ describe("host controls state helpers", () => {
         roundNumber: 1,
         totalRounds: 4,
         usedSpectrumIds: [],
+        clueEndsAt: 15_500,
         guessEndsAt: 16_000,
         appealEndsAt: 17_000,
         revealEndsAt: 18_000,
+      },
+      whoamong: {
+        phase: "voting",
+        roundId: "wa",
+        roundNumber: 1,
+        totalRounds: 5,
+        usedPromptIds: [],
+        voteEndsAt: 18_500,
+        revealEndsAt: 19_000,
       },
     });
 
@@ -68,14 +91,19 @@ describe("host controls state helpers", () => {
     const resumed = resumeRoomState(paused, 25_500);
 
     expect(resumed.paused).toBeUndefined();
+    expect(resumed.soundscape?.topicsEndsAt).toBe(16_000);
     expect(resumed.soundscape?.recordingEndsAt).toBe(16_500);
     expect(resumed.soundscape?.voteOpenAt).toBe(17_500);
     expect(resumed.soundscape?.playback?.startAt).toBe(18_500);
+    expect(resumed.challenge?.briefingEndsAt).toBe(19_000);
     expect(resumed.challenge?.recordingEndsAt).toBe(19_500);
     expect(resumed.phototunt?.huntEndsAt).toBe(20_500);
+    expect(resumed.spectrumcourt?.clueEndsAt).toBe(21_000);
     expect(resumed.spectrumcourt?.guessEndsAt).toBe(21_500);
     expect(resumed.spectrumcourt?.appealEndsAt).toBe(22_500);
     expect(resumed.spectrumcourt?.revealEndsAt).toBe(23_500);
+    expect(resumed.whoamong?.voteEndsAt).toBe(24_000);
+    expect(resumed.whoamong?.revealEndsAt).toBe(24_500);
   });
 
   test("forceBackToHub clears active games and pause state", () => {
@@ -92,6 +120,13 @@ describe("host controls state helpers", () => {
         totalRounds: 4,
         usedSpectrumIds: [],
       },
+      whoamong: {
+        phase: "voting",
+        roundId: "wa",
+        roundNumber: 1,
+        totalRounds: 5,
+        usedPromptIds: [],
+      },
     });
 
     const result = forceBackToHubState(state);
@@ -103,6 +138,66 @@ describe("host controls state helpers", () => {
     expect(result.challenge).toBeUndefined();
     expect(result.phototunt).toBeUndefined();
     expect(result.spectrumcourt).toBeUndefined();
+    expect(result.whoamong).toBeUndefined();
+  });
+
+  test("skip soundscape topics without generated topics uses fallback theme", () => {
+    const state = roomState({
+      soundscape: {
+        phase: "topics",
+        roundId: "snd",
+      },
+    });
+
+    expect(canSkipCurrentPhase(state)).toBe(true);
+
+    const result = skipCurrentPhaseState(state, 2000);
+
+    expect(result.soundscape?.phase).toBe("recording");
+    expect(result.soundscape?.topic).toBe(SOUNDSCAPE_FALLBACK_TOPIC);
+    expect(result.soundscape?.recordingEndsAt).toBe(182_000);
+  });
+
+  test("skip soundscape mixing restarts recording with fresh timer", () => {
+    const state = roomState({
+      soundscape: {
+        phase: "mixing",
+        roundId: "snd",
+        topic: "rain",
+      },
+    });
+
+    expect(canSkipCurrentPhase(state)).toBe(true);
+    const result = skipCurrentPhaseState(state, 5000);
+    expect(result.soundscape?.phase).toBe("recording");
+    expect(result.soundscape?.recordingEndsAt).toBe(185_000);
+  });
+
+  test("skip challenge judging awards fallback score to operator team", () => {
+    const state = roomState({
+      currentGame: "challenge",
+      challenge: {
+        phase: "judging",
+        roundId: "ch",
+        operatorId: "p1",
+      },
+    });
+
+    expect(canSkipCurrentPhase(state)).toBe(true);
+    const result = skipCurrentPhaseState(state, 9000);
+
+    expect(result.challenge?.phase).toBe("results");
+    expect(result.challenge?.result).toEqual({
+      score: 5,
+      feedback: CHALLENGE_JUDGING_FALLBACK_FEEDBACK,
+      videoUrl: "",
+    });
+    expect(result.teams.find((team) => team.id === "forest")?.score).toBe(5);
+  });
+
+  test("spectrumCourtFallbackClue prefers prompt then default text", () => {
+    expect(spectrumCourtFallbackClue({ prompt: "романтика" })).toBe("романтика");
+    expect(spectrumCourtFallbackClue({ prompt: "  " })).toBe("Без подсказки — командная интуиция!");
   });
 
   test("skip soundscape topics picks top voted topic and starts recording", () => {
@@ -184,7 +279,7 @@ describe("host controls state helpers", () => {
     expect(skipCurrentPhaseState(state, now).trackguess?.guessEndsAt).toBe(now);
   });
 
-  test("skip spectrum court clue starts guessing only after clue exists", () => {
+  test("skip spectrum court clue without clue applies fallback and starts guessing", () => {
     const now = 80_000;
     const noClue = roomState({
       currentGame: "spectrumcourt",
@@ -194,6 +289,8 @@ describe("host controls state helpers", () => {
         roundNumber: 1,
         totalRounds: 4,
         usedSpectrumIds: [],
+        prompt: "парная татуировка",
+        clueTeamId: "forest",
       },
     });
     const withClue = roomState({
@@ -208,10 +305,12 @@ describe("host controls state helpers", () => {
       },
     });
 
-    expect(canSkipCurrentPhase(noClue)).toBe(false);
+    expect(canSkipCurrentPhase(noClue)).toBe(true);
     expect(canSkipCurrentPhase(withClue)).toBe(true);
-    const result = skipCurrentPhaseState(withClue, now);
+    const result = skipCurrentPhaseState(noClue, now);
     expect(result.spectrumcourt?.phase).toBe("guessing");
+    expect(result.spectrumcourt?.clue).toBe("парная татуировка");
+    expect(result.spectrumcourt?.cluePlayerId).toBe("p1");
     expect(result.spectrumcourt?.guessEndsAt).toBe(now + 35_000);
   });
 
@@ -231,5 +330,185 @@ describe("host controls state helpers", () => {
 
     expect(canSkipCurrentPhase(state)).toBe(true);
     expect(skipCurrentPhaseState(state, now).spectrumcourt?.appealEndsAt).toBe(now);
+  });
+
+  test("skip whoamong voting ends vote timer immediately", () => {
+    const now = 55_000;
+    const state = roomState({
+      currentGame: "whoamong",
+      whoamong: {
+        phase: "voting",
+        roundId: "wa",
+        roundNumber: 1,
+        totalRounds: 5,
+        usedPromptIds: ["sleep-party"],
+        promptId: "sleep-party",
+        prompt: "Кто из нас заснёт?",
+        voteEndsAt: now + 25_000,
+      },
+    });
+
+    expect(canSkipCurrentPhase(state)).toBe(true);
+    expect(skipCurrentPhaseState(state, now).whoamong?.voteEndsAt).toBe(now);
+  });
+
+  test("skip whoamong reveal ends reveal timer immediately", () => {
+    const now = 60_000;
+    const state = roomState({
+      currentGame: "whoamong",
+      whoamong: {
+        phase: "reveal",
+        roundId: "wa",
+        roundNumber: 1,
+        totalRounds: 5,
+        usedPromptIds: ["sleep-party"],
+        revealEndsAt: now + 10_000,
+      },
+    });
+
+    expect(canSkipCurrentPhase(state)).toBe(true);
+    expect(skipCurrentPhaseState(state, now).whoamong?.revealEndsAt).toBe(now);
+  });
+
+  test("finishPartyState sets finished and clears game substates", () => {
+    const state = roomState({
+      paused: { startedAt: 100 },
+      teams: [
+        { id: "forest", name: "Forest", color: "green", score: 12 },
+        { id: "lake", name: "Lake", color: "blue", score: 8 },
+      ],
+      soundscape: { phase: "voting", roundId: "snd" },
+      challenge: { phase: "results", roundId: "ch" },
+      phototunt: { phase: "results", roundId: "ph" },
+      trackguess: {
+        phase: "results",
+        roundId: "tg",
+        roundNumber: 1,
+        totalRounds: 5,
+        usedTrackIds: [],
+      },
+      spectrumcourt: {
+        phase: "results",
+        roundId: "sc",
+        roundNumber: 1,
+        totalRounds: 4,
+        usedSpectrumIds: [],
+      },
+      whoamong: {
+        phase: "results",
+        roundId: "wa",
+        roundNumber: 1,
+        totalRounds: 5,
+        usedPromptIds: [],
+      },
+    });
+
+    const result = finishPartyState(state);
+
+    expect(result.status).toBe("finished");
+    expect(result.currentGame).toBeNull();
+    expect(result.paused).toBeUndefined();
+    expect(result.soundscape).toBeUndefined();
+    expect(result.challenge).toBeUndefined();
+    expect(result.phototunt).toBeUndefined();
+    expect(result.trackguess).toBeUndefined();
+    expect(result.spectrumcourt).toBeUndefined();
+    expect(result.whoamong).toBeUndefined();
+    expect(result.teams.find((team) => team.id === "forest")?.score).toBe(12);
+    expect(result.players).toHaveLength(2);
+  });
+
+  test("resumePartyState returns finished room to lobby", () => {
+    const state = roomState({
+      status: "finished",
+      currentGame: null,
+      teams: [
+        { id: "forest", name: "Forest", color: "green", score: 15 },
+        { id: "lake", name: "Lake", color: "blue", score: 3 },
+      ],
+    });
+
+    const result = resumePartyState(state);
+
+    expect(result.status).toBe("lobby");
+    expect(result.currentGame).toBeNull();
+    expect(result.teams.find((team) => team.id === "forest")?.score).toBe(15);
+  });
+
+  test("resumePartyState leaves non-finished room unchanged", () => {
+    const state = roomState({ status: "playing" });
+    expect(resumePartyState(state)).toBe(state);
+  });
+
+  test("resetScoresState zeroes all team scores", () => {
+    const state = roomState({
+      teams: [
+        { id: "forest", name: "Forest", color: "green", score: 20 },
+        { id: "lake", name: "Lake", color: "blue", score: 7 },
+      ],
+    });
+
+    const result = resetScoresState(state);
+
+    expect(result.teams.every((team) => team.score === 0)).toBe(true);
+    expect(result.players).toHaveLength(2);
+  });
+
+  test("computeTeamStandings handles ties with shared places", () => {
+    const state = roomState({
+      teams: [
+        { id: "forest", name: "Forest", color: "green", score: 10 },
+        { id: "lake", name: "Lake", color: "blue", score: 10 },
+        { id: "fire", name: "Fire", color: "red", score: 5 },
+      ],
+      players: [
+        { id: "p1", name: "One", teamId: "forest", joinedAt: 1 },
+        { id: "p2", name: "Two", teamId: "lake", joinedAt: 2 },
+        { id: "p3", name: "Three", teamId: "fire", joinedAt: 3 },
+      ],
+    });
+
+    const standings = computeTeamStandings(state);
+
+    expect(standings.map((s) => [s.team.id, s.place])).toEqual([
+      ["forest", 1],
+      ["lake", 1],
+      ["fire", 3],
+    ]);
+    expect(standings[0]?.playerCount).toBe(1);
+  });
+
+  test("winner announcement handles single winner and ties", () => {
+    const tied = computeTeamStandings(
+      roomState({
+        teams: [
+          { id: "forest", name: "Лисы", color: "green", score: 10 },
+          { id: "lake", name: "Ежи", color: "blue", score: 10 },
+          { id: "fire", name: "Сова", color: "red", score: 3 },
+        ],
+      }),
+    );
+    expect(getWinningStandings(tied)).toHaveLength(2);
+    expect(buildWinnerAnnouncement(tied)).toBe("Ничья между Лисы и Ежи! По 10 очков у каждой!");
+
+    const solo = computeTeamStandings(
+      roomState({
+        teams: [
+          { id: "forest", name: "Лисы", color: "green", score: 12 },
+          { id: "lake", name: "Ежи", color: "blue", score: 4 },
+        ],
+      }),
+    );
+    expect(buildWinnerAnnouncement(solo)).toBe("Победители вечеринки — команда Лисы! 12 очков!");
+  });
+
+  test("Russian place and points formatting", () => {
+    expect(formatRussianPlace(1)).toBe("1 место");
+    expect(formatRussianPlace(2)).toBe("2 места");
+    expect(formatRussianPlace(5)).toBe("5 мест");
+    expect(formatRussianPlace(21)).toBe("21 место");
+    expect(formatRussianPoints(1)).toBe("1 очко");
+    expect(formatRussianPoints(3)).toBe("3 очка");
+    expect(formatRussianPoints(11)).toBe("11 очков");
   });
 });

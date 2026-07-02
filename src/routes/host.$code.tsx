@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { useRoom, useBroadcast, updateRoomState, getHostSecret, genId } from "@/lib/room";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,12 +10,21 @@ import {
   launchSoundscapeState,
   launchSpectrumCourtState,
   launchTrackGuessState,
+  launchWhoAmongState,
 } from "@/lib/game-state";
 import { teamColorClasses } from "@/lib/team-style";
 import {
+  buildWinnerAnnouncement,
   canSkipCurrentPhase,
+  computeTeamStandings,
+  finishPartyState,
   forceBackToHubState,
+  formatRussianPlace,
+  formatRussianPoints,
+  getWinningStandings,
   pauseRoomState,
+  resetScoresState,
+  resumePartyState,
   resumeRoomState,
   skipCurrentPhaseState,
 } from "@/lib/host-controls";
@@ -28,7 +37,8 @@ import {
   renameTeamInState,
   suggestTeamName,
 } from "@/lib/teams";
-import type { RoomState } from "@/lib/types";
+import type { GameId, RoomState } from "@/lib/types";
+import { GameRulesDialogTrigger } from "@/components/game-rules-ui";
 
 const SoundscapeHost = lazy(() =>
   import("@/games/soundscape/HostView").then((module) => ({
@@ -53,6 +63,11 @@ const TrackGuessHost = lazy(() =>
 const SpectrumCourtHost = lazy(() =>
   import("@/games/spectrumcourt/HostView").then((module) => ({
     default: module.SpectrumCourtHost,
+  })),
+);
+const WhoAmongHost = lazy(() =>
+  import("@/games/whoamong/HostView").then((module) => ({
+    default: module.WhoAmongHost,
   })),
 );
 
@@ -148,6 +163,12 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
     await updateRoomState(roomId, next);
   }
 
+  async function launchWhoAmong() {
+    const next = launchWhoAmongState(state, genId("wa"));
+    if (!next) return;
+    await updateRoomState(roomId, next);
+  }
+
   async function resetGame() {
     await updateRoomState(roomId, forceBackToHubState(state));
   }
@@ -169,10 +190,28 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
     if (state.currentGame === "phototunt") await launchPhotoHunt();
     if (state.currentGame === "trackguess") await launchTrackGuess();
     if (state.currentGame === "spectrumcourt") await launchSpectrumCourt();
+    if (state.currentGame === "whoamong") await launchWhoAmong();
   }
 
   async function forceBackToHub() {
     await updateRoomState(roomId, forceBackToHubState(state));
+  }
+
+  async function finishParty() {
+    await updateRoomState(roomId, finishPartyState(state));
+  }
+
+  async function resumeParty() {
+    await updateRoomState(roomId, resumePartyState(state));
+  }
+
+  async function startNewParty() {
+    await updateRoomState(roomId, resetScoresState(resumePartyState(state)));
+  }
+
+  async function resetScores() {
+    if (!window.confirm("Обнулить счёт всех команд? Это нельзя отменить.")) return;
+    await updateRoomState(roomId, resetScoresState(state));
   }
 
   async function addTeam(name: string) {
@@ -223,7 +262,9 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
             />
           )}
 
-          {state.currentGame ? (
+          {state.status === "finished" ? (
+            <PartyFinale state={state} onResumeParty={resumeParty} onNewParty={startNewParty} />
+          ) : state.currentGame ? (
             <Suspense fallback={<HostGameLoading />}>
               {state.currentGame === "soundscape" && state.soundscape ? (
                 <SoundscapeHost roomId={roomId} code={code} state={state} />
@@ -235,6 +276,8 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
                 <TrackGuessHost roomId={roomId} state={state} />
               ) : state.currentGame === "spectrumcourt" && state.spectrumcourt ? (
                 <SpectrumCourtHost roomId={roomId} state={state} />
+              ) : state.currentGame === "whoamong" && state.whoamong ? (
+                <WhoAmongHost roomId={roomId} state={state} />
               ) : (
                 <HostGameLoading />
               )}
@@ -249,6 +292,8 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
               onLaunchPhotoHunt={launchPhotoHunt}
               onLaunchTrackGuess={launchTrackGuess}
               onLaunchSpectrumCourt={launchSpectrumCourt}
+              onLaunchWhoAmong={launchWhoAmong}
+              onFinishParty={finishParty}
               speakerUrlFor={speakerUrlFor}
               onTestSpeaker={testSpeaker}
               onAddTeam={addTeam}
@@ -260,7 +305,7 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
         </section>
 
         <aside className="space-y-4">
-          <Scoreboard state={state} />
+          <Scoreboard state={state} onResetScores={resetScores} />
           <PlayersList state={state} />
           <button
             onClick={resetGame}
@@ -304,6 +349,7 @@ function HostControlBar({
     phototunt: "Фотоохота",
     trackguess: "Настоящий или AI?",
     spectrumcourt: "Spectrum Court",
+    whoamong: "Кто из нас",
   }[state.currentGame ?? "soundscape"];
   const phase =
     state.currentGame === "soundscape"
@@ -316,7 +362,9 @@ function HostControlBar({
             ? state.trackguess?.phase
             : state.currentGame === "spectrumcourt"
               ? state.spectrumcourt?.phase
-              : null;
+              : state.currentGame === "whoamong"
+                ? state.whoamong?.phase
+                : null;
 
   return (
     <div className="mb-4 rounded-3xl border border-white/10 bg-card p-4">
@@ -371,6 +419,11 @@ function HostControlBar({
   );
 }
 
+function speak(text: string) {
+  const a = new Audio(`/api/speak?text=${encodeURIComponent(text)}`);
+  a.play().catch(() => {});
+}
+
 function Lobby({
   totalPlayers,
   code,
@@ -380,6 +433,8 @@ function Lobby({
   onLaunchPhotoHunt,
   onLaunchTrackGuess,
   onLaunchSpectrumCourt,
+  onLaunchWhoAmong,
+  onFinishParty,
   speakerUrlFor,
   onTestSpeaker,
   onAddTeam,
@@ -395,6 +450,8 @@ function Lobby({
   onLaunchPhotoHunt: () => void;
   onLaunchTrackGuess: () => void;
   onLaunchSpectrumCourt: () => void;
+  onLaunchWhoAmong: () => void;
+  onFinishParty: () => void;
   speakerUrlFor: (n: number) => string;
   onTestSpeaker: (n: number) => void;
   onAddTeam: (name: string) => Promise<void>;
@@ -417,6 +474,8 @@ function Lobby({
     state.players.some((player) => player.teamId === team.id),
   ).length;
   const canSpectrumCourt = activeTeamCount >= 2;
+  const canWhoAmong = totalPlayers >= 3;
+  const hasScores = state.teams.some((team) => team.score > 0);
 
   function copyLink() {
     navigator.clipboard?.writeText(joinUrl).then(() => {
@@ -531,9 +590,19 @@ function Lobby({
       </section>
 
       <div className={`rounded-3xl park-gradient p-6 text-white ${hasPlayers ? "" : "opacity-70"}`}>
-        <div>
-          <div className="text-xs uppercase tracking-[0.25em] text-white/80">Старт</div>
-          <h3 className="font-display text-2xl mt-0.5">Что играем первым?</h3>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="text-xs uppercase tracking-[0.25em] text-white/80">Старт</div>
+            <h3 className="font-display text-2xl mt-0.5">Что играем первым?</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onFinishParty}
+            disabled={!hasScores}
+            className="rounded-2xl border border-white/25 bg-white/15 px-5 py-3 text-sm font-medium hover:bg-white/25 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            🏆 Финал вечеринки
+          </button>
         </div>
 
         {!hasPlayers && (
@@ -544,6 +613,7 @@ function Lobby({
 
         <div className="mt-5 grid sm:grid-cols-2 gap-3">
           <GameCard
+            gameId="soundscape"
             emoji="🎚️"
             title="Звуковой баттл"
             time="~7 минут"
@@ -559,6 +629,7 @@ function Lobby({
             onClick={onLaunchSoundscape}
           />
           <GameCard
+            gameId="challenge"
             emoji="🎬"
             title="Челлендж духа парка"
             time="~3 минуты на раунд"
@@ -568,6 +639,7 @@ function Lobby({
             onClick={onLaunchChallenge}
           />
           <GameCard
+            gameId="phototunt"
             emoji="📸"
             title="Фотоохота"
             time="~2 минуты на раунд"
@@ -577,6 +649,7 @@ function Lobby({
             onClick={onLaunchPhotoHunt}
           />
           <GameCard
+            gameId="trackguess"
             emoji="🎧"
             title="Настоящий или AI?"
             time="~5 раундов"
@@ -586,6 +659,7 @@ function Lobby({
             onClick={onLaunchTrackGuess}
           />
           <GameCard
+            gameId="spectrumcourt"
             emoji="⚖️"
             title="Spectrum Court"
             time="~4 раунда"
@@ -593,6 +667,16 @@ function Lobby({
             disabled={!canSpectrumCourt}
             disabledHint={!canSpectrumCourt ? "нужно ≥ 2 активных команд" : undefined}
             onClick={onLaunchSpectrumCourt}
+          />
+          <GameCard
+            gameId="whoamong"
+            emoji="🕵️"
+            title="Кто из нас"
+            time="~5 раундов"
+            desc="Острый вопрос на экране — тайно голосуешь за того, кто подходит лучше всех."
+            disabled={!canWhoAmong}
+            disabledHint={!canWhoAmong ? "нужно ≥ 3 игроков" : undefined}
+            onClick={onLaunchWhoAmong}
           />
         </div>
       </div>
@@ -871,6 +955,7 @@ function TeamManager({
 }
 
 function GameCard({
+  gameId,
   emoji,
   title,
   time,
@@ -879,6 +964,7 @@ function GameCard({
   disabledHint,
   onClick,
 }: {
+  gameId: GameId;
   emoji: string;
   title: string;
   time: string;
@@ -893,9 +979,12 @@ function GameCard({
       disabled={disabled}
       className="text-left rounded-2xl bg-white/10 hover:bg-white/15 active:bg-white/20 border border-white/15 p-4 disabled:opacity-40 disabled:cursor-not-allowed transition"
     >
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-baseline justify-between gap-2">
         <div className="text-3xl">{emoji}</div>
-        <div className="text-[10px] uppercase tracking-widest text-white/60">{time}</div>
+        <div className="flex items-center gap-2 shrink-0">
+          <GameRulesDialogTrigger gameId={gameId} />
+          <div className="text-[10px] uppercase tracking-widest text-white/60">{time}</div>
+        </div>
       </div>
       <div className="font-display text-xl mt-2">{title}</div>
       <p className="text-sm text-white/75 mt-1">{desc}</p>
@@ -904,11 +993,29 @@ function GameCard({
   );
 }
 
-function Scoreboard({ state }: { state: import("@/lib/types").RoomState }) {
+function Scoreboard({
+  state,
+  onResetScores,
+}: {
+  state: import("@/lib/types").RoomState;
+  onResetScores: () => void;
+}) {
   const sorted = [...state.teams].sort((a, b) => b.score - a.score);
+  const hasScores = state.teams.some((team) => team.score > 0);
   return (
     <div className="rounded-3xl bg-card p-4 border">
-      <div className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Счёт</div>
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="text-xs uppercase tracking-widest text-muted-foreground">Счёт</div>
+        {hasScores && (
+          <button
+            type="button"
+            onClick={onResetScores}
+            className="text-[10px] uppercase tracking-wide text-muted-foreground hover:text-foreground"
+          >
+            Сбросить счёт
+          </button>
+        )}
+      </div>
       <div className="space-y-2">
         {sorted.map((t) => {
           const c = teamColorClasses(t.color);
@@ -955,6 +1062,178 @@ function PlayersList({ state }: { state: import("@/lib/types").RoomState }) {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function PartyFinale({
+  state,
+  onResumeParty,
+  onNewParty,
+}: {
+  state: RoomState;
+  onResumeParty: () => void;
+  onNewParty: () => void;
+}) {
+  const announcedRef = useRef(false);
+  const standings = computeTeamStandings(state);
+  const winners = getWinningStandings(standings);
+  const podiumPlaces = [2, 1, 3] as const;
+
+  useEffect(() => {
+    if (announcedRef.current) return;
+    announcedRef.current = true;
+    speak(buildWinnerAnnouncement(standings));
+  }, [standings]);
+
+  return (
+    <div className="rounded-3xl border border-white/10 bg-card overflow-hidden">
+      <div className="park-gradient px-6 py-10 text-center text-white">
+        <div className="text-5xl">🎉</div>
+        <div className="mt-3 text-xs uppercase tracking-[0.3em] text-white/70">Финал вечеринки</div>
+        {winners.length === 1 ? (
+          <>
+            <h2 className="font-display text-4xl sm:text-5xl mt-3">Победители!</h2>
+            <div
+              className={`mt-4 inline-flex items-center gap-3 rounded-2xl border px-6 py-3 ${teamColorClasses(winners[0]!.team.color).chip}`}
+            >
+              <span
+                className={`size-4 rounded-full ${teamColorClasses(winners[0]!.team.color).bg}`}
+              />
+              <span className="font-display text-3xl">{winners[0]!.team.name}</span>
+              <span className="font-display text-2xl tabular-nums opacity-90">
+                {winners[0]!.team.score}
+              </span>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2 className="font-display text-4xl sm:text-5xl mt-3">Ничья!</h2>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              {winners.map((standing) => {
+                const c = teamColorClasses(standing.team.color);
+                return (
+                  <div
+                    key={standing.team.id}
+                    className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2 ${c.chip}`}
+                  >
+                    <span className={`size-3 rounded-full ${c.bg}`} />
+                    <span className="font-display text-2xl">{standing.team.name}</span>
+                    <span className="font-display text-xl tabular-nums">{standing.team.score}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+        <p className="mt-4 text-sm text-white/75">
+          {state.players.length}{" "}
+          {state.players.length === 1 ? "игрок" : state.players.length < 5 ? "игрока" : "игроков"} ·{" "}
+          {formatRussianPoints(winners[0]?.team.score ?? 0)} у лидеров
+        </p>
+      </div>
+
+      <div className="px-6 py-8">
+        <div className="text-xs uppercase tracking-[0.25em] text-muted-foreground text-center mb-6">
+          Подиум
+        </div>
+        <div className="flex items-end justify-center gap-3 sm:gap-5 min-h-[12rem]">
+          {podiumPlaces.map((place) => {
+            const teams = standings.filter((standing) => standing.place === place);
+            const height =
+              place === 1 ? "h-36 sm:h-44" : place === 2 ? "h-28 sm:h-32" : "h-20 sm:h-24";
+            const medal = place === 1 ? "🥇" : place === 2 ? "🥈" : "🥉";
+            return (
+              <div key={place} className="flex-1 max-w-[10rem] flex flex-col items-center gap-2">
+                {teams.length > 0 ? (
+                  teams.map((standing) => {
+                    const c = teamColorClasses(standing.team.color);
+                    return (
+                      <div key={standing.team.id} className="w-full text-center">
+                        <div className="text-2xl">{medal}</div>
+                        <div
+                          className={`mt-1 rounded-xl border px-2 py-1 text-sm font-medium ${c.chip}`}
+                        >
+                          {standing.team.name}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5 tabular-nums">
+                          {standing.team.score} · {standing.playerCount}{" "}
+                          {standing.playerCount === 1
+                            ? "игрок"
+                            : standing.playerCount < 5
+                              ? "игрока"
+                              : "игроков"}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-xs text-muted-foreground">—</div>
+                )}
+                <div
+                  className={`w-full rounded-t-2xl bg-gradient-to-t from-white/10 to-white/5 border border-white/10 ${height}`}
+                />
+                <div className="text-xs text-muted-foreground">{formatRussianPlace(place)}</div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-8">
+          <div className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
+            Полная таблица
+          </div>
+          <div className="space-y-2">
+            {standings.map((standing) => {
+              const c = teamColorClasses(standing.team.color);
+              const isWinner = winners.some((winner) => winner.team.id === standing.team.id);
+              return (
+                <div
+                  key={standing.team.id}
+                  className={`flex items-center justify-between rounded-2xl px-4 py-3 border ${c.chip} ${isWinner ? "ring-2 ring-[var(--color-park-bright)]/40" : ""}`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="font-display text-xl tabular-nums opacity-70 w-8 shrink-0">
+                      {standing.place}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{standing.team.name}</div>
+                      <div className="text-[10px] uppercase tracking-wide opacity-70">
+                        {standing.playerCount}{" "}
+                        {standing.playerCount === 1
+                          ? "игрок"
+                          : standing.playerCount < 5
+                            ? "игрока"
+                            : "игроков"}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="font-display text-2xl tabular-nums shrink-0">
+                    {standing.team.score}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+          <button
+            type="button"
+            onClick={onResumeParty}
+            className="rounded-2xl bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] px-6 py-3 font-medium hover:opacity-90"
+          >
+            Ещё одну игру
+          </button>
+          <button
+            type="button"
+            onClick={onNewParty}
+            className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-white/80 hover:text-white hover:bg-white/10"
+          >
+            Новая вечеринка
+          </button>
+        </div>
       </div>
     </div>
   );

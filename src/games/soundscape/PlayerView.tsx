@@ -1,11 +1,12 @@
 // Soundscape player view: topic vote, recording, voting.
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { updateRoomState } from "@/lib/room";
-import { isRetryableError, retryOperation } from "@/lib/retry";
+import { postPlayerArtifact } from "@/lib/player-artifact-client";
+import { postPlayerAction } from "@/lib/player-action-client";
+import { uploadPlayerMedia } from "@/lib/player-upload-client";
 import { logError } from "@/lib/structured-log";
 import { Recorder } from "./Recorder";
 import { teamColorClasses, formatClock } from "@/lib/team-style";
+import { GameRulesChecklist } from "@/components/game-rules-ui";
 import type { RoomState } from "@/lib/types";
 
 export function SoundscapePlayer({
@@ -63,8 +64,11 @@ function TopicVote({
   const snd = state.soundscape!;
   const myVote = snd.topicVotes?.[me.id];
   async function vote(t: string) {
-    const topicVotes = { ...(snd.topicVotes ?? {}), [me.id]: t };
-    await updateRoomState(roomId, { ...state, soundscape: { ...snd, topicVotes } });
+    await postPlayerAction(roomId, {
+      action: "soundscape-topic-vote",
+      playerId: me.id,
+      topic: t,
+    });
   }
   return (
     <div className="space-y-3">
@@ -75,6 +79,7 @@ function TopicVote({
         <p className="text-sm text-white/70 mt-1">
           The host locks the most-voted theme in a moment.
         </p>
+        <GameRulesChecklist gameId="soundscape" />
       </div>
       {(snd.topics ?? []).map((t) => (
         <button
@@ -108,7 +113,6 @@ function RecordPhase({
 
   async function handleUpload(blob: Blob, durationMs: number) {
     const ext = blob.type.includes("mp4") ? "mp4" : "webm";
-    const path = `${roomId}/${snd.roundId}/${me.id}-${Date.now()}.${ext}`;
     const uploadLogFields = {
       game: "soundscape",
       stage: "audio_upload",
@@ -120,33 +124,19 @@ function RecordPhase({
       blobSize: blob.size,
       durationMs,
     };
-    const up = await retryOperation(
-      async () => {
-        const result = await supabase.storage
-          .from("recordings")
-          .upload(path, blob, { contentType: blob.type });
-        if (result.error && isRetryableError(result.error)) throw result.error;
-        return result;
+    const storagePath = await uploadPlayerMedia(
+      roomId,
+      {
+        action: "soundscape-audio",
+        playerId: me.id,
+        roundId: snd.roundId,
+        mimeType: blob.type,
       },
-      { shouldRetry: (error) => isRetryableError(error) },
-    );
-    if (up.error) {
-      logError("upload.failure", up.error, uploadLogFields);
-      throw up.error;
-    }
-    const signed = await retryOperation(
-      async () => {
-        const result = await supabase.storage.from("recordings").createSignedUrl(path, 60 * 60 * 3);
-        if (result.error && isRetryableError(result.error)) throw result.error;
-        return result;
-      },
-      { shouldRetry: (error) => isRetryableError(error) },
-    );
-    if (signed.error) {
-      logError("upload.failure", signed.error, { ...uploadLogFields, stage: "signed_url" });
-      throw signed.error;
-    }
-    const audio_url = signed.data?.signedUrl ?? null;
+      blob,
+    ).catch((error) => {
+      logError("upload.failure", error, uploadLogFields);
+      throw error;
+    });
 
     // transcribe
     let transcript = "";
@@ -162,23 +152,14 @@ function RecordPhase({
       /* non-fatal */
     }
 
-    const inserted = await supabase.from("submissions").insert({
-      room_id: roomId,
-      round_id: snd.roundId,
-      team_id: me.teamId,
-      player_id: me.id,
-      player_name: me.name,
-      audio_url,
+    await postPlayerArtifact(roomId, {
+      action: "soundscape-submission",
+      playerId: me.id,
+      roundId: snd.roundId,
+      storagePath,
       transcript,
-      duration_seconds: durationMs / 1000,
+      durationSeconds: durationMs / 1000,
     });
-    if (inserted.error) {
-      logError("upload.failure", inserted.error, {
-        ...uploadLogFields,
-        stage: "submission_insert",
-      });
-      throw inserted.error;
-    }
   }
 
   return (
@@ -233,15 +214,15 @@ function VotePhase({
 
   async function castVote(targetId: string, category: string) {
     setPending(`${targetId}:${category}`);
-    const { error } = await supabase.from("votes").insert({
-      room_id: roomId,
-      round_id: snd.roundId,
-      target_team_id: targetId,
-      voter_player_id: me.id,
+    await postPlayerArtifact(roomId, {
+      action: "soundscape-vote",
+      playerId: me.id,
+      roundId: snd.roundId,
+      targetTeamId: targetId,
       category,
     });
     setPending(null);
-    if (!error) setVoted((v) => ({ ...v, [category]: targetId }));
+    setVoted((v) => ({ ...v, [category]: targetId }));
   }
 
   return (

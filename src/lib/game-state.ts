@@ -10,6 +10,7 @@ function basePlayingState(state: RoomState): RoomState {
     phototunt: undefined,
     trackguess: undefined,
     spectrumcourt: undefined,
+    whoamong: undefined,
   };
 }
 
@@ -61,6 +62,7 @@ export function launchPhotoHuntState(state: RoomState, roundId: string): RoomSta
 
 export const TRACK_GUESS_TOTAL_ROUNDS = 5;
 export const SPECTRUM_COURT_TOTAL_ROUNDS = 4;
+export const WHO_AMONG_TOTAL_ROUNDS = 5;
 
 export function launchTrackGuessState(state: RoomState, roundId: string): RoomState | null {
   if (state.players.length < 1) return null;
@@ -90,6 +92,22 @@ export function launchSpectrumCourtState(state: RoomState, roundId: string): Roo
       roundNumber: 1,
       totalRounds: SPECTRUM_COURT_TOTAL_ROUNDS,
       usedSpectrumIds: [],
+      roundResults: [],
+    },
+  };
+}
+
+export function launchWhoAmongState(state: RoomState, roundId: string): RoomState | null {
+  if (state.players.length < 3) return null;
+  return {
+    ...basePlayingState(state),
+    currentGame: "whoamong",
+    whoamong: {
+      phase: "briefing",
+      roundId,
+      roundNumber: 1,
+      totalRounds: WHO_AMONG_TOTAL_ROUNDS,
+      usedPromptIds: [],
       roundResults: [],
     },
   };
