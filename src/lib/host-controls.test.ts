@@ -52,6 +52,16 @@ describe("host controls state helpers", () => {
         roundId: "ph",
         huntEndsAt: 15_000,
       },
+      spectrumcourt: {
+        phase: "guessing",
+        roundId: "sc",
+        roundNumber: 1,
+        totalRounds: 4,
+        usedSpectrumIds: [],
+        guessEndsAt: 16_000,
+        appealEndsAt: 17_000,
+        revealEndsAt: 18_000,
+      },
     });
 
     const paused = pauseRoomState(state, 20_000);
@@ -63,6 +73,9 @@ describe("host controls state helpers", () => {
     expect(resumed.soundscape?.playback?.startAt).toBe(18_500);
     expect(resumed.challenge?.recordingEndsAt).toBe(19_500);
     expect(resumed.phototunt?.huntEndsAt).toBe(20_500);
+    expect(resumed.spectrumcourt?.guessEndsAt).toBe(21_500);
+    expect(resumed.spectrumcourt?.appealEndsAt).toBe(22_500);
+    expect(resumed.spectrumcourt?.revealEndsAt).toBe(23_500);
   });
 
   test("forceBackToHub clears active games and pause state", () => {
@@ -72,6 +85,13 @@ describe("host controls state helpers", () => {
       soundscape: { phase: "topics", roundId: "snd" },
       challenge: { phase: "briefing", roundId: "ch" },
       phototunt: { phase: "briefing", roundId: "ph" },
+      spectrumcourt: {
+        phase: "clue",
+        roundId: "sc",
+        roundNumber: 1,
+        totalRounds: 4,
+        usedSpectrumIds: [],
+      },
     });
 
     const result = forceBackToHubState(state);
@@ -82,6 +102,7 @@ describe("host controls state helpers", () => {
     expect(result.soundscape).toBeUndefined();
     expect(result.challenge).toBeUndefined();
     expect(result.phototunt).toBeUndefined();
+    expect(result.spectrumcourt).toBeUndefined();
   });
 
   test("skip soundscape topics picks top voted topic and starts recording", () => {
@@ -161,5 +182,54 @@ describe("host controls state helpers", () => {
 
     expect(canSkipCurrentPhase(state)).toBe(true);
     expect(skipCurrentPhaseState(state, now).trackguess?.guessEndsAt).toBe(now);
+  });
+
+  test("skip spectrum court clue starts guessing only after clue exists", () => {
+    const now = 80_000;
+    const noClue = roomState({
+      currentGame: "spectrumcourt",
+      spectrumcourt: {
+        phase: "clue",
+        roundId: "sc",
+        roundNumber: 1,
+        totalRounds: 4,
+        usedSpectrumIds: [],
+      },
+    });
+    const withClue = roomState({
+      currentGame: "spectrumcourt",
+      spectrumcourt: {
+        phase: "clue",
+        roundId: "sc",
+        roundNumber: 1,
+        totalRounds: 4,
+        usedSpectrumIds: [],
+        clue: "парная татуировка",
+      },
+    });
+
+    expect(canSkipCurrentPhase(noClue)).toBe(false);
+    expect(canSkipCurrentPhase(withClue)).toBe(true);
+    const result = skipCurrentPhaseState(withClue, now);
+    expect(result.spectrumcourt?.phase).toBe("guessing");
+    expect(result.spectrumcourt?.guessEndsAt).toBe(now + 35_000);
+  });
+
+  test("skip spectrum court appeal ends appeal timer immediately", () => {
+    const now = 90_000;
+    const state = roomState({
+      currentGame: "spectrumcourt",
+      spectrumcourt: {
+        phase: "appeal",
+        roundId: "sc",
+        roundNumber: 1,
+        totalRounds: 4,
+        usedSpectrumIds: [],
+        appealEndsAt: now + 18_000,
+      },
+    });
+
+    expect(canSkipCurrentPhase(state)).toBe(true);
+    expect(skipCurrentPhaseState(state, now).spectrumcourt?.appealEndsAt).toBe(now);
   });
 });

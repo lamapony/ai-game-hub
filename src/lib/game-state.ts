@@ -9,6 +9,7 @@ function basePlayingState(state: RoomState): RoomState {
     challenge: undefined,
     phototunt: undefined,
     trackguess: undefined,
+    spectrumcourt: undefined,
   };
 }
 
@@ -59,6 +60,7 @@ export function launchPhotoHuntState(state: RoomState, roundId: string): RoomSta
 }
 
 export const TRACK_GUESS_TOTAL_ROUNDS = 5;
+export const SPECTRUM_COURT_TOTAL_ROUNDS = 4;
 
 export function launchTrackGuessState(state: RoomState, roundId: string): RoomState | null {
   if (state.players.length < 1) return null;
@@ -71,6 +73,23 @@ export function launchTrackGuessState(state: RoomState, roundId: string): RoomSt
       roundNumber: 1,
       totalRounds: TRACK_GUESS_TOTAL_ROUNDS,
       usedTrackIds: [],
+      roundResults: [],
+    },
+  };
+}
+
+export function launchSpectrumCourtState(state: RoomState, roundId: string): RoomState | null {
+  const activeTeamIds = new Set(state.players.map((player) => player.teamId));
+  if (activeTeamIds.size < 2) return null;
+  return {
+    ...basePlayingState(state),
+    currentGame: "spectrumcourt",
+    spectrumcourt: {
+      phase: "briefing",
+      roundId,
+      roundNumber: 1,
+      totalRounds: SPECTRUM_COURT_TOTAL_ROUNDS,
+      usedSpectrumIds: [],
       roundResults: [],
     },
   };

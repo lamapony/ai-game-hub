@@ -26,6 +26,11 @@ const TrackGuessPlayer = lazy(() =>
     default: module.TrackGuessPlayer,
   })),
 );
+const SpectrumCourtPlayer = lazy(() =>
+  import("@/games/spectrumcourt/PlayerView").then((module) => ({
+    default: module.SpectrumCourtPlayer,
+  })),
+);
 
 export const Route = createFileRoute("/play/$code")({
   component: PlayPage,
@@ -225,6 +230,8 @@ function PlayerScreen({
             <PhotoHuntPlayer roomId={room.id} state={state} me={me} />
           ) : state.currentGame === "trackguess" && state.trackguess ? (
             <TrackGuessPlayer roomId={room.id} state={state} me={me} />
+          ) : state.currentGame === "spectrumcourt" && state.spectrumcourt ? (
+            <SpectrumCourtPlayer roomId={room.id} state={state} me={me} />
           ) : (
             <WaitingPanel room={room} me={me} code={code} onTeamChange={onTeamChange} />
           )}

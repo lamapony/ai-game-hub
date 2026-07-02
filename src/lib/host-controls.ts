@@ -8,6 +8,9 @@ const PHOTO_HUNT_MS = 60_000;
 const TRACK_GUESS_LISTEN_MS = 25_000;
 const TRACK_GUESS_GUESS_MS = 20_000;
 const TRACK_GUESS_REVEAL_MS = 8_000;
+const SPECTRUM_COURT_GUESS_MS = 35_000;
+const SPECTRUM_COURT_APPEAL_MS = 18_000;
+const SPECTRUM_COURT_REVEAL_MS = 10_000;
 
 function shiftTime(value: number | undefined, deltaMs: number) {
   return typeof value === "number" ? value + deltaMs : value;
@@ -57,6 +60,14 @@ export function resumeRoomState(state: RoomState, now = Date.now()): RoomState {
           revealEndsAt: shiftTime(state.trackguess.revealEndsAt, deltaMs),
         }
       : undefined,
+    spectrumcourt: state.spectrumcourt
+      ? {
+          ...state.spectrumcourt,
+          guessEndsAt: shiftTime(state.spectrumcourt.guessEndsAt, deltaMs),
+          appealEndsAt: shiftTime(state.spectrumcourt.appealEndsAt, deltaMs),
+          revealEndsAt: shiftTime(state.spectrumcourt.revealEndsAt, deltaMs),
+        }
+      : undefined,
   };
 }
 
@@ -70,6 +81,7 @@ export function forceBackToHubState(state: RoomState): RoomState {
     challenge: undefined,
     phototunt: undefined,
     trackguess: undefined,
+    spectrumcourt: undefined,
   };
 }
 
@@ -92,6 +104,12 @@ export function canSkipCurrentPhase(state: RoomState): boolean {
   }
   if (state.currentGame === "trackguess" && state.trackguess) {
     return ["listening", "guessing", "reveal"].includes(state.trackguess.phase);
+  }
+  if (state.currentGame === "spectrumcourt" && state.spectrumcourt) {
+    return (
+      (state.spectrumcourt.phase === "clue" && !!state.spectrumcourt.clue) ||
+      ["guessing", "appeal", "reveal"].includes(state.spectrumcourt.phase)
+    );
   }
   return false;
 }
@@ -195,7 +213,42 @@ export function skipCurrentPhaseState(state: RoomState, now = Date.now()): RoomS
     }
   }
 
+  if (state.currentGame === "spectrumcourt" && state.spectrumcourt) {
+    const sc = state.spectrumcourt;
+    if (sc.phase === "clue" && sc.clue) {
+      return {
+        ...state,
+        spectrumcourt: { ...sc, phase: "guessing", guessEndsAt: now + SPECTRUM_COURT_GUESS_MS },
+      };
+    }
+    if (sc.phase === "guessing") {
+      return {
+        ...state,
+        spectrumcourt: { ...sc, guessEndsAt: now },
+      };
+    }
+    if (sc.phase === "appeal") {
+      return {
+        ...state,
+        spectrumcourt: { ...sc, appealEndsAt: now },
+      };
+    }
+    if (sc.phase === "reveal") {
+      return {
+        ...state,
+        spectrumcourt: { ...sc, revealEndsAt: now },
+      };
+    }
+  }
+
   return state;
 }
 
-export { TRACK_GUESS_LISTEN_MS, TRACK_GUESS_GUESS_MS, TRACK_GUESS_REVEAL_MS };
+export {
+  TRACK_GUESS_LISTEN_MS,
+  TRACK_GUESS_GUESS_MS,
+  TRACK_GUESS_REVEAL_MS,
+  SPECTRUM_COURT_GUESS_MS,
+  SPECTRUM_COURT_APPEAL_MS,
+  SPECTRUM_COURT_REVEAL_MS,
+};

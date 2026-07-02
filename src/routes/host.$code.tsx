@@ -8,6 +8,7 @@ import {
   launchChallengeState,
   launchPhotoHuntState,
   launchSoundscapeState,
+  launchSpectrumCourtState,
   launchTrackGuessState,
 } from "@/lib/game-state";
 import { teamColorClasses } from "@/lib/team-style";
@@ -47,6 +48,11 @@ const PhotoHuntHost = lazy(() =>
 const TrackGuessHost = lazy(() =>
   import("@/games/trackguess/HostView").then((module) => ({
     default: module.TrackGuessHost,
+  })),
+);
+const SpectrumCourtHost = lazy(() =>
+  import("@/games/spectrumcourt/HostView").then((module) => ({
+    default: module.SpectrumCourtHost,
   })),
 );
 
@@ -136,6 +142,12 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
     await updateRoomState(roomId, next);
   }
 
+  async function launchSpectrumCourt() {
+    const next = launchSpectrumCourtState(state, genId("sc"));
+    if (!next) return;
+    await updateRoomState(roomId, next);
+  }
+
   async function resetGame() {
     await updateRoomState(roomId, forceBackToHubState(state));
   }
@@ -156,6 +168,7 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
     if (state.currentGame === "challenge") await launchChallenge();
     if (state.currentGame === "phototunt") await launchPhotoHunt();
     if (state.currentGame === "trackguess") await launchTrackGuess();
+    if (state.currentGame === "spectrumcourt") await launchSpectrumCourt();
   }
 
   async function forceBackToHub() {
@@ -220,6 +233,8 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
                 <PhotoHuntHost roomId={roomId} state={state} />
               ) : state.currentGame === "trackguess" && state.trackguess ? (
                 <TrackGuessHost roomId={roomId} state={state} />
+              ) : state.currentGame === "spectrumcourt" && state.spectrumcourt ? (
+                <SpectrumCourtHost roomId={roomId} state={state} />
               ) : (
                 <HostGameLoading />
               )}
@@ -233,6 +248,7 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
               onLaunchChallenge={launchChallenge}
               onLaunchPhotoHunt={launchPhotoHunt}
               onLaunchTrackGuess={launchTrackGuess}
+              onLaunchSpectrumCourt={launchSpectrumCourt}
               speakerUrlFor={speakerUrlFor}
               onTestSpeaker={testSpeaker}
               onAddTeam={addTeam}
@@ -287,6 +303,7 @@ function HostControlBar({
     challenge: "Челлендж",
     phototunt: "Фотоохота",
     trackguess: "Настоящий или AI?",
+    spectrumcourt: "Spectrum Court",
   }[state.currentGame ?? "soundscape"];
   const phase =
     state.currentGame === "soundscape"
@@ -297,7 +314,9 @@ function HostControlBar({
           ? state.phototunt?.phase
           : state.currentGame === "trackguess"
             ? state.trackguess?.phase
-            : null;
+            : state.currentGame === "spectrumcourt"
+              ? state.spectrumcourt?.phase
+              : null;
 
   return (
     <div className="mb-4 rounded-3xl border border-white/10 bg-card p-4">
@@ -360,6 +379,7 @@ function Lobby({
   onLaunchChallenge,
   onLaunchPhotoHunt,
   onLaunchTrackGuess,
+  onLaunchSpectrumCourt,
   speakerUrlFor,
   onTestSpeaker,
   onAddTeam,
@@ -374,6 +394,7 @@ function Lobby({
   onLaunchChallenge: () => void;
   onLaunchPhotoHunt: () => void;
   onLaunchTrackGuess: () => void;
+  onLaunchSpectrumCourt: () => void;
   speakerUrlFor: (n: number) => string;
   onTestSpeaker: (n: number) => void;
   onAddTeam: (name: string) => Promise<void>;
@@ -392,6 +413,10 @@ function Lobby({
   const canPhoto = totalPlayers >= 1;
   const canSoundscape = totalPlayers >= 1;
   const canTrackGuess = totalPlayers >= 1;
+  const activeTeamCount = state.teams.filter((team) =>
+    state.players.some((player) => player.teamId === team.id),
+  ).length;
+  const canSpectrumCourt = activeTeamCount >= 2;
 
   function copyLink() {
     navigator.clipboard?.writeText(joinUrl).then(() => {
@@ -559,6 +584,15 @@ function Lobby({
             disabled={!canTrackGuess}
             disabledHint={!canTrackGuess ? "нужен ≥ 1 игрок" : undefined}
             onClick={onLaunchTrackGuess}
+          />
+          <GameCard
+            emoji="⚖️"
+            title="Spectrum Court"
+            time="~4 раунда"
+            desc="Одна команда даёт подсказку к скрытой точке на шкале, остальные спорят и ставят маркер."
+            disabled={!canSpectrumCourt}
+            disabledHint={!canSpectrumCourt ? "нужно ≥ 2 активных команд" : undefined}
+            onClick={onLaunchSpectrumCourt}
           />
         </div>
       </div>

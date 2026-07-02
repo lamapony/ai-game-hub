@@ -78,7 +78,7 @@ export type ChallengeState = {
   pastOperatorIds?: string[];
 };
 
-export type GameId = "soundscape" | "challenge" | "phototunt" | "trackguess";
+export type GameId = "soundscape" | "challenge" | "phototunt" | "trackguess" | "spectrumcourt";
 
 export type PhotoHuntPhase = "briefing" | "hunting" | "judging" | "results";
 
@@ -132,6 +132,56 @@ export type TrackGuessState = {
   roundResults?: TrackGuessRoundResult[];
 };
 
+export type SpectrumCourtPhase = "briefing" | "clue" | "guessing" | "appeal" | "reveal" | "results";
+
+export type SpectrumCourtAppeal = {
+  direction: "lower" | "higher";
+  reason?: string;
+};
+
+export type SpectrumCourtTeamResult = {
+  teamId: string;
+  rawGuess: number;
+  finalGuess: number;
+  distance: number;
+  points: number;
+  appealDirection?: "lower" | "higher";
+};
+
+export type SpectrumCourtRoundResult = {
+  spectrumId: string;
+  leftLabel: string;
+  rightLabel: string;
+  target: number;
+  clue: string;
+  clueTeamId: string;
+  cluePlayerId: string;
+  teamResults: SpectrumCourtTeamResult[];
+  clueTeamPoints: number;
+};
+
+export type SpectrumCourtState = {
+  phase: SpectrumCourtPhase;
+  roundId: string;
+  roundNumber: number;
+  totalRounds: number;
+  usedSpectrumIds: string[];
+  spectrumId?: string;
+  leftLabel?: string;
+  rightLabel?: string;
+  prompt?: string;
+  target?: number;
+  clueTeamId?: string;
+  cluePlayerId?: string;
+  clue?: string;
+  guesses?: Record<string, number>;
+  appeals?: Record<string, SpectrumCourtAppeal>;
+  guessEndsAt?: number;
+  appealEndsAt?: number;
+  revealEndsAt?: number;
+  roundResults?: SpectrumCourtRoundResult[];
+};
+
 export type RoomState = {
   hostName: string;
   status: "lobby" | "playing" | "finished";
@@ -145,6 +195,7 @@ export type RoomState = {
   challenge?: ChallengeState;
   phototunt?: PhotoHuntState;
   trackguess?: TrackGuessState;
+  spectrumcourt?: SpectrumCourtState;
   speakerSlots: Record<number, { connected: boolean; name: string; lastSeenAt?: number }>; // 1..5
 };
 

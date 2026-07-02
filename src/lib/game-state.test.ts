@@ -3,6 +3,7 @@ import {
   launchChallengeState,
   launchPhotoHuntState,
   launchSoundscapeState,
+  launchSpectrumCourtState,
   launchTrackGuessState,
 } from "./game-state";
 import type { RoomState } from "./types";
@@ -38,6 +39,13 @@ describe("game state launch helpers", () => {
       currentGame: "challenge",
       challenge: { phase: "briefing", roundId: "old-ch" },
       phototunt: { phase: "briefing", roundId: "old-ph" },
+      spectrumcourt: {
+        phase: "clue",
+        roundId: "old-sc",
+        roundNumber: 1,
+        totalRounds: 4,
+        usedSpectrumIds: [],
+      },
     });
 
     const result = launchSoundscapeState(state, "snd_1");
@@ -49,6 +57,7 @@ describe("game state launch helpers", () => {
     expect(result.soundscape?.roundId).toBe("snd_1");
     expect(result.challenge).toBeUndefined();
     expect(result.phototunt).toBeUndefined();
+    expect(result.spectrumcourt).toBeUndefined();
     expect(result.teams[0]?.score).toBe(4);
   });
 
@@ -100,5 +109,23 @@ describe("game state launch helpers", () => {
     expect(withPlayer?.trackguess?.phase).toBe("briefing");
     expect(withPlayer?.trackguess?.totalRounds).toBe(5);
     expect(withoutPlayers).toBeNull();
+  });
+
+  test("launchSpectrumCourt starts only with at least two active teams", () => {
+    const withTeams = launchSpectrumCourtState(roomState(), "sc_1");
+    const oneActiveTeam = launchSpectrumCourtState(
+      roomState({
+        players: [
+          { id: "p1", name: "One", teamId: "forest", joinedAt: 1 },
+          { id: "p2", name: "Two", teamId: "forest", joinedAt: 2 },
+        ],
+      }),
+      "sc_2",
+    );
+
+    expect(withTeams?.currentGame).toBe("spectrumcourt");
+    expect(withTeams?.spectrumcourt?.phase).toBe("briefing");
+    expect(withTeams?.spectrumcourt?.totalRounds).toBe(4);
+    expect(oneActiveTeam).toBeNull();
   });
 });
