@@ -807,7 +807,7 @@ function Lobby({
             emoji="🎧"
             title="Real or AI?"
             time="~5 rounds"
-            desc="Add real clips or use the built-in pool, then make everyone guess human or machine."
+            desc="Play Spotify tracks from the host side, then make everyone guess human or machine."
             disabled={!canTrackGuess}
             disabledHint={!canTrackGuess ? "needs ≥ 1 player" : undefined}
             onClick={onLaunchTrackGuess}

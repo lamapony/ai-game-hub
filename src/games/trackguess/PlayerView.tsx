@@ -64,15 +64,32 @@ export function TrackGuessPlayer({
   }
 
   if (tg.phase === "listening") {
-    const remaining = Math.max(0, (tg.listeningEndsAt ?? now) - now);
+    const remaining = tg.listeningEndsAt ? Math.max(0, tg.listeningEndsAt - now) : null;
     return (
       <Card>
         <Pill>Round {tg.roundNumber}</Pill>
         <H>Listen closely</H>
-        <div className="font-display text-4xl tabular-nums mt-2">{formatClock(remaining)}</div>
+        {remaining == null ? (
+          <div className="mt-3 rounded-full bg-white/10 px-3 py-1 text-xs uppercase tracking-widest text-white/60">
+            Host cueing
+          </div>
+        ) : (
+          <div className="font-display text-4xl tabular-nums mt-2">{formatClock(remaining)}</div>
+        )}
         <P>{tg.trackGenre}</P>
-        {tg.trackUrl && <TrackAudioPlayer src={tg.trackUrl} disabled={!!state.paused} />}
-        <P className="mt-3">No rush — voting opens soon.</P>
+        {tg.trackUrl && (
+          <TrackAudioPlayer
+            src={tg.trackUrl}
+            sourceUrl={tg.trackSourceUrl}
+            audience="player"
+            disabled={!!state.paused}
+          />
+        )}
+        <P className="mt-3">
+          {remaining == null
+            ? "Wait for the host to start the track."
+            : "No rush — voting opens soon."}
+        </P>
       </Card>
     );
   }

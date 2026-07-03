@@ -1,5 +1,6 @@
 import { eventProfile } from "@/lib/event-profile";
 import type { CatalogTrack } from "./catalog";
+import { isSpotifyUrl } from "./spotify";
 
 export type CustomRealTrack = {
   id: string;
@@ -7,6 +8,7 @@ export type CustomRealTrack = {
   artist: string;
   genre: string;
   url: string;
+  isAi?: boolean;
   sourceUrl?: string;
   artworkUrl?: string;
 };
@@ -22,21 +24,12 @@ function cleanText(value: unknown, fallback = "", maxLength = 80) {
 function cleanUrl(value: unknown) {
   if (typeof value !== "string") return "";
   const text = value.trim();
+  if (isSpotifyUrl(text)) return text;
   try {
     const url = new URL(text);
     return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : "";
   } catch {
     return "";
-  }
-}
-
-export function isSpotifyUrl(value: string) {
-  if (value.startsWith("spotify:")) return true;
-  try {
-    const url = new URL(value);
-    return url.hostname === "open.spotify.com" || url.hostname.endsWith(".spotify.com");
-  } catch {
-    return false;
   }
 }
 
@@ -57,6 +50,7 @@ function sanitizeCustomTrack(value: unknown): CustomRealTrack | null {
     artist,
     genre,
     url,
+    ...(raw.isAi === true ? { isAi: true } : {}),
     sourceUrl: sourceUrl || undefined,
     artworkUrl: artworkUrl || undefined,
   };
@@ -82,19 +76,22 @@ export function saveCustomRealTracks(tracks: CustomRealTrack[]) {
 }
 
 export function customTrackToCatalogTrack(track: CustomRealTrack): CatalogTrack {
+  const spotifySource = track.sourceUrl ?? (isSpotifyUrl(track.url) ? track.url : undefined);
   return {
     id: track.id,
     title: track.title,
     artist: track.artist,
     genre: track.genre,
     url: track.url,
-    isAi: false,
-    sourceLabel: track.sourceUrl && isSpotifyUrl(track.sourceUrl) ? "Spotify" : "Custom",
-    sourceUrl: track.sourceUrl,
+    isAi: track.isAi === true,
+    sourceLabel: spotifySource && isSpotifyUrl(spotifySource) ? "Spotify" : "Custom",
+    sourceUrl: spotifySource,
     artworkUrl: track.artworkUrl,
   };
 }
 
 export function makeCustomTrackId() {
-  return `custom-real-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+  return `custom-track-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
+
+export { isSpotifyUrl };

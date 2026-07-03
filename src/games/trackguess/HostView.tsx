@@ -9,19 +9,20 @@ import {
 import type { RoomState, TrackGuessState } from "@/lib/types";
 import {
   pickBalancedTrackFromPool,
+  SPOTIFY_AI_SUGGESTIONS,
   TRACK_CATALOG,
   SPOTIFY_REAL_SUGGESTIONS,
   type CatalogTrack,
 } from "./catalog";
 import {
   customTrackToCatalogTrack,
-  isSpotifyUrl,
   loadCustomRealTracks,
   makeCustomTrackId,
   saveCustomRealTracks,
   type CustomRealTrack,
 } from "./custom-tracks";
 import { scoreTrackGuessRound } from "./scoring";
+import { isSpotifyUrl, spotifyTrackId } from "./spotify";
 import { TrackAudioPlayer } from "./TrackAudioPlayer";
 
 function speak(text: string) {
@@ -53,6 +54,8 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
   }
 
   function roundTrackPatch(track: CatalogTrack, nowMs: number): Partial<TrackGuessState> {
+    const usesSpotify =
+      isSpotifyUrl(track.url) || (track.sourceUrl ? isSpotifyUrl(track.sourceUrl) : false);
     return {
       phase: "listening",
       trackId: track.id,
@@ -66,7 +69,7 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
       usedTrackIds: [...tg.usedTrackIds, track.id],
       guesses: {},
       isAi: track.isAi,
-      listeningEndsAt: nowMs + TRACK_GUESS_LISTEN_MS,
+      listeningEndsAt: usesSpotify ? undefined : nowMs + TRACK_GUESS_LISTEN_MS,
       guessEndsAt: undefined,
       revealEndsAt: undefined,
     };
@@ -181,8 +184,8 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
       {tg.phase === "briefing" && (
         <Panel title="Getting ready">
           <p className="text-muted-foreground">
-            First track coming up. Players listen on their phones and tap &quot;Real&quot; or
-            &quot;AI&quot;.
+            First track coming up. Players listen through the host audio and tap &quot;Real&quot; or
+            &quot;AI&quot; on their phones.
           </p>
           <TrackVault
             tracks={customTracks}
@@ -202,11 +205,26 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
       {(tg.phase === "listening" || tg.phase === "guessing" || tg.phase === "reveal") && (
         <Panel title={tg.phase === "reveal" ? (tg.trackTitle ?? "Track") : "Mystery track"}>
           <div className="text-sm text-muted-foreground">{tg.trackGenre}</div>
-          {tg.phase === "listening" && tg.listeningEndsAt && (
-            <div className="mt-3 font-display text-4xl tabular-nums">
-              {formatClock(Math.max(0, tg.listeningEndsAt - now))}
-            </div>
-          )}
+          {tg.phase === "listening" &&
+            (tg.listeningEndsAt ? (
+              <div className="mt-3 font-display text-4xl tabular-nums">
+                {formatClock(Math.max(0, tg.listeningEndsAt - now))}
+              </div>
+            ) : (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs uppercase tracking-widest text-muted-foreground">
+                  Spotify cued
+                </span>
+                <button
+                  type="button"
+                  disabled={!!state.paused}
+                  onClick={() => update({ listeningEndsAt: Date.now() + TRACK_GUESS_LISTEN_MS })}
+                  className="rounded-full bg-[var(--color-park-bright)] px-4 py-2 text-sm font-medium text-[oklch(0.16_0.05_160)] disabled:opacity-50"
+                >
+                  Start listening timer
+                </button>
+              </div>
+            ))}
           {tg.phase === "guessing" && tg.guessEndsAt && (
             <>
               <div className="mt-2 text-xs uppercase tracking-widest text-[var(--color-park-bright)]">
@@ -241,7 +259,13 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
             </div>
           )}
           {tg.trackUrl && tg.phase === "listening" && (
-            <TrackAudioPlayer src={tg.trackUrl} disabled={!!state.paused} className="max-w-md" />
+            <TrackAudioPlayer
+              src={tg.trackUrl}
+              sourceUrl={tg.trackSourceUrl}
+              audience="host"
+              disabled={!!state.paused}
+              className="max-w-md"
+            />
           )}
         </Panel>
       )}
@@ -334,22 +358,30 @@ function TrackVault({
   const [genre, setGenre] = useState("");
   const [url, setUrl] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
+  const [isAi, setIsAi] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Quick Spotify suggestions (real tracks directly in the app)
-  const quickSuggestions = SPOTIFY_REAL_SUGGESTIONS;
+  const quickSuggestions = [
+    ...SPOTIFY_REAL_SUGGESTIONS.map((suggestion) => ({ ...suggestion, isAi: false })),
+    ...SPOTIFY_AI_SUGGESTIONS.map((suggestion) => ({ ...suggestion, isAi: true })),
+  ];
 
   function loadSuggestion(sug: {
     title: string;
     artist: string;
     genre: string;
+    url: string;
+    isAi: boolean;
     search: string;
     why: string;
   }) {
     setTitle(sug.title);
     setArtist(sug.artist);
     setGenre(sug.genre);
-    setSourceUrl(""); // Paste the Spotify link after selecting
+    setUrl(sug.url);
+    setSourceUrl(sug.url);
+    setIsAi(sug.isAi);
     setError(null);
   }
 
@@ -357,28 +389,32 @@ function TrackVault({
     const nextTitle = title.trim();
     const nextUrl = url.trim();
     if (!nextTitle || !nextUrl) {
-      setError("Title and audio URL are required.");
+      setError("Title and Spotify/audio link are required.");
       return;
     }
-    if (isSpotifyUrl(nextUrl)) {
-      setError("Use Spotify as the source link, not the audio URL.");
+    const nextIsSpotify = isSpotifyUrl(nextUrl);
+    if (nextIsSpotify && nextUrl.includes("open.spotify.com") && !spotifyTrackId(nextUrl)) {
+      setError("Use a Spotify track link, not an album or playlist.");
       return;
     }
-    try {
-      const parsed = new URL(nextUrl);
-      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error();
-    } catch {
-      setError("Audio URL must be a valid http(s) link.");
-      return;
+    if (!nextIsSpotify) {
+      try {
+        const parsed = new URL(nextUrl);
+        if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error();
+      } catch {
+        setError("Link must be a valid Spotify or http(s) URL.");
+        return;
+      }
     }
 
     const track: CustomRealTrack = {
       id: makeCustomTrackId(),
       title: nextTitle,
       artist: artist.trim() || "Unknown artist",
-      genre: genre.trim() || "Real music",
+      genre: genre.trim() || (isAi ? "AI music" : "Real music"),
       url: nextUrl,
-      sourceUrl: sourceUrl.trim() || undefined,
+      isAi,
+      sourceUrl: sourceUrl.trim() || (nextIsSpotify ? nextUrl : undefined),
     };
     onSave([...tracks, track]);
     setTitle("");
@@ -386,6 +422,7 @@ function TrackVault({
     setGenre("");
     setUrl("");
     setSourceUrl("");
+    setIsAi(false);
     setError(null);
   }
 
@@ -394,7 +431,7 @@ function TrackVault({
       <div className="flex items-center justify-between gap-2">
         <div>
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-            Real track vault
+            Spotify track vault
           </div>
           <div className="text-sm text-muted-foreground">
             {tracks.length} custom {tracks.length === 1 ? "track" : "tracks"}
@@ -406,7 +443,7 @@ function TrackVault({
       {quickSuggestions.length > 0 && (
         <div className="mt-3">
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
-            Quick Spotify suggestions (real tracks)
+            Quick Spotify suggestions
           </div>
           <div className="flex flex-wrap gap-1.5">
             {quickSuggestions.map((sug, idx) => (
@@ -418,12 +455,12 @@ function TrackVault({
                 className="text-[10px] rounded-full border border-white/20 bg-white/5 px-2 py-0.5 hover:bg-white/10 disabled:opacity-40"
                 title={sug.why}
               >
-                {sug.artist} — {sug.title.split("(")[0].trim()}
+                {sug.isAi ? "AI" : "Real"} · {sug.artist} — {sug.title.split("(")[0].trim()}
               </button>
             ))}
           </div>
           <div className="text-[10px] text-muted-foreground mt-1">
-            Click to prefill → paste Spotify link in source + provide audio URL
+            Click to prefill a Spotify track
           </div>
         </div>
       )}
@@ -436,7 +473,8 @@ function TrackVault({
               className="flex items-center justify-between gap-2 rounded-xl bg-white/5 px-3 py-2 text-sm"
             >
               <span className="min-w-0 truncate">
-                {track.title} <span className="opacity-60">· {track.artist}</span>
+                {track.isAi ? "AI" : "Real"} · {track.title}{" "}
+                <span className="opacity-60">· {track.artist}</span>
               </span>
               <button
                 type="button"
@@ -476,11 +514,29 @@ function TrackVault({
           placeholder="Genre"
           className="rounded-xl border border-white/10 bg-background/70 px-3 py-2 text-sm outline-none focus:border-[var(--color-park-bright)]/50"
         />
+        <div className="flex rounded-xl border border-white/10 bg-background/70 p-1 text-xs">
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => setIsAi(false)}
+            className={`flex-1 rounded-lg px-3 py-1.5 ${!isAi ? "bg-white/15 text-white" : "text-muted-foreground"}`}
+          >
+            Real
+          </button>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => setIsAi(true)}
+            className={`flex-1 rounded-lg px-3 py-1.5 ${isAi ? "bg-white/15 text-white" : "text-muted-foreground"}`}
+          >
+            AI
+          </button>
+        </div>
         <input
           value={sourceUrl}
           onChange={(event) => setSourceUrl(event.target.value)}
           disabled={disabled}
-          placeholder="Spotify/source link"
+          placeholder="Source link (optional)"
           className="rounded-xl border border-white/10 bg-background/70 px-3 py-2 text-sm outline-none focus:border-[var(--color-park-bright)]/50"
         />
         <input
@@ -490,7 +546,7 @@ function TrackVault({
             setError(null);
           }}
           disabled={disabled}
-          placeholder="Direct audio URL"
+          placeholder="Spotify track link"
           className="sm:col-span-2 rounded-xl border border-white/10 bg-background/70 px-3 py-2 text-sm outline-none focus:border-[var(--color-park-bright)]/50"
         />
       </div>
@@ -501,7 +557,7 @@ function TrackVault({
         onClick={addTrack}
         className="mt-3 rounded-xl bg-white/10 px-3 py-2 text-xs font-medium uppercase tracking-wide text-white hover:bg-white/15 disabled:opacity-40"
       >
-        Add real track
+        Add track
       </button>
     </div>
   );

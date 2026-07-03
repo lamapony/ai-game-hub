@@ -43,8 +43,8 @@ describe("track guess custom tracks", () => {
       title: "Guestlist Anthem",
       artist: "Actual Human",
       genre: "Pop",
-      url: "https://example.com/anthem.mp3",
-      sourceUrl: "https://open.spotify.com/track/abc",
+      url: "https://open.spotify.com/track/3dYD57lRAUcMHufyqn9GcI",
+      sourceUrl: "https://open.spotify.com/track/3dYD57lRAUcMHufyqn9GcI",
     };
 
     saveCustomRealTracks([track]);
@@ -55,9 +55,9 @@ describe("track guess custom tracks", () => {
     expect(localStorage.getItem(CUSTOM_REAL_TRACKS_KEY)).toBeNull();
   });
 
-  test("marks Spotify source links without treating them as audio URLs", () => {
-    expect(isSpotifyUrl("https://open.spotify.com/track/abc")).toBe(true);
-    expect(isSpotifyUrl("spotify:track:abc")).toBe(true);
+  test("marks Spotify links as playable Spotify sources", () => {
+    expect(isSpotifyUrl("https://open.spotify.com/track/3dYD57lRAUcMHufyqn9GcI")).toBe(true);
+    expect(isSpotifyUrl("spotify:track:3dYD57lRAUcMHufyqn9GcI")).toBe(true);
     expect(isSpotifyUrl("https://example.com/track.mp3")).toBe(false);
 
     const catalogTrack = customTrackToCatalogTrack({
@@ -65,11 +65,28 @@ describe("track guess custom tracks", () => {
       title: "Guestlist Anthem",
       artist: "Actual Human",
       genre: "Pop",
-      url: "https://example.com/anthem.mp3",
-      sourceUrl: "https://open.spotify.com/track/abc",
+      url: "https://open.spotify.com/track/3dYD57lRAUcMHufyqn9GcI",
     });
 
     expect(catalogTrack.isAi).toBe(false);
     expect(catalogTrack.sourceLabel).toBe("Spotify");
+    expect(catalogTrack.sourceUrl).toBe("https://open.spotify.com/track/3dYD57lRAUcMHufyqn9GcI");
+  });
+
+  test("preserves custom AI Spotify tracks", () => {
+    installMemoryStorage();
+    const track: CustomRealTrack = {
+      id: "custom-ai-1",
+      title: "Machine Confession",
+      artist: "Actual Robot",
+      genre: "AI pop",
+      url: "spotify:track:3dYD57lRAUcMHufyqn9GcI",
+      isAi: true,
+    };
+
+    saveCustomRealTracks([track]);
+
+    expect(loadCustomRealTracks()).toEqual([track]);
+    expect(customTrackToCatalogTrack(track).isAi).toBe(true);
   });
 });

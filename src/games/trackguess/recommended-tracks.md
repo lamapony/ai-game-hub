@@ -7,11 +7,11 @@ Real tracks must have cool, impressive executions or sound strangely perfect/AI-
 ## How to add tracks
 
 1. **Best way (recommended)**: Use the in-game **TrackVault** (in HostView during briefing). 
-   Add Custom Real Tracks with direct .mp3 URL + metadata.
+   Add Spotify track links with metadata and choose Real or AI.
 
 2. For permanent catalog: edit `catalog.ts` and set `isAi: true/false`.
 
-**Important**: The audio must be a direct playable URL (https://... .mp3). Spotify links are only for labeling, not playback.
+**Important**: Spotify tracks play through Spotify on the host side. Player phones should not show Spotify embeds before reveal because the embed exposes the track title and artist.
 
 ## AI tracks that sound extremely real (generate these)
 
@@ -32,10 +32,9 @@ Use Suno.ai or Udio.com. Use these prompts (copy-paste):
 ### Prompt 5 — Jazz Bar Standard feel
 "Crooner style male vocal with light jazz band, double bass, brushes on drums, sophisticated but relaxed, 1950s bar vibe but modern recording, real singer, warm and human"
 
-After generating in Suno:
-- Download the best version (preferably the one with better vocal take)
-- Host the mp3 somewhere public (temporary file host, or your own server)
-- Add via custom tracks in the game or to catalog with `isAi: true`
+After generating in Suno/Udio:
+- Publish or add the best version to Spotify if you want it in the party catalog.
+- Add the Spotify track link via custom tracks in the game or to catalog with `isAi: true`.
 
 ## Real tracks that sound AI / hyper-real (hard examples)
 
@@ -74,12 +73,8 @@ Examples of impressive styles to hunt:
 
 Spotify has tons of already released tracks. These are "готовые залитые".
 
-**Important note**: Spotify links work great for `sourceUrl` (the game will label them as Spotify).  
-But for actual playback in the game you still need a direct .mp3 URL.  
-You can:
-- Add them as custom real tracks with the Spotify link (for reference)
-- Later find/extract audio or use as inspiration
-- Or use Spotify on the side while testing the game
+**Important note**: Spotify links are now the primary playback source for TrackGuess.
+The host cues the track in Spotify, starts the listening timer, and players vote without seeing track metadata.
 
 ### Cool real performances (impressive executions) on Spotify
 
@@ -135,42 +130,42 @@ Tip: Look for tracks with 10k–100k+ streams by small artists. Some are surpris
 ### How to add Spotify tracks to the game
 
 1. Open the game as Host → briefing phase.
-2. Use TrackVault to add Custom Real Track.
+2. Use TrackVault to add a Spotify track.
 3. Paste:
    - Title + Artist
    - Genre
-   - For URL: you still need a playable audio link (or test later)
-   - sourceUrl: the full Spotify link (e.g. https://open.spotify.com/track/xxxx)
-4. The game will show it as "Spotify" source.
+   - Spotify track link (e.g. https://open.spotify.com/track/xxxx)
+   - Real/AI flag
+4. The game will show it as a Spotify source.
 
 If you find specific tracks you like, send me the names/links and I can format them as ready-to-paste custom track objects.
 
-## How to get direct mp3 URLs
+## Fallback direct audio URLs
 
 1. Royalty free sites:
    - Pixabay Music (many acoustic/vocal tracks, direct download)
    - Bensound (check license)
    - Free Music Archive
-   - Mixkit (already used, look for more vocal tracks)
+   - Use only sources that permit hotlinking or host the file yourself
 
 2. For your own:
    - Record a real performance
    - Or take a track you have rights to and host the mp3
 
 3. For testing the game quickly:
-   - Use existing Mixkit + add 2-3 good vocal real tracks from Pixabay
+   - Prefer Spotify catalog entries first; direct audio is only a fallback mode
 
 ## Next step ideas
 
-- Replace the obvious "Synthetic decoy" AI tracks with realistic generated ones.
-- Add 4-5 high-quality real tracks with actual vocals.
+- Add more high-quality Spotify tracks with actual vocals.
+- Add more AI-labeled Spotify tracks that do not announce themselves in the title.
 - Add a "difficulty" tag or separate "hard pool" for later rounds.
 
 Add your own via the TrackVault in the app — it's designed exactly for this.
 
 ### Ready-to-paste custom track examples
 
-Copy these into the TrackVault or adapt for catalog (replace URL with actual playable audio if you have it):
+Copy these into the TrackVault or adapt for catalog:
 
 ```js
 // Example 1: Cool live performance (Tiny Desk style)
@@ -179,8 +174,9 @@ Copy these into the TrackVault or adapt for catalog (replace URL with actual pla
   title: "Take Me To Church (Live)",
   artist: "Hozier",
   genre: "Soul / Live Performance",
-  url: "https://YOUR_DIRECT_MP3_URL_HERE",
-  sourceUrl: "https://open.spotify.com/track/4f3YqE5v3v3v3v3v3v3v3",  // find real link
+  url: "https://open.spotify.com/track/3dYD57lRAUcMHufyqn9GcI",
+  sourceUrl: "https://open.spotify.com/track/3dYD57lRAUcMHufyqn9GcI",
+  isAi: false,
 }
 
 // Example 2: Hyper-real / AI-sounding real (hyperpop)
@@ -189,18 +185,20 @@ Copy these into the TrackVault or adapt for catalog (replace URL with actual pla
   title: "360",
   artist: "Charli XCX",
   genre: "Hyperpop",
-  url: "https://YOUR_DIRECT_MP3_URL_HERE",
-  sourceUrl: "https://open.spotify.com/track/3W4U7TE5u5D4n3i5v3v3v3",
+  url: "https://open.spotify.com/track/4w2GLmK2wnioVnb5CPQeex",
+  sourceUrl: "https://open.spotify.com/track/4w2GLmK2wnioVnb5CPQeex",
+  isAi: false,
 }
 
-// Example 3: Search "Suno AI" on Spotify for AI-generated examples
+// Example 3: AI-labeled Spotify track
 {
-  id: "ai-suno-bar-ballad",
-  title: "[Paste track name]",
-  artist: "[Artist]",
-  genre: "AI / Soulful Bar",
-  url: "https://YOUR_DIRECT_MP3_URL_HERE",
-  sourceUrl: "https://open.spotify.com/track/..."
+  id: "ai-aiva-on-the-edge",
+  title: "On the Edge - Ai-Generated Rock Music by Aiva",
+  artist: "Aiva, Brad Frey",
+  genre: "AI-generated rock",
+  url: "https://open.spotify.com/track/6Q0qzRjwHohgkYGI3q1bf8",
+  sourceUrl: "https://open.spotify.com/track/6Q0qzRjwHohgkYGI3q1bf8",
+  isAi: true,
 }
 ```
 

@@ -34,8 +34,8 @@ describe("track guess scoring", () => {
         roundId: "tg_1",
         roundNumber: 1,
         totalRounds: 5,
-        usedTrackIds: ["real-soundhelix-1"],
-        trackId: "real-soundhelix-1",
+        usedTrackIds: ["real-hozier-take-me-to-church"],
+        trackId: "real-hozier-take-me-to-church",
         guesses: { p1: "real", p2: "ai" },
       },
     });

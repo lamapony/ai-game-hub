@@ -1,19 +1,28 @@
 import { useEffect, useRef, useState } from "react";
+import { isSpotifyUrl, spotifyEmbedUrl, spotifyTrackUrl } from "./spotify";
 
 type PlaybackState = "idle" | "loading" | "playing" | "paused" | "error";
 
 export function TrackAudioPlayer({
   src,
+  sourceUrl,
+  audience = "host",
   disabled,
   className,
 }: {
   src: string;
+  sourceUrl?: string;
+  audience?: "host" | "player";
   disabled?: boolean;
   className?: string;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playback, setPlayback] = useState<PlaybackState>("idle");
   const [error, setError] = useState<string | null>(null);
+  const spotifyUrl =
+    (isSpotifyUrl(src) ? (spotifyTrackUrl(src) ?? src) : null) ??
+    (sourceUrl && isSpotifyUrl(sourceUrl) ? (spotifyTrackUrl(sourceUrl) ?? sourceUrl) : null);
+  const embedUrl = spotifyUrl ? spotifyEmbedUrl(spotifyUrl) : null;
 
   useEffect(() => {
     setPlayback("idle");
@@ -37,6 +46,51 @@ export function TrackAudioPlayer({
       setPlayback("idle");
       setError("Browser blocked playback. Tap the audio controls below.");
     }
+  }
+
+  if (spotifyUrl) {
+    if (audience === "player") {
+      return (
+        <div
+          className={`mt-4 rounded-2xl border border-white/10 bg-black/20 p-3 text-sm text-muted-foreground ${className ?? ""}`}
+        >
+          Listen to the host audio.
+        </div>
+      );
+    }
+
+    return (
+      <div className={`mt-4 rounded-2xl border border-white/10 bg-black/20 p-3 ${className ?? ""}`}>
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href={spotifyUrl}
+            target="_blank"
+            rel="noreferrer"
+            aria-disabled={disabled}
+            className={`rounded-full bg-[var(--color-park-bright)] px-4 py-2 text-sm font-medium text-[oklch(0.16_0.05_160)] ${disabled ? "pointer-events-none opacity-50" : ""}`}
+          >
+            Open Spotify
+          </a>
+          <span className="text-xs text-muted-foreground">Host-only playback</span>
+        </div>
+        {embedUrl && (
+          <details className="mt-3">
+            <summary className="cursor-pointer text-xs uppercase tracking-wide text-muted-foreground">
+              Spotify embed
+            </summary>
+            <iframe
+              title="Spotify player"
+              src={embedUrl}
+              width="100%"
+              height="152"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy"
+              className="mt-2 rounded-xl"
+            />
+          </details>
+        )}
+      </div>
+    );
   }
 
   return (

@@ -3,12 +3,12 @@
  * These are "уже готовые залитые" tracks.
  *
  * Use for:
- * - Adding as Custom Real Tracks (via TrackVault in game)
+ * - Adding Spotify tracks via TrackVault in game
  * - Inspiration for AI prompts
- * - sourceUrl for labeling
+ * - Building permanent catalog entries
  *
- * NOTE: For playback you need direct audio URL.
- * Spotify links are only for source metadata.
+ * Spotify links are the primary playback source. The host cues Spotify and
+ * starts the game timer; player phones keep metadata hidden until reveal.
  */
 
 export type SpotifySuggestion = {
@@ -19,6 +19,7 @@ export type SpotifySuggestion = {
   spotifyUrlExample?: string; // Example full link (find the real one)
   vibe: string; // Why it fits the game
   difficulty: "easy" | "medium" | "hard";
+  isAi?: boolean;
   isAiLike?: boolean; // Sounds somewhat AI / hyper-produced
 };
 
@@ -29,6 +30,7 @@ export const SPOTIFY_SUGGESTIONS: SpotifySuggestion[] = [
     artist: "Hozier",
     genre: "Soul / Live",
     spotifySearch: "Hozier Tiny Desk",
+    spotifyUrlExample: "https://open.spotify.com/track/3dYD57lRAUcMHufyqn9GcI",
     vibe: "Raw powerful live vocal, very human and emotional. Perfect 'Real' example.",
     difficulty: "medium",
   },
@@ -63,6 +65,7 @@ export const SPOTIFY_SUGGESTIONS: SpotifySuggestion[] = [
     artist: "Charli XCX",
     genre: "Hyperpop",
     spotifySearch: "Charli XCX 360",
+    spotifyUrlExample: "https://open.spotify.com/track/4w2GLmK2wnioVnb5CPQeex",
     vibe: "Extremely processed, digital, perfect. Feels almost AI-generated.",
     difficulty: "hard",
     isAiLike: true,
@@ -88,28 +91,34 @@ export const SPOTIFY_SUGGESTIONS: SpotifySuggestion[] = [
 
   // === AI-GENERATED TRACKS ON SPOTIFY (search and pick) ===
   {
-    title: "[Search Suno AI]",
-    artist: "Various creators",
-    genre: "AI / Soul / Bar",
-    spotifySearch: "Suno AI soul",
-    vibe: "Many creators upload realistic Suno generations. Pick ones with good vocals.",
+    title: "One More (feat.suno.ai)",
+    artist: "Nekonoma",
+    genre: "Suno / Pop",
+    spotifySearch: "Nekonoma One More feat.suno.ai",
+    spotifyUrlExample: "https://open.spotify.com/track/7FPMLivewo1uKihuYMfC7S",
+    vibe: "Suno-labeled track already on Spotify.",
     difficulty: "medium",
+    isAi: true,
   },
   {
-    title: "[Search Udio AI]",
-    artist: "Various",
-    genre: "AI / Acoustic",
-    spotifySearch: "Udio AI",
-    vibe: "Look for realistic acoustic or bar-style AI tracks.",
+    title: "On the Edge - Ai-Generated Rock Music by Aiva",
+    artist: "Aiva, Brad Frey",
+    genre: "AI-generated rock",
+    spotifySearch: "Aiva On the Edge Ai-Generated Rock Music",
+    spotifyUrlExample: "https://open.spotify.com/track/6Q0qzRjwHohgkYGI3q1bf8",
+    vibe: "Explicit AI-composed rock reference.",
     difficulty: "medium",
+    isAi: true,
   },
   {
-    title: "AI generated bar music",
-    artist: "Various small artists",
-    genre: "AI / Chill",
-    spotifySearch: "AI generated music bar",
-    vibe: "Search for AI tracks that sound like real bar performances.",
+    title: "THIS SONG IS AI GENERATED",
+    artist: "googifloop",
+    genre: "AI-labeled pop",
+    spotifySearch: "googifloop THIS SONG IS AI GENERATED",
+    spotifyUrlExample: "https://open.spotify.com/track/6TyHjo4ZSErLqSiXZdt8j7",
+    vibe: "On-the-nose AI bait, useful for chaos rounds.",
     difficulty: "medium",
+    isAi: true,
   },
 ];
 
@@ -120,7 +129,8 @@ export function suggestionToCustomTrack(suggestion: SpotifySuggestion) {
     title: suggestion.title,
     artist: suggestion.artist,
     genre: suggestion.genre,
-    url: "", // User must provide direct audio
-    sourceUrl: "", // Paste real Spotify link here
+    url: suggestion.spotifyUrlExample ?? "",
+    sourceUrl: suggestion.spotifyUrlExample ?? "",
+    isAi: suggestion.isAi === true,
   };
 }

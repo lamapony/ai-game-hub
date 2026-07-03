@@ -9,8 +9,8 @@ Use these as **Real** tracks (add via TrackVault).
 3. In game (Host → briefing): TrackVault → add with:
    - Title + Artist from list
    - Genre
-   - sourceUrl = Spotify link
-   - url = (direct mp3 if you have one, otherwise leave for later)
+   - Spotify track link
+   - Real/AI flag
 
 ---
 
