@@ -8,7 +8,7 @@ export function nextTeamColor(teams: Team[]): Team["color"] {
 }
 
 export function suggestTeamName(teams: Team[]): string {
-  return `Команда ${teams.length + 1}`;
+  return `Team ${teams.length + 1}`;
 }
 
 export function addTeamToState(state: RoomState, name: string, id: string): RoomState | null {

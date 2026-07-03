@@ -34,12 +34,12 @@ export function GameRulesFullCard({ rules }: { rules: GameRules }) {
       </div>
       <div>
         <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
-          Как играть
+          How to play
         </div>
         <GameRulesStepsList rules={rules} />
       </div>
       <div className="rounded-2xl border border-border bg-muted/30 px-4 py-3 text-sm">
-        <span className="text-muted-foreground">Очки: </span>
+        <span className="text-muted-foreground">Scoring: </span>
         {rules.scoring}
       </div>
       <div className="text-xs text-muted-foreground">{rules.minPlayers}</div>
@@ -66,7 +66,7 @@ export function GameRulesDialogTrigger({
             "rounded-full border border-white/25 bg-white/10 px-2.5 py-1 text-[10px] uppercase tracking-wide text-white/80 hover:bg-white/20 hover:text-white"
           }
         >
-          Правила
+          Rules
         </button>
       </DialogTrigger>
       <DialogContent className="max-h-[85vh] overflow-y-auto">
@@ -87,7 +87,7 @@ export function GameRulesBrowser() {
   return (
     <div className="mt-4 text-left">
       <div className="text-[10px] uppercase tracking-widest text-white/50 mb-2">
-        Пока ждём — глянь правила
+        While waiting — check the rules
       </div>
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory">
         {GAME_IDS.map((id) => {
@@ -133,7 +133,7 @@ export function GameRulesChecklist({ gameId }: { gameId: GameId }) {
   const rules = GAME_RULES[gameId];
   return (
     <div className="mt-4 border-t border-white/10 pt-3 text-left">
-      <div className="text-[10px] uppercase tracking-widest text-white/45 mb-2">Как играть</div>
+      <div className="text-[10px] uppercase tracking-widest text-white/45 mb-2">How to play</div>
       <ol className="space-y-1 text-xs text-white/55 list-decimal list-inside leading-relaxed">
         {rules.steps.map((step) => (
           <li key={step}>{step}</li>

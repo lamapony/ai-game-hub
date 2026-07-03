@@ -18,9 +18,10 @@ const SPECTRUM_COURT_REVEAL_MS = 10_000;
 const WHO_AMONG_VOTE_MS = 25_000;
 const WHO_AMONG_REVEAL_MS = 10_000;
 
-export const SOUNDSCAPE_FALLBACK_TOPIC = "Звуки утреннего парка";
-export const SPECTRUM_COURT_FALLBACK_CLUE = "Без подсказки — командная интуиция!";
-export const CHALLENGE_JUDGING_FALLBACK_FEEDBACK = "Судья взял самоотвод — среднее очко за отвагу.";
+export const SOUNDSCAPE_FALLBACK_TOPIC = "Morning park sounds";
+export const SPECTRUM_COURT_FALLBACK_CLUE = "No clue — trust the team instinct!";
+export const CHALLENGE_JUDGING_FALLBACK_FEEDBACK =
+  "The judge recused themself — average bravery points awarded.";
 
 function shiftTime(value: number | undefined, deltaMs: number) {
   return typeof value === "number" ? value + deltaMs : value;
@@ -200,30 +201,34 @@ export function getWinningStandings(standings: TeamStanding[]): TeamStanding[] {
 }
 
 export function formatRussianPlace(place: number): string {
-  const mod10 = place % 10;
   const mod100 = place % 100;
-  if (mod10 === 1 && mod100 !== 11) return `${place} место`;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${place} места`;
-  return `${place} мест`;
+  const mod10 = place % 10;
+  const suffix =
+    mod100 >= 11 && mod100 <= 13
+      ? "th"
+      : mod10 === 1
+        ? "st"
+        : mod10 === 2
+          ? "nd"
+          : mod10 === 3
+            ? "rd"
+            : "th";
+  return `${place}${suffix}`;
 }
 
 export function formatRussianPoints(count: number): string {
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-  if (mod10 === 1 && mod100 !== 11) return `${count} очко`;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${count} очка`;
-  return `${count} очков`;
+  return `${count} ${count === 1 ? "point" : "points"}`;
 }
 
 export function buildWinnerAnnouncement(standings: TeamStanding[]): string {
   const winners = getWinningStandings(standings);
-  if (winners.length === 0) return "Вечеринка окончена!";
+  if (winners.length === 0) return "Party finished!";
   const scoreText = formatRussianPoints(winners[0]!.team.score);
   if (winners.length === 1) {
-    return `Победители вечеринки — команда ${winners[0]!.team.name}! ${scoreText}!`;
+    return `Party winners: team ${winners[0]!.team.name}! ${scoreText}!`;
   }
-  const names = winners.map((standing) => standing.team.name).join(" и ");
-  return `Ничья между ${names}! По ${scoreText} у каждой!`;
+  const names = winners.map((standing) => standing.team.name).join(" and ");
+  return `Tie between ${names}! ${scoreText} each!`;
 }
 
 export function canSkipCurrentPhase(state: RoomState): boolean {

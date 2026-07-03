@@ -27,6 +27,8 @@ export type EventProfile = {
   landing: {
     badgeRu: string;
     descriptionRu: string;
+    badgeEn: string;
+    descriptionEn: string;
   };
 };
 
@@ -35,7 +37,7 @@ export const eventProfile: EventProfile = {
   title: "DIMAS fest",
   shortTitle: "DIMAS",
   titleLines: ["DIMAS", "fest."],
-  defaultHostName: "Ведущий",
+  defaultHostName: "Host",
   storagePrefix: "dimas",
   venue: {
     ru: "парк",
@@ -70,6 +72,9 @@ export const eventProfile: EventProfile = {
     badgeRu: "AI-игры для парка",
     descriptionRu:
       "Тусовка в стиле Jackbox прямо в парке. Один телефон ведущего, остальные сканируют QR. AI выдаёт темы, колонки разговаривают. Ноутбук не нужен.",
+    badgeEn: "AI park games",
+    descriptionEn:
+      "Jackbox-style party games right in the park. One host phone, everyone else scans the QR. AI creates the prompts, speakers talk, no laptop needed.",
   },
 };
 

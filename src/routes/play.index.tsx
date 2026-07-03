@@ -12,10 +12,10 @@ function PlayLanding() {
     <main className="min-h-dvh park-gradient flex items-center justify-center px-5">
       <div className="w-full max-w-sm rounded-3xl bg-black/45 backdrop-blur p-6 border border-white/10">
         <div className="text-xs uppercase tracking-widest text-[var(--color-park-bright)]">
-          Игрок · телефон
+          Player · phone
         </div>
-        <h1 className="font-display text-3xl text-white mt-1">Введи код комнаты</h1>
-        <p className="text-sm text-white/70 mt-2">4 буквы с большого экрана ведущего.</p>
+        <h1 className="font-display text-3xl text-white mt-1">Enter room code</h1>
+        <p className="text-sm text-white/70 mt-2">4 letters from the host screen.</p>
         <input
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
@@ -30,10 +30,10 @@ function PlayLanding() {
           }
           className="mt-3 w-full rounded-2xl bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] font-medium py-4 text-lg hover:brightness-110 transition"
         >
-          Войти →
+          Join →
         </button>
         <Link to="/" className="mt-5 block text-center text-white/60 text-sm hover:text-white">
-          ← На главную
+          ← Home
         </Link>
       </div>
     </main>

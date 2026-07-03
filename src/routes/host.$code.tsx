@@ -85,13 +85,13 @@ function HostPage() {
     setIsHost(!!getHostSecret(code));
   }, [code]);
 
-  if (loading) return <Center>Загружаем комнату…</Center>;
+  if (loading) return <Center>Loading room…</Center>;
   if (error || !room)
     return (
       <Center>
-        Комната не найдена.{" "}
+        Room not found.{" "}
         <Link to="/" className="underline ml-2">
-          На главную
+          Home
         </Link>
       </Center>
     );
@@ -99,16 +99,16 @@ function HostPage() {
     return (
       <Center>
         <div className="max-w-md text-center">
-          <div className="text-white/70">Ты открыл эту комнату как гость.</div>
+          <div className="text-white/70">You opened this room as a guest.</div>
           <p className="mt-2 text-sm text-white/50">
-            Если ты ведущий — открой ссылку с того устройства, где создавал комнату.
+            If you are the host, open the link from the device that created the room.
           </p>
           <Link
             to="/play/$code"
             params={{ code }}
             className="inline-block mt-5 rounded-2xl bg-[var(--color-park-bright)] px-5 py-3 text-[oklch(0.18_0.05_160)] font-medium"
           >
-            Зайти как игрок →
+            Join as player →
           </Link>
         </div>
       </Center>
@@ -127,7 +127,7 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
   function testSpeaker(slot: number) {
     if (slot === 1) {
       // host laptop = slot 1: play locally
-      const a = new Audio(`/api/speak?text=${encodeURIComponent("Главная колонка на связи.")}`);
+      const a = new Audio(`/api/speak?text=${encodeURIComponent("Main speaker online.")}`);
       a.play().catch(() => {});
     } else {
       send({ type: "test-tone", slot });
@@ -209,7 +209,7 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
   }
 
   async function resetScores() {
-    if (!window.confirm("Обнулить счёт всех команд? Это нельзя отменить.")) return;
+    if (!window.confirm("Reset all team scores? This cannot be undone.")) return;
     await updateRoomState(roomId, resetScoresState(state));
   }
 
@@ -236,11 +236,11 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
       <header className="park-gradient">
         <div className="mx-auto max-w-6xl px-5 py-4 flex items-center justify-between gap-4">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.25em] text-white/70">Ведущий</div>
+            <div className="text-[10px] uppercase tracking-[0.25em] text-white/70">Host</div>
             <h1 className="font-display text-2xl sm:text-3xl text-white">{eventProfile.title}</h1>
           </div>
           <div className="text-right">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-white/70">Код</div>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-white/70">Code</div>
             <div className="font-display text-3xl sm:text-5xl text-white tracking-[0.2em] tabular-num">
               {code}
             </div>
@@ -310,7 +310,7 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
             onClick={resetGame}
             className="w-full rounded-2xl border border-white/10 bg-white/5 py-2 text-xs text-white/60 hover:text-white"
           >
-            ↺ Сбросить в лобби
+            ↺ Reset to lobby
           </button>
         </aside>
       </div>
@@ -321,8 +321,8 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
 function HostGameLoading() {
   return (
     <div className="rounded-3xl border border-white/10 bg-card p-8 text-center">
-      <div className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Игра</div>
-      <div className="font-display mt-2 text-3xl">Готовим экран раунда…</div>
+      <div className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Game</div>
+      <div className="font-display mt-2 text-3xl">Preparing round screen…</div>
     </div>
   );
 }
@@ -331,45 +331,46 @@ function formatRoundPhaseLabel(game: GameId | null | undefined, phase: string | 
   if (!game || !phase) return null;
   const labels: Partial<Record<GameId, Record<string, string>>> = {
     soundscape: {
-      topics: "Тема",
-      recording: "Запись",
-      mixing: "Микс",
-      playback: "Прослушка",
-      voting: "Голосование",
-      results: "Итоги",
+      idle: "Paused",
+      topics: "Theme",
+      recording: "Recording",
+      mixing: "Mix",
+      playback: "Playback",
+      voting: "Voting",
+      results: "Results",
     },
     challenge: {
-      briefing: "Задание",
-      recording: "Съёмка",
-      judging: "Суд",
-      results: "Вердикт",
+      briefing: "Briefing",
+      recording: "Recording",
+      judging: "Judging",
+      results: "Verdict",
     },
     phototunt: {
-      briefing: "Задание",
-      hunting: "Охота",
-      judging: "Суд",
-      results: "Итоги",
+      briefing: "Briefing",
+      hunting: "Hunt",
+      judging: "Judging",
+      results: "Results",
     },
     trackguess: {
-      briefing: "Старт",
-      listening: "Слушаем",
-      guessing: "Голосуем",
-      reveal: "Ответ",
-      results: "Итоги",
+      briefing: "Start",
+      listening: "Listening",
+      guessing: "Voting",
+      reveal: "Answer",
+      results: "Results",
     },
     spectrumcourt: {
-      briefing: "Старт",
-      clue: "Подсказка",
-      guessing: "Угадывание",
-      appeal: "Апелляция",
-      reveal: "Разбор",
-      results: "Итоги",
+      briefing: "Start",
+      clue: "Clue",
+      guessing: "Guessing",
+      appeal: "Appeal",
+      reveal: "Reveal",
+      results: "Results",
     },
     whoamong: {
-      briefing: "Старт",
-      voting: "Голосование",
-      reveal: "Разбор",
-      results: "Итоги",
+      briefing: "Start",
+      voting: "Voting",
+      reveal: "Reveal",
+      results: "Results",
     },
   };
   return labels[game]?.[phase] ?? phase;
@@ -391,12 +392,12 @@ function HostControlBar({
   onBackToHub: () => void;
 }) {
   const gameLabel = {
-    soundscape: "Звуковой баттл",
-    challenge: "Челлендж",
-    phototunt: "Фотоохота",
-    trackguess: "Настоящий или AI?",
-    spectrumcourt: "Спектр-суд",
-    whoamong: "Кто из нас",
+    soundscape: "Soundscape Battle",
+    challenge: "Challenge",
+    phototunt: "Photo Hunt",
+    trackguess: "Real or AI?",
+    spectrumcourt: "Spectrum Court",
+    whoamong: "Who Among Us",
   }[state.currentGame ?? "soundscape"];
   const phase =
     state.currentGame === "soundscape"
@@ -419,7 +420,7 @@ function HostControlBar({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-            Управление раундом
+            Round controls
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <span className="font-display text-xl">{gameLabel}</span>
@@ -430,7 +431,7 @@ function HostControlBar({
             )}
             {state.paused && (
               <span className="rounded-full bg-[var(--color-park-bright)]/20 px-2.5 py-1 text-xs text-[var(--color-park-bright)]">
-                пауза
+                paused
               </span>
             )}
           </div>
@@ -440,26 +441,26 @@ function HostControlBar({
             onClick={onTogglePause}
             className="rounded-2xl bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/15"
           >
-            {state.paused ? "Продолжить" : "Пауза"}
+            {state.paused ? "Resume" : "Pause"}
           </button>
           <button
             onClick={onSkip}
             disabled={!canSkip}
             className="rounded-2xl bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Пропустить фазу
+            Skip phase
           </button>
           <button
             onClick={onRestart}
             className="rounded-2xl bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/15"
           >
-            Заново
+            Restart
           </button>
           <button
             onClick={onBackToHub}
             className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/75 hover:text-white"
           >
-            В hub
+            To hub
           </button>
         </div>
       </div>
@@ -547,14 +548,15 @@ function Lobby({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-card/40 px-4 py-3">
         <div className="text-sm text-muted-foreground">
-          <span className="text-foreground font-medium">{totalPlayers}</span> игроков
+          <span className="text-foreground font-medium">{totalPlayers}</span>{" "}
+          {totalPlayers === 1 ? "player" : "players"}
         </div>
         <button
           type="button"
           onClick={() => setFullscreenQr(true)}
           className="rounded-full bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] text-sm font-medium px-4 py-2"
         >
-          QR на весь экран
+          Full-screen QR
         </button>
       </div>
 
@@ -567,8 +569,8 @@ function Lobby({
 
       <section className="rounded-3xl border bg-card border-border p-5">
         <header className="mb-3">
-          <h3 className="font-display text-xl">Игроки</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Сканируют QR — попадают в лобби</p>
+          <h3 className="font-display text-xl">Players</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Scan the QR to enter the lobby</p>
         </header>
         <div className="rounded-2xl bg-white p-4 text-center">
           <div className="inline-block rounded-xl bg-white p-2 ring-1 ring-black/10">
@@ -584,7 +586,7 @@ function Lobby({
               onClick={copyLink}
               className="rounded-full bg-black/5 text-black text-xs px-3 py-1.5"
             >
-              {copied ? "✓ скопировано" : "Копировать ссылку"}
+              {copied ? "✓ copied" : "Copy link"}
             </button>
           </div>
         </div>
@@ -592,14 +594,14 @@ function Lobby({
 
       <details className="rounded-3xl border bg-card border-border p-5 group">
         <summary className="cursor-pointer font-display text-xl list-none flex items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
-          <span>Колонки</span>
+          <span>Speakers</span>
           <span className="text-[10px] uppercase tracking-widest text-muted-foreground rounded-full bg-white/5 px-2 py-0.5">
-            опционально
+            optional
           </span>
         </summary>
         <p className="text-xs text-muted-foreground mt-3">
-          Нужны только для «Звукового баттла». Bluetooth к телефону ведущего или отдельные
-          телефоны-колонки.
+          Only needed for Soundscape Battle. Use Bluetooth from the host phone or separate speaker
+          phones.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <button
@@ -607,7 +609,7 @@ function Lobby({
             onClick={() => onTestSpeaker(1)}
             className="rounded-full bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] text-sm font-medium px-4 py-2"
           >
-            🔊 Проверить главную колонку
+            🔊 Test main speaker
           </button>
         </div>
         <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -626,8 +628,8 @@ function Lobby({
       <div className={`rounded-3xl park-gradient p-6 text-white ${hasPlayers ? "" : "opacity-70"}`}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="text-xs uppercase tracking-[0.25em] text-white/80">Старт</div>
-            <h3 className="font-display text-2xl mt-0.5">Что играем первым?</h3>
+            <div className="text-xs uppercase tracking-[0.25em] text-white/80">Start</div>
+            <h3 className="font-display text-2xl mt-0.5">What are we playing first?</h3>
           </div>
           <button
             type="button"
@@ -635,29 +637,27 @@ function Lobby({
             disabled={!hasScores}
             className="rounded-2xl border border-white/25 bg-white/15 px-5 py-3 text-sm font-medium hover:bg-white/25 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            🏆 Финал вечеринки
+            🏆 Party finale
           </button>
         </div>
 
         {!hasPlayers && (
-          <p className="mt-3 text-white/80 text-sm">
-            Сначала пусть хотя бы один друг отсканирует QR.
-          </p>
+          <p className="mt-3 text-white/80 text-sm">Have at least one friend scan the QR first.</p>
         )}
 
         <div className="mt-5 grid sm:grid-cols-2 gap-3">
           <GameCard
             gameId="soundscape"
             emoji="🎚️"
-            title="Звуковой баттл"
-            time="~7 минут"
-            desc="Команды ловят звуки парка, AI собирает 60-сек микс между колонками."
+            title="Soundscape Battle"
+            time="~7 minutes"
+            desc="Teams capture park sounds; AI builds a 60-second mix across the speakers."
             disabled={!canSoundscape}
             disabledHint={
               !canSoundscape
-                ? "нужен ≥ 1 игрок"
+                ? "needs ≥ 1 player"
                 : extrasConnected === 0
-                  ? "можно без доп. колонок"
+                  ? "works without extra speakers"
                   : undefined
             }
             onClick={onLaunchSoundscape}
@@ -665,51 +665,51 @@ function Lobby({
           <GameCard
             gameId="challenge"
             emoji="🎬"
-            title="Челлендж духа парка"
-            time="~3 минуты на раунд"
-            desc="Один снимает на телефон, остальные играют сценку. AI судит 1–10."
+            title="Park Spirit Challenge"
+            time="~3 minutes per round"
+            desc="One player films while others act out a scene. AI scores it 1–10."
             disabled={!canChallenge}
-            disabledHint={!canChallenge ? "нужно ≥ 2 игроков" : undefined}
+            disabledHint={!canChallenge ? "needs ≥ 2 players" : undefined}
             onClick={onLaunchChallenge}
           />
           <GameCard
             gameId="phototunt"
             emoji="📸"
-            title="Фотоохота"
-            time="~2 минуты на раунд"
-            desc="AI даёт абсурдное задание. У всех 60 сек на один кадр."
+            title="Photo Hunt"
+            time="~2 minutes per round"
+            desc="AI gives an absurd prompt. Everyone gets 60 seconds for one shot."
             disabled={!canPhoto}
-            disabledHint={!canPhoto ? "нужен ≥ 1 игрок" : undefined}
+            disabledHint={!canPhoto ? "needs ≥ 1 player" : undefined}
             onClick={onLaunchPhotoHunt}
           />
           <GameCard
             gameId="trackguess"
             emoji="🎧"
-            title="Настоящий или AI?"
-            time="~5 раундов"
-            desc="Слушаете трек и угадываете: живой или сгенерированный нейросетью."
+            title="Real or AI?"
+            time="~5 rounds"
+            desc="Listen to a track and guess whether it is real or AI-generated."
             disabled={!canTrackGuess}
-            disabledHint={!canTrackGuess ? "нужен ≥ 1 игрок" : undefined}
+            disabledHint={!canTrackGuess ? "needs ≥ 1 player" : undefined}
             onClick={onLaunchTrackGuess}
           />
           <GameCard
             gameId="spectrumcourt"
             emoji="⚖️"
-            title="Спектр-суд"
-            time="~4 раунда"
-            desc="Одна команда даёт подсказку к скрытой точке на шкале, остальные спорят и ставят маркер."
+            title="Spectrum Court"
+            time="~4 rounds"
+            desc="One team gives a clue for a hidden point on a scale; others debate and place a marker."
             disabled={!canSpectrumCourt}
-            disabledHint={!canSpectrumCourt ? "нужно ≥ 2 активных команд" : undefined}
+            disabledHint={!canSpectrumCourt ? "needs ≥ 2 active teams" : undefined}
             onClick={onLaunchSpectrumCourt}
           />
           <GameCard
             gameId="whoamong"
             emoji="🕵️"
-            title="Кто из нас"
-            time="~5 раундов"
-            desc="Острый вопрос на экране — тайно голосуешь за того, кто подходит лучше всех."
+            title="Who Among Us"
+            time="~5 rounds"
+            desc="A pointed question appears — secretly vote for the player who fits best."
             disabled={!canWhoAmong}
-            disabledHint={!canWhoAmong ? "нужно ≥ 3 игроков" : undefined}
+            disabledHint={!canWhoAmong ? "needs ≥ 3 players" : undefined}
             onClick={onLaunchWhoAmong}
           />
         </div>
@@ -742,8 +742,7 @@ function SetupFullscreen({
                 {code}
               </h2>
               <p className="text-sm text-white/70 mt-2">
-                {totalPlayers}{" "}
-                {totalPlayers === 1 ? "игрок" : totalPlayers < 5 ? "игрока" : "игроков"}
+                {totalPlayers} {totalPlayers === 1 ? "player" : "players"}
               </p>
             </div>
             <button
@@ -751,20 +750,20 @@ function SetupFullscreen({
               onClick={onClose}
               className="rounded-full bg-white/10 hover:bg-white/15 text-white text-sm px-4 py-2"
             >
-              Закрыть
+              Close
             </button>
           </div>
 
           <div className="max-w-lg mx-auto">
             <section className="rounded-3xl bg-white p-6 sm:p-10 text-center">
-              <div className="text-xs uppercase tracking-widest text-black/50 mb-3">Игроки</div>
+              <div className="text-xs uppercase tracking-widest text-black/50 mb-3">Players</div>
               <QRCodeSVG value={joinUrl} size={320} level="M" includeMargin={false} />
               <div className="mt-4 font-display text-4xl tracking-[0.25em] tabular-nums text-black">
                 {code}
               </div>
               <p className="mt-4 text-sm text-black/60 break-all">{joinUrl}</p>
               <p className="mt-2 text-sm text-black/60">
-                Сканируй камерой — имя и команда на телефоне
+                Scan with the camera — name and team stay on the phone
               </p>
             </section>
           </div>
@@ -809,7 +808,7 @@ function SpeakerQrCard({
         <QRCodeSVG value={url} size={compact ? 88 : 100} level="M" includeMargin={false} />
       </div>
       <div className={`mt-2 text-xs font-medium truncate ${compact ? "text-black" : ""}`}>
-        {sp?.name ?? `Колонка ${slot}`}
+        {sp?.name ?? `Speaker ${slot}`}
       </div>
       <div className="mt-1 flex items-center justify-center gap-1.5 flex-wrap">
         <span className={`text-[10px] px-2 py-0.5 rounded-full ${readyClass}`}>
@@ -821,7 +820,7 @@ function SpeakerQrCard({
             onClick={onTest}
             className="text-[10px] rounded-full bg-white/10 hover:bg-white/20 px-2 py-0.5"
           >
-            🔊 тест
+            🔊 test
           </button>
         )}
       </div>
@@ -859,9 +858,9 @@ function TeamManager({
     <section className="rounded-3xl border bg-card border-border p-5">
       <header className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h3 className="font-display text-xl">Команды</h3>
+          <h3 className="font-display text-xl">Teams</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Игроки выбирают команду на телефоне — названия обновляются сразу
+            Players choose a team on their phones — names update live
           </p>
         </div>
         <span className="text-xs text-muted-foreground tabular-nums">
@@ -891,15 +890,15 @@ function TeamManager({
               />
               <span className="hidden sm:inline text-[10px] uppercase tracking-wide opacity-70 shrink-0">
                 {members.length === 0
-                  ? "пусто"
-                  : `${members.length} ${members.length === 1 ? "игрок" : members.length < 5 ? "игрока" : "игроков"}`}
+                  ? "empty"
+                  : `${members.length} ${members.length === 1 ? "player" : "players"}`}
               </span>
               {canRemove && (
                 <button
                   type="button"
                   onClick={() => void onRemoveTeam(t.id)}
                   className="shrink-0 rounded-full bg-black/10 hover:bg-black/20 size-7 text-sm"
-                  aria-label={`Удалить ${t.name}`}
+                  aria-label={`Remove ${t.name}`}
                 >
                   ×
                 </button>
@@ -928,16 +927,16 @@ function TeamManager({
             disabled={busy}
             className="shrink-0 rounded-2xl bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] px-4 py-2 text-sm font-medium disabled:opacity-50"
           >
-            + Добавить
+            + Add
           </button>
         </form>
       ) : (
-        <p className="mt-3 text-xs text-muted-foreground">Максимум {MAX_TEAMS} команд.</p>
+        <p className="mt-3 text-xs text-muted-foreground">Maximum {MAX_TEAMS} teams.</p>
       )}
 
       {canAdd && (
         <div className="mt-3 flex flex-wrap gap-2">
-          {["Лисы", "Ежи", "Сова", "Волки"].map((preset) => (
+          {["Foxes", "Hedgehogs", "Owls", "Wolves"].map((preset) => (
             <button
               key={preset}
               type="button"
@@ -956,7 +955,7 @@ function TeamManager({
             onClick={() => void submitNewTeam(suggestTeamName(state.teams))}
             className="rounded-full border border-border bg-background/40 px-3 py-1 text-xs hover:bg-background/70 disabled:opacity-50"
           >
-            + Быстрая команда
+            + Quick team
           </button>
         </div>
       )}
@@ -1015,14 +1014,14 @@ function Scoreboard({
   return (
     <div className="rounded-3xl bg-card p-4 border">
       <div className="flex items-center justify-between gap-2 mb-3">
-        <div className="text-xs uppercase tracking-widest text-muted-foreground">Счёт</div>
+        <div className="text-xs uppercase tracking-widest text-muted-foreground">Score</div>
         {hasScores && (
           <button
             type="button"
             onClick={onResetScores}
             className="text-[10px] uppercase tracking-wide text-muted-foreground hover:text-foreground"
           >
-            Сбросить счёт
+            Reset score
           </button>
         )}
       </div>
@@ -1038,7 +1037,7 @@ function Scoreboard({
               <div>
                 <div className="font-medium">{t.name}</div>
                 <div className="text-[10px] uppercase tracking-wide opacity-70">
-                  {count} {count === 1 ? "игрок" : count < 5 ? "игрока" : "игроков"}
+                  {count} {count === 1 ? "player" : "players"}
                 </div>
               </div>
               <div className="font-display text-2xl tabular-num">{t.score}</div>
@@ -1054,11 +1053,11 @@ function PlayersList({ state }: { state: import("@/lib/types").RoomState }) {
   return (
     <div className="rounded-3xl bg-card p-4 border">
       <div className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
-        Игроки ({state.players.length})
+        Players ({state.players.length})
       </div>
       <div className="space-y-1 max-h-64 overflow-auto pr-1">
         {state.players.length === 0 && (
-          <div className="text-xs text-muted-foreground">Пока никого. Покажи код друзьям.</div>
+          <div className="text-xs text-muted-foreground">No one yet. Show the code to friends.</div>
         )}
 
         {state.players.map((p) => {
@@ -1101,10 +1100,10 @@ function PartyFinale({
     <div className="rounded-3xl border border-white/10 bg-card overflow-hidden">
       <div className="park-gradient px-6 py-10 text-center text-white">
         <div className="text-5xl">🎉</div>
-        <div className="mt-3 text-xs uppercase tracking-[0.3em] text-white/70">Финал вечеринки</div>
+        <div className="mt-3 text-xs uppercase tracking-[0.3em] text-white/70">Party finale</div>
         {winners.length === 1 ? (
           <>
-            <h2 className="font-display text-4xl sm:text-5xl mt-3">Победители!</h2>
+            <h2 className="font-display text-4xl sm:text-5xl mt-3">Winners!</h2>
             <div
               className={`mt-4 inline-flex items-center gap-3 rounded-2xl border px-6 py-3 ${teamColorClasses(winners[0]!.team.color).chip}`}
             >
@@ -1119,7 +1118,7 @@ function PartyFinale({
           </>
         ) : (
           <>
-            <h2 className="font-display text-4xl sm:text-5xl mt-3">Ничья!</h2>
+            <h2 className="font-display text-4xl sm:text-5xl mt-3">Tie!</h2>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               {winners.map((standing) => {
                 const c = teamColorClasses(standing.team.color);
@@ -1138,15 +1137,14 @@ function PartyFinale({
           </>
         )}
         <p className="mt-4 text-sm text-white/75">
-          {state.players.length}{" "}
-          {state.players.length === 1 ? "игрок" : state.players.length < 5 ? "игрока" : "игроков"} ·{" "}
-          {formatRussianPoints(winners[0]?.team.score ?? 0)} у лидеров
+          {state.players.length} {state.players.length === 1 ? "player" : "players"} ·{" "}
+          {formatRussianPoints(winners[0]?.team.score ?? 0)} for the leaders
         </p>
       </div>
 
       <div className="px-6 py-8">
         <div className="text-xs uppercase tracking-[0.25em] text-muted-foreground text-center mb-6">
-          Подиум
+          Podium
         </div>
         <div className="flex items-end justify-center gap-3 sm:gap-5 min-h-[12rem]">
           {podiumPlaces.map((place) => {
@@ -1170,10 +1168,10 @@ function PartyFinale({
                         <div className="text-xs text-muted-foreground mt-0.5 tabular-nums">
                           {standing.team.score} · {standing.playerCount}{" "}
                           {standing.playerCount === 1
-                            ? "игрок"
+                            ? "player"
                             : standing.playerCount < 5
-                              ? "игрока"
-                              : "игроков"}
+                              ? "players"
+                              : "players"}
                         </div>
                       </div>
                     );
@@ -1192,7 +1190,7 @@ function PartyFinale({
 
         <div className="mt-8">
           <div className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
-            Полная таблица
+            Full standings
           </div>
           <div className="space-y-2">
             {standings.map((standing) => {
@@ -1212,10 +1210,10 @@ function PartyFinale({
                       <div className="text-[10px] uppercase tracking-wide opacity-70">
                         {standing.playerCount}{" "}
                         {standing.playerCount === 1
-                          ? "игрок"
+                          ? "player"
                           : standing.playerCount < 5
-                            ? "игрока"
-                            : "игроков"}
+                            ? "players"
+                            : "players"}
                       </div>
                     </div>
                   </div>
@@ -1234,14 +1232,14 @@ function PartyFinale({
             onClick={onResumeParty}
             className="rounded-2xl bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] px-6 py-3 font-medium hover:opacity-90"
           >
-            Ещё одну игру
+            One more game
           </button>
           <button
             type="button"
             onClick={onNewParty}
             className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-white/80 hover:text-white hover:bg-white/10"
           >
-            Новая вечеринка
+            New party
           </button>
         </div>
       </div>

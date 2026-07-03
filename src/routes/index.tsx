@@ -6,15 +6,15 @@ import { createRoom } from "@/lib/room";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: eventProfile.seo.titleRu },
+      { title: eventProfile.seo.titleEn },
       {
         name: "description",
-        content: eventProfile.seo.descriptionRu,
+        content: eventProfile.seo.descriptionEn,
       },
       { property: "og:title", content: eventProfile.title },
       {
         property: "og:description",
-        content: eventProfile.seo.ogDescriptionRu,
+        content: eventProfile.seo.ogDescriptionEn,
       },
     ],
   }),
@@ -34,14 +34,14 @@ function Landing() {
       const { code } = await createRoom(eventProfile.defaultHostName);
       navigate({ to: "/host/$code", params: { code } });
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Не получилось создать комнату");
+      setErr(e instanceof Error ? e.message : "Could not create room");
       setCreating(false);
     }
   }
   function onJoin() {
     const code = joinCode.trim().toUpperCase();
     if (code.length < 3) {
-      setErr("Введи код или попроси у ведущего QR");
+      setErr("Enter a code or ask the host for the QR");
       return;
     }
     navigate({ to: "/play/$code", params: { code } });
@@ -60,7 +60,7 @@ function Landing() {
         <header className="mb-8 sm:mb-10">
           <div className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur px-3 py-1 text-[11px] tracking-wide uppercase text-white/80">
             <span className="size-1.5 rounded-full bg-[var(--color-park-bright)]" />{" "}
-            {eventProfile.landing.badgeRu}
+            {eventProfile.landing.badgeEn}
           </div>
           <h1 className="font-display mt-5 text-6xl sm:text-7xl text-white leading-[0.95]">
             {eventProfile.titleLines.map((line) => (
@@ -70,46 +70,46 @@ function Landing() {
             ))}
           </h1>
           <p className="mt-4 max-w-lg text-white/80 text-base sm:text-lg">
-            {eventProfile.landing.descriptionRu}
+            {eventProfile.landing.descriptionEn}
           </p>
         </header>
 
-        {/* Главная кнопка: создать парти прямо с телефона */}
+        {/* Primary action: create the party from the phone. */}
         <section className="rounded-3xl bg-black/45 backdrop-blur p-6 border border-white/10">
           <div className="flex items-baseline justify-between">
             <div>
               <div className="text-xs uppercase tracking-widest text-[var(--color-park-bright)]">
-                Начать тусовку
+                Start the party
               </div>
-              <h2 className="font-display text-3xl mt-1 text-white">Сделать парти</h2>
+              <h2 className="font-display text-3xl mt-1 text-white">Create a party</h2>
             </div>
             <span className="text-3xl">🌳</span>
           </div>
           <p className="text-sm text-white/70 mt-2">
-            Создаст комнату и покажет QR-код. Друзья наводят камеру — и они в игре.
+            Creates a room and shows a QR code. Friends scan it with their camera and join.
           </p>
           <button
             onClick={onCreate}
             disabled={creating}
             className="mt-4 w-full rounded-2xl bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] font-medium py-4 text-lg hover:brightness-110 transition disabled:opacity-50"
           >
-            {creating ? "Создаём…" : "Создать комнату →"}
+            {creating ? "Creating…" : "Create room →"}
           </button>
         </section>
 
-        {/* Войти по коду — если ведущий уже создал */}
+        {/* Join by code if a host already created the room. */}
         <section className="mt-4 rounded-3xl bg-black/35 backdrop-blur p-6 border border-white/10">
           <div className="flex items-baseline justify-between">
             <div>
               <div className="text-xs uppercase tracking-widest text-white/60">
-                Уже есть QR или код
+                Already have a QR or code
               </div>
-              <h2 className="font-display text-2xl mt-1 text-white">Войти в комнату</h2>
+              <h2 className="font-display text-2xl mt-1 text-white">Join room</h2>
             </div>
             <span className="text-2xl">📱</span>
           </div>
           <p className="text-sm text-white/60 mt-2">
-            Если не получилось отсканировать QR — введи 4 буквы.
+            If scanning the QR did not work, enter the 4-letter code.
           </p>
           <input
             value={joinCode}
@@ -124,7 +124,7 @@ function Landing() {
             onClick={onJoin}
             className="mt-3 w-full rounded-2xl bg-white/10 hover:bg-white/15 text-white font-medium py-3 transition"
           >
-            Войти по коду →
+            Join by code →
           </button>
           {err && <p className="mt-3 text-sm text-red-300">{err}</p>}
         </section>

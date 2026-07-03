@@ -66,7 +66,7 @@ function PlayPage() {
   if (loading)
     return (
       <PlayShell>
-        <div className="text-white/70">Загружаем…</div>
+        <div className="text-white/70">Loading…</div>
       </PlayShell>
     );
   if (error || !room)
@@ -75,16 +75,14 @@ function PlayPage() {
         <div className="w-full max-w-sm rounded-3xl bg-black/45 backdrop-blur p-6 border border-white/10 text-center">
           <div className="text-4xl">🤷</div>
           <h2 className="font-display text-2xl text-white mt-2">
-            Комната <span className="font-mono">{code}</span> не найдена
+            Room <span className="font-mono">{code}</span> not found
           </h2>
-          <p className="text-sm text-white/70 mt-2">
-            Проверь у ведущего код на экране — там 4 буквы.
-          </p>
+          <p className="text-sm text-white/70 mt-2">Check the 4-letter code on the host screen.</p>
           <Link
             to="/"
             className="inline-block mt-5 rounded-2xl bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] font-medium py-3 px-5"
           >
-            ← На главную
+            ← Home
           </Link>
         </div>
       </PlayShell>
@@ -132,7 +130,7 @@ function JoinForm({
     if (submitting || !teamId) return;
     setJoiningTeamId(teamId);
     setSubmitting(true);
-    const finalName = name.trim() || `Игрок ${state.players.length + 1}`;
+    const finalName = name.trim() || `Player ${state.players.length + 1}`;
     const player = getOrCreatePlayer(code, finalName, teamId);
     try {
       const result = await postPlayerAction(room.id, {
@@ -161,22 +159,22 @@ function JoinForm({
     <PlayShell>
       <div className="w-full max-w-md rounded-3xl bg-black/40 backdrop-blur p-6 border border-white/10">
         <div className="text-xs uppercase tracking-widest text-[var(--color-park-bright)]">
-          Комната {code}
+          Room {code}
         </div>
-        <h1 className="font-display text-3xl text-white mt-2">Заходи в игру</h1>
+        <h1 className="font-display text-3xl text-white mt-2">Join the game</h1>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Твоё имя (можно пропустить)"
+          placeholder="Your name (optional)"
           className="mt-4 w-full bg-white/10 text-white placeholder-white/40 rounded-2xl px-4 py-3 outline-none focus:bg-white/15"
         />
         <div className="mt-5">
           <div className="text-xs uppercase tracking-widest text-white/60 mb-2">
-            Нажми на свою команду
+            Choose your team
           </div>
           {state.teams.length === 0 ? (
             <p className="text-sm text-white/60">
-              Ведущий ещё не создал команды — попроси добавить.
+              The host has not created teams yet — ask them to add one.
             </p>
           ) : (
             <div className={`grid ${teamGridClass} gap-2`}>
@@ -195,10 +193,10 @@ function JoinForm({
                     <div className="font-display text-xl">{t.name}</div>
                     <div className="text-xs mt-2 leading-relaxed opacity-80">
                       {members.length === 0
-                        ? "Пусто — заходи первым"
-                        : `${members.length} в команде · ${members.map((m) => m.name).join(", ")}`}
+                        ? "Empty — be first to join"
+                        : `${members.length} on team · ${members.map((m) => m.name).join(", ")}`}
                     </div>
-                    {joining && <div className="text-xs mt-2 font-medium opacity-90">Заходим…</div>}
+                    {joining && <div className="text-xs mt-2 font-medium opacity-90">Joining…</div>}
                   </button>
                 );
               })}
@@ -260,12 +258,12 @@ function PlayerScreen({
             <div className="font-display text-2xl">{me.name}</div>
             {state.currentGame && team && (
               <div className="text-xs mt-1 opacity-80">
-                Твоя команда: {formatRussianPoints(team.score)}
+                Your team: {formatRussianPoints(team.score)}
               </div>
             )}
           </div>
           <div className="text-right">
-            <div className="text-[10px] uppercase tracking-widest opacity-70">Комната</div>
+            <div className="text-[10px] uppercase tracking-widest opacity-70">Room</div>
             <div className="font-mono">{code}</div>
           </div>
         </div>
@@ -305,8 +303,8 @@ function PlayerScreen({
 function PlayerGameLoading() {
   return (
     <div className="rounded-3xl bg-black/40 backdrop-blur p-8 border border-white/10 text-center text-white">
-      <div className="font-display text-2xl">Готовим раунд…</div>
-      <p className="text-white/60 text-sm mt-2">Экран появится через пару секунд.</p>
+      <div className="font-display text-2xl">Preparing round…</div>
+      <p className="text-white/60 text-sm mt-2">The screen will appear in a few seconds.</p>
     </div>
   );
 }
@@ -315,11 +313,11 @@ function PausedPanel() {
   return (
     <div className="rounded-3xl bg-black/45 backdrop-blur p-8 border border-white/10 text-center text-white">
       <div className="text-xs uppercase tracking-[0.25em] text-[var(--color-park-bright)]">
-        Пауза
+        Paused
       </div>
-      <div className="font-display text-3xl mt-2">Ждём ведущего</div>
+      <div className="font-display text-3xl mt-2">Waiting for the host</div>
       <p className="text-white/60 text-sm mt-2">
-        Раунд остановлен. Когда ведущий продолжит, экран обновится сам.
+        The round is paused. When the host resumes, this screen will update.
       </p>
     </div>
   );
@@ -363,7 +361,7 @@ function WaitingPanel({
 
   return (
     <div className="rounded-3xl bg-black/40 backdrop-blur p-6 border border-white/10 text-center text-white">
-      <div className="font-display text-2xl">Ждём ведущего…</div>
+      <div className="font-display text-2xl">Waiting for the host…</div>
       <GameRulesBrowser />
       <div className="mt-6 inline-flex gap-1.5">
         <span className="size-2 rounded-full bg-white/70 animate-pulse" />
@@ -376,7 +374,7 @@ function WaitingPanel({
       </div>
 
       <div className="mt-6 text-left">
-        <div className="text-xs uppercase tracking-widest text-white/50 mb-2">Сменить команду</div>
+        <div className="text-xs uppercase tracking-widest text-white/50 mb-2">Switch team</div>
         <div className="grid grid-cols-2 gap-2">
           {state.teams.map((t) => {
             const c = teamColorClasses(t.color);
@@ -392,7 +390,7 @@ function WaitingPanel({
               >
                 <div className="font-medium">{t.name}</div>
                 <div className="text-[10px] mt-1 opacity-70">
-                  {members.length === 0 ? "пусто" : `${members.length} игроков`}
+                  {members.length === 0 ? "empty" : `${members.length} players`}
                 </div>
               </button>
             );
@@ -418,7 +416,7 @@ function TeamStandingsList({
 
   return (
     <div>
-      <div className="text-xs uppercase tracking-widest text-white/50 mb-2">Счёт команд</div>
+      <div className="text-xs uppercase tracking-widest text-white/50 mb-2">Team scores</div>
       <div className="space-y-1.5">
         {standings.map((standing) => {
           const c = teamColorClasses(standing.team.color);
@@ -454,7 +452,7 @@ function PlayerFinale({
   const winners = getWinningStandings(standings);
   const myStanding = standings.find((standing) => standing.team.id === me.teamId);
   const isWinner = winners.some((standing) => standing.team.id === me.teamId);
-  const winnerNames = winners.map((standing) => standing.team.name).join(" и ");
+  const winnerNames = winners.map((standing) => standing.team.name).join(" and ");
 
   return (
     <div
@@ -466,19 +464,19 @@ function PlayerFinale({
     >
       <div className="text-4xl">{isWinner ? "🏆" : "🎉"}</div>
       <div className="text-xs uppercase tracking-[0.25em] text-[var(--color-park-bright)] mt-3">
-        Финал вечеринки
+        Party finale
       </div>
       {myStanding && (
         <div className="font-display text-2xl mt-3">
-          Вы заняли {formatRussianPlace(myStanding.place)}
+          You placed {formatRussianPlace(myStanding.place)}
         </div>
       )}
       <p className="text-white/70 text-sm mt-2">
-        {winners.length === 1 ? `Победила команда ${winnerNames}!` : `Ничья: ${winnerNames}!`}
+        {winners.length === 1 ? `Team ${winnerNames} won!` : `Tie: ${winnerNames}!`}
       </p>
       {isWinner && (
         <p className="text-[var(--color-park-bright)] text-sm mt-2 font-medium">
-          Вы в команде-победителе — вы легенда! 🎊
+          You are on the winning team — legend status. 🎊
         </p>
       )}
 
@@ -486,7 +484,7 @@ function PlayerFinale({
         <TeamStandingsList state={state} highlightTeamId={me.teamId} />
       </div>
 
-      <p className="text-white/50 text-xs mt-6">Ждём, что решит ведущий дальше…</p>
+      <p className="text-white/50 text-xs mt-6">Waiting for the host's next move…</p>
     </div>
   );
 }
