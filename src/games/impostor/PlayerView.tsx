@@ -1,0 +1,250 @@
+import { useEffect, useState } from "react";
+import { postPlayerAction } from "@/lib/player-action-client";
+import { formatClock } from "@/lib/team-style";
+import { GameRulesChecklist } from "@/components/game-rules-ui";
+import type { RoomState } from "@/lib/types";
+
+export function ImpostorPlayer({
+  roomId,
+  state,
+  me,
+}: {
+  roomId: string;
+  state: RoomState;
+  me: { id: string; name: string; teamId: string };
+}) {
+  const imp = state.impostor!;
+  const [now, setNow] = useState(Date.now());
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(t);
+  }, []);
+
+  // clear draft when the round moves on
+  useEffect(() => {
+    setDraft("");
+  }, [imp.roundNumber]);
+
+  const myAnswer = imp.answers?.[me.id];
+  const myVote = imp.votes?.[me.id];
+  const lastResult = imp.roundResults?.[imp.roundResults.length - 1];
+
+  async function submitAnswer() {
+    const text = draft.trim();
+    if (!text || sending) return;
+    setSending(true);
+    try {
+      await postPlayerAction(roomId, {
+        action: "impostor-answer",
+        playerId: me.id,
+        answer: text,
+      });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function vote(answerId: string) {
+    try {
+      await postPlayerAction(roomId, {
+        action: "impostor-vote",
+        playerId: me.id,
+        answerId,
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  if (imp.phase === "briefing") {
+    return (
+      <Card>
+        <Pill>Готовься писать</Pill>
+        <H>Кто здесь бот?</H>
+        <P>
+          На экране появится вопрос. Напиши смешной ответ — AI тайно подбросит свой. Найди машинный
+          ответ: угадал +3, а если твой ответ приняли за ботовский — +1 за каждый голос.
+        </P>
+        <GameRulesChecklist gameId="impostor" />
+      </Card>
+    );
+  }
+
+  if (imp.phase === "answering" && imp.question) {
+    const remaining = Math.max(0, (imp.answerEndsAt ?? now) - now);
+    return (
+      <Card compact>
+        <Pill>
+          Раунд {imp.roundNumber} · {formatClock(remaining)}
+        </Pill>
+        <H className="text-left">{imp.question}</H>
+        {myAnswer ? (
+          <>
+            <div className="mt-3 rounded-2xl bg-[var(--color-park-bright)]/15 px-4 py-3 text-sm text-[var(--color-park-bright)]">
+              Ответ принят: «{myAnswer}»
+            </div>
+            <P>Можно переписать, пока время не вышло.</P>
+          </>
+        ) : (
+          <P>Пиши как есть, слишком гладкий текст выдаёт ботов.</P>
+        )}
+        <form
+          className="mt-3 flex flex-col gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submitAnswer();
+          }}
+        >
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            maxLength={140}
+            placeholder="Твой ответ…"
+            className="w-full rounded-2xl bg-white/10 px-4 py-3 text-white placeholder-white/40 outline-none focus:bg-white/15"
+          />
+          <button
+            type="submit"
+            disabled={sending || !draft.trim()}
+            className="rounded-2xl bg-[var(--color-park-bright)] px-4 py-3 font-medium text-[oklch(0.16_0.05_160)] disabled:opacity-50"
+          >
+            {myAnswer ? "Переписать" : "Отправить"}
+          </button>
+        </form>
+      </Card>
+    );
+  }
+
+  if (imp.phase === "voting" && imp.shuffled) {
+    const remaining = Math.max(0, (imp.voteEndsAt ?? now) - now);
+    return (
+      <div className="space-y-3">
+        <Card compact>
+          <Pill>Ищем бота · {formatClock(remaining)}</Pill>
+          <H className="text-left text-xl">{imp.question}</H>
+          {myVote && (
+            <P className="text-[var(--color-park-bright)]">Голос принят — можно передумать</P>
+          )}
+        </Card>
+        <div className="space-y-2">
+          {imp.shuffled.map((answer, i) => {
+            const mine = answer.playerId === me.id;
+            const selected = myVote === answer.id;
+            return (
+              <button
+                key={answer.id}
+                type="button"
+                disabled={mine}
+                onClick={() => void vote(answer.id)}
+                className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                  selected
+                    ? "border-[var(--color-park-bright)]/60 bg-[var(--color-park-bright)]/15 ring-2 ring-[var(--color-park-bright)]/50"
+                    : mine
+                      ? "border-white/10 bg-white/5 opacity-50"
+                      : "border-white/15 bg-white/5 hover:bg-white/10"
+                }`}
+              >
+                <span className="text-xs text-white/50 mr-2">#{i + 1}</span>
+                <span className="text-white">{answer.text}</span>
+                {mine && <span className="ml-2 text-xs text-white/50">(твой)</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  if (imp.phase === "reveal" && lastResult) {
+    const caught = lastResult.correctVoterIds.includes(me.id);
+    const myFoolVotes = (() => {
+      const myAnswerId = lastResult.answers.find((a) => a.playerId === me.id)?.id;
+      if (!myAnswerId) return 0;
+      return Object.values(lastResult.votes).filter((id) => id === myAnswerId).length;
+    })();
+    return (
+      <Card>
+        <Pill>{caught ? "🕵️ Поймал!" : "Разоблачение"}</Pill>
+        <H className="text-left text-xl">{lastResult.question}</H>
+        <div
+          className={`mt-3 rounded-2xl px-4 py-3 text-center ${
+            caught
+              ? "bg-[var(--color-park-bright)]/20 text-[var(--color-park-bright)]"
+              : "bg-white/10 text-white/80"
+          }`}
+        >
+          {caught
+            ? "Ты вычислил бота! +3 команде"
+            : myVote
+              ? "Это был человек. Бот ускользнул."
+              : "Ты не проголосовал"}
+        </div>
+        {myFoolVotes > 0 && (
+          <div className="mt-2 rounded-2xl bg-white/10 px-4 py-3 text-center text-sm text-white/80">
+            Твой ответ приняли за ботовский {myFoolVotes} раз — +{myFoolVotes} команде. Талант.
+          </div>
+        )}
+      </Card>
+    );
+  }
+
+  if (imp.phase === "results") {
+    const results = imp.roundResults ?? [];
+    const caughtCount = results.filter((r) => r.correctVoterIds.includes(me.id)).length;
+    const fooledCount = results.reduce((sum, r) => {
+      const myAnswerId = r.answers.find((a) => a.playerId === me.id)?.id;
+      if (!myAnswerId) return sum;
+      return sum + Object.values(r.votes).filter((id) => id === myAnswerId).length;
+    }, 0);
+    return (
+      <Card>
+        <Pill>Финал</Pill>
+        <H>Твоя статистика</H>
+        <div className="mt-3 rounded-2xl bg-white/10 px-4 py-3 text-sm">
+          <div>Поймал бота: {caughtCount} раз</div>
+          <div className="mt-1">Сошёл за бота: {fooledCount} голосов</div>
+        </div>
+        <P className="mt-3">Полный рейтинг охотников — на экране ведущего.</P>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <H>Жди…</H>
+      <P>Бот думает. Или притворяется, что думает.</P>
+    </Card>
+  );
+}
+
+function Card({ children, compact }: { children: React.ReactNode; compact?: boolean }) {
+  return (
+    <div
+      className={`rounded-3xl bg-black/40 backdrop-blur border border-white/10 text-white ${compact ? "p-5" : "p-8 text-center"}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function Pill({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="text-xs uppercase tracking-widest text-[var(--color-park-bright)]">
+      {children}
+    </div>
+  );
+}
+
+function H({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={`font-display text-2xl mt-2 ${className ?? ""}`}>{children}</div>;
+}
+
+function P({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <p className={`text-white/65 text-sm mt-2 leading-relaxed ${className ?? ""}`}>{children}</p>
+  );
+}

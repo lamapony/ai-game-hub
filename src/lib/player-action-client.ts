@@ -15,6 +15,8 @@ export type PlayerActionRequest = {
   clue?: string;
   value?: number;
   direction?: SpectrumCourtAppeal["direction"];
+  answer?: string;
+  answerId?: string;
   playerSecret?: string;
 };
 

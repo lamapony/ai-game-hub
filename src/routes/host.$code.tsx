@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { eventProfile } from "@/lib/event-profile";
 import {
   launchChallengeState,
+  launchImpostorState,
   launchPhotoHuntState,
   launchSoundscapeState,
   launchSpectrumCourtState,
@@ -26,6 +27,7 @@ import {
   resetScoresState,
   resumePartyState,
   resumeRoomState,
+  setVenueState,
   skipCurrentPhaseState,
 } from "@/lib/host-controls";
 import { speakerReadiness } from "@/lib/speaker-status";
@@ -69,6 +71,11 @@ const SpectrumCourtHost = lazy(() =>
 const WhoAmongHost = lazy(() =>
   import("@/games/whoamong/HostView").then((module) => ({
     default: module.WhoAmongHost,
+  })),
+);
+const ImpostorHost = lazy(() =>
+  import("@/games/impostor/HostView").then((module) => ({
+    default: module.ImpostorHost,
   })),
 );
 
@@ -168,6 +175,17 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
     await updateRoomState(roomId, next);
   }
 
+  async function launchImpostor() {
+    const next = launchImpostorState(state, genId("imp"));
+    if (!next) return;
+    await updateRoomState(roomId, next);
+  }
+
+  async function setVenue(venue: "park" | "bar") {
+    if (state.venue === venue || (!state.venue && venue === "park")) return;
+    await updateRoomState(roomId, setVenueState(state, venue));
+  }
+
   async function resetGame() {
     await updateRoomState(roomId, forceBackToHubState(state));
   }
@@ -190,6 +208,7 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
     if (state.currentGame === "trackguess") await launchTrackGuess();
     if (state.currentGame === "spectrumcourt") await launchSpectrumCourt();
     if (state.currentGame === "whoamong") await launchWhoAmong();
+    if (state.currentGame === "impostor") await launchImpostor();
   }
 
   async function forceBackToHub() {
@@ -277,6 +296,8 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
                 <SpectrumCourtHost roomId={roomId} state={state} />
               ) : state.currentGame === "whoamong" && state.whoamong ? (
                 <WhoAmongHost roomId={roomId} state={state} />
+              ) : state.currentGame === "impostor" && state.impostor ? (
+                <ImpostorHost roomId={roomId} state={state} />
               ) : (
                 <HostGameLoading />
               )}
@@ -292,6 +313,8 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
               onLaunchTrackGuess={launchTrackGuess}
               onLaunchSpectrumCourt={launchSpectrumCourt}
               onLaunchWhoAmong={launchWhoAmong}
+              onLaunchImpostor={launchImpostor}
+              onSetVenue={setVenue}
               onFinishParty={finishParty}
               speakerUrlFor={speakerUrlFor}
               onTestSpeaker={testSpeaker}
@@ -372,6 +395,13 @@ function formatRoundPhaseLabel(game: GameId | null | undefined, phase: string | 
       reveal: "Reveal",
       results: "Results",
     },
+    impostor: {
+      briefing: "Start",
+      answering: "Writing",
+      voting: "Bot hunt",
+      reveal: "Reveal",
+      results: "Results",
+    },
   };
   return labels[game]?.[phase] ?? phase;
 }
@@ -398,6 +428,7 @@ function HostControlBar({
     trackguess: "Real or AI?",
     spectrumcourt: "Spectrum Court",
     whoamong: "Who Among Us",
+    impostor: "Who's the Bot?",
   }[state.currentGame ?? "soundscape"];
   const phase =
     state.currentGame === "soundscape"
@@ -412,7 +443,9 @@ function HostControlBar({
               ? state.spectrumcourt?.phase
               : state.currentGame === "whoamong"
                 ? state.whoamong?.phase
-                : null;
+                : state.currentGame === "impostor"
+                  ? state.impostor?.phase
+                  : null;
   const phaseLabel = formatRoundPhaseLabel(state.currentGame, phase);
 
   return (
@@ -483,6 +516,8 @@ function Lobby({
   onLaunchTrackGuess,
   onLaunchSpectrumCourt,
   onLaunchWhoAmong,
+  onLaunchImpostor,
+  onSetVenue,
   onFinishParty,
   speakerUrlFor,
   onTestSpeaker,
@@ -500,6 +535,8 @@ function Lobby({
   onLaunchTrackGuess: () => void;
   onLaunchSpectrumCourt: () => void;
   onLaunchWhoAmong: () => void;
+  onLaunchImpostor: () => void;
+  onSetVenue: (venue: "park" | "bar") => void;
   onFinishParty: () => void;
   speakerUrlFor: (n: number) => string;
   onTestSpeaker: (n: number) => void;
@@ -524,7 +561,9 @@ function Lobby({
   ).length;
   const canSpectrumCourt = activeTeamCount >= 2;
   const canWhoAmong = totalPlayers >= 3;
+  const canImpostor = totalPlayers >= 3;
   const hasScores = state.teams.some((team) => team.score > 0);
+  const venue = state.venue ?? "park";
 
   function copyLink() {
     navigator.clipboard?.writeText(joinUrl).then(() => {
@@ -630,6 +669,32 @@ function Lobby({
           <div>
             <div className="text-xs uppercase tracking-[0.25em] text-white/80">Start</div>
             <h3 className="font-display text-2xl mt-0.5">What are we playing first?</h3>
+            <div className="mt-3 inline-flex rounded-2xl border border-white/20 bg-white/10 p-1">
+              {(
+                [
+                  { id: "park", label: "🌳 Park" },
+                  { id: "bar", label: "🍸 Bar" },
+                ] as const
+              ).map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => onSetVenue(option.id)}
+                  className={`rounded-xl px-4 py-1.5 text-sm font-medium transition ${
+                    venue === option.id
+                      ? "bg-white text-[oklch(0.2_0.05_160)]"
+                      : "text-white/70 hover:text-white"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-white/70">
+              {venue === "bar"
+                ? "Bar mode: AI prompts fit tables, drinks and indoor chaos."
+                : "Park mode: AI prompts assume open space and running around."}
+            </p>
           </div>
           <button
             type="button"
@@ -711,6 +776,16 @@ function Lobby({
             disabled={!canWhoAmong}
             disabledHint={!canWhoAmong ? "needs ≥ 3 players" : undefined}
             onClick={onLaunchWhoAmong}
+          />
+          <GameCard
+            gameId="impostor"
+            emoji="🤖"
+            title="Who's the Bot?"
+            time="~4 rounds"
+            desc="Everyone writes a witty answer — one is secretly AI. Find the machine."
+            disabled={!canImpostor}
+            disabledHint={!canImpostor ? "needs ≥ 3 players" : undefined}
+            onClick={onLaunchImpostor}
           />
         </div>
       </div>

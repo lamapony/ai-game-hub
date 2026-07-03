@@ -3,9 +3,29 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { eventProfile } from "../event-profile";
 import { sanitizeChallengeJudgement, sanitizeTask } from "./sanitize";
+import { venuePromptContext } from "./venue";
 
 const HOST_VOICE_SYSTEM = `Ты — ${eventProfile.hostPersona.ru}, ведущий вечеринки ${eventProfile.title}. Голос: ${eventProfile.hostPersona.voiceRu}.
 Всегда отвечай на русском. Всегда отвечай строгим валидным JSON, без markdown-обёрток.`;
+
+const BAR_FALLBACK_TASKS = [
+  {
+    task: "Изобразите дегустацию самого дорогого напитка в истории — по очереди, с лицами сомелье, у которых рушится жизнь.",
+    intro: "Бар превращается в театр. Простите, бар.",
+  },
+  {
+    task: "Сыграйте сцену: вы совет директоров, который экстренно решает, кто скажет следующий тост.",
+    intro: "Корпоративная драма за столиком.",
+  },
+  {
+    task: "Покажите немой фильм «последний час до закрытия бара» — драма, погоня и happy end обязательны.",
+    intro: "Свет, камера, бодега.",
+  },
+  {
+    task: "Изобразите оркестр, где все инструменты — это то, что стоит на столе.",
+    intro: "Филармония имени этой бодеги открывается.",
+  },
+];
 
 const FALLBACK_TASKS = [
   {
@@ -26,10 +46,10 @@ const FALLBACK_TASKS = [
   },
 ];
 
-function fallbackChallengeTask(pastTasks: string[] = []) {
+function fallbackChallengeTask(pastTasks: string[] = [], venue?: "park" | "bar") {
+  const pool = venue === "bar" ? BAR_FALLBACK_TASKS : FALLBACK_TASKS;
   return (
-    FALLBACK_TASKS.find((task) => !pastTasks.includes(task.task)) ??
-    FALLBACK_TASKS[pastTasks.length % FALLBACK_TASKS.length]
+    pool.find((task) => !pastTasks.includes(task.task)) ?? pool[pastTasks.length % pool.length]
   );
 }
 
@@ -39,6 +59,7 @@ export const generateChallengeTask = createServerFn({ method: "POST" })
       .object({
         operatorName: z.string(),
         pastTasks: z.array(z.string()).optional(),
+        venue: z.enum(["park", "bar"]).optional(),
       })
       .parse(input),
   )
@@ -52,8 +73,10 @@ export const generateChallengeTask = createServerFn({ method: "POST" })
     try {
       const r = await chatJSON<{ task: string; intro: string }>({
         system: HOST_VOICE_SYSTEM,
-        user: `Сейчас оператор — ${data.operatorName}. Он снимает видео остальных игроков 20 секунд.
-Придумай ОДНО абсурдное физическое задание для остальных. Что-то такое, что заставит их встать, орать или строить рожи. Не больше 2 предложений. Без подсказок «как сделать».
+        user: `${venuePromptContext(data.venue)}
+
+Сейчас оператор — ${data.operatorName}. Он снимает видео остальных игроков 20 секунд.
+Придумай ОДНО абсурдное задание-сценку для остальных. Что-то такое, что заставит их играть, орать или строить рожи. Не больше 2 предложений. Без подсказок «как сделать». Задание обязано быть выполнимым в текущей локации.
 
 Примеры стиля (НЕ копируй):
 - «Сыграйте сцену: вы три белки, узнавшие что орехи подорожали. Один из вас должен расплакаться по-настоящему».
@@ -67,10 +90,10 @@ ${avoid}
 JSON: { "task": "...", "intro": "..." }`,
         temperature: 0.95,
       });
-      return sanitizeTask(r, fallbackChallengeTask(data.pastTasks));
+      return sanitizeTask(r, fallbackChallengeTask(data.pastTasks, data.venue));
     } catch (error) {
       console.error("[AI fallback] generateChallengeTask", error);
-      return { ...fallbackChallengeTask(data.pastTasks), fallback: true };
+      return { ...fallbackChallengeTask(data.pastTasks, data.venue), fallback: true };
     }
   });
 

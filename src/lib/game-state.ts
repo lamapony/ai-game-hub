@@ -11,6 +11,7 @@ function basePlayingState(state: RoomState): RoomState {
     trackguess: undefined,
     spectrumcourt: undefined,
     whoamong: undefined,
+    impostor: undefined,
   };
 }
 
@@ -108,6 +109,24 @@ export function launchWhoAmongState(state: RoomState, roundId: string): RoomStat
       roundNumber: 1,
       totalRounds: WHO_AMONG_TOTAL_ROUNDS,
       usedPromptIds: [],
+      roundResults: [],
+    },
+  };
+}
+
+export const IMPOSTOR_TOTAL_ROUNDS = 4;
+
+export function launchImpostorState(state: RoomState, roundId: string): RoomState | null {
+  if (state.players.length < 3) return null;
+  return {
+    ...basePlayingState(state),
+    currentGame: "impostor",
+    impostor: {
+      phase: "briefing",
+      roundId,
+      roundNumber: 1,
+      totalRounds: IMPOSTOR_TOTAL_ROUNDS,
+      usedQuestionIds: [],
       roundResults: [],
     },
   };
