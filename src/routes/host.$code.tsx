@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { QRCodeSVG } from "qrcode.react";
+import { QRCodeCanvas } from "qrcode.react";
 import { useRoom, useBroadcast, updateRoomState, getHostSecret, genId } from "@/lib/room";
 import { supabase } from "@/integrations/supabase/client";
 import { eventProfile } from "@/lib/event-profile";
@@ -668,7 +668,7 @@ function Lobby({
         </header>
         <div className="rounded-2xl bg-white p-4 text-center">
           <div className="inline-block rounded-xl bg-white p-2 ring-1 ring-black/10">
-            <QRCodeSVG value={joinUrl} size={220} level="M" includeMargin={false} />
+            <QRCodeCanvas value={joinUrl} size={220} level="M" includeMargin={false} />
           </div>
           <div className="mt-2 font-display text-3xl tracking-[0.25em] tabular-nums text-black">
             {code}
@@ -887,7 +887,7 @@ function SetupFullscreen({
           <div className="max-w-lg mx-auto">
             <section className="rounded-3xl bg-white p-6 sm:p-10 text-center">
               <div className="text-xs uppercase tracking-widest text-black/50 mb-3">Players</div>
-              <QRCodeSVG value={joinUrl} size={320} level="M" includeMargin={false} />
+              <QRCodeCanvas value={joinUrl} size={320} level="M" includeMargin={false} />
               <div className="mt-4 font-display text-4xl tracking-[0.25em] tabular-nums text-black">
                 {code}
               </div>
@@ -935,7 +935,7 @@ function SpeakerQrCard({
       <div
         className={`inline-block rounded-lg p-1.5 ${compact ? "bg-white" : "bg-white ring-1 ring-black/10"}`}
       >
-        <QRCodeSVG value={url} size={compact ? 88 : 100} level="M" includeMargin={false} />
+        <QRCodeCanvas value={url} size={compact ? 88 : 100} level="M" includeMargin={false} />
       </div>
       <div className={`mt-2 text-xs font-medium truncate ${compact ? "text-black" : ""}`}>
         {sp?.name ?? `Speaker ${slot}`}

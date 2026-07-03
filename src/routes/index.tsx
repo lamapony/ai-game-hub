@@ -159,40 +159,18 @@ function Landing() {
 
 function PartyScene() {
   return (
-    <div aria-hidden="true" className="relative mt-7 h-24 overflow-hidden sm:h-28">
-      <div className="absolute inset-x-0 bottom-3 h-px bg-white/25" />
-      <div className="absolute bottom-5 left-0 flex items-end gap-1.5">
-        {[18, 34, 24, 52, 30, 44, 20].map((height, index) => (
-          <span
-            key={index}
-            className="block w-2 rounded-full bg-[var(--color-park-bright)]/80"
-            style={{ height }}
-          />
-        ))}
-      </div>
-      <div className="absolute bottom-3 left-[34%] h-16 w-24 rounded-[1.25rem] border border-white/20 bg-black/20 p-3 shadow-2xl shadow-black/20">
-        <div className="h-2 w-10 rounded-full bg-white/20" />
-        <div className="mt-4 h-1.5 rounded-full bg-white/20">
-          <div className="h-full w-2/3 rounded-full bg-[var(--color-team-amber)]" />
-        </div>
-        <div className="mt-2 h-1.5 rounded-full bg-white/15">
-          <div className="h-full w-1/3 rounded-full bg-[var(--color-team-blue)]" />
-        </div>
-      </div>
-      <div className="absolute bottom-1 right-20 h-20 w-12 rounded-[1.3rem] border border-white/25 bg-black/35 p-1.5 shadow-2xl shadow-black/25">
-        <div className="mx-auto h-1 w-4 rounded-full bg-white/25" />
-        <div className="mt-2 grid grid-cols-2 gap-1">
-          <span className="aspect-square rounded bg-[var(--color-park-bright)]" />
-          <span className="aspect-square rounded bg-white/20" />
-          <span className="aspect-square rounded bg-[var(--color-team-red)]" />
-          <span className="aspect-square rounded bg-[var(--color-team-blue)]" />
-        </div>
-      </div>
-      <div className="absolute bottom-5 right-0 grid size-14 grid-cols-3 gap-1 rounded-xl border border-white/20 bg-white/10 p-2">
-        {[0, 1, 2, 3, 5, 6, 7, 8].map((cell) => (
-          <span key={cell} className="rounded-sm bg-white/80" />
-        ))}
-      </div>
+    <div
+      aria-hidden="true"
+      className="relative mt-7 aspect-[16/9] overflow-hidden rounded-3xl border border-white/12 bg-black/25 shadow-2xl shadow-black/25"
+    >
+      <img
+        src="/assets/abstract-party-signal.webp"
+        alt=""
+        className="size-full object-cover opacity-95"
+        loading="eager"
+        decoding="async"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-white/5" />
     </div>
   );
 }
