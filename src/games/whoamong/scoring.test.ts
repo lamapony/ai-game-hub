@@ -38,7 +38,7 @@ function whoAmongState(
     totalRounds: 5,
     usedPromptIds: ["sleep-party"],
     promptId: "sleep-party",
-    prompt: "Кто из нас скорее всего заснёт до конца вечеринки?",
+    prompt: "Who among us is most likely to fall asleep before the party ends?",
     ...overrides,
   };
 }

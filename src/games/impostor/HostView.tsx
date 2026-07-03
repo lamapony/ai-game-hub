@@ -1,4 +1,4 @@
-// "Кто здесь бот?" host orchestration: AI asks a question, everyone (including AI) writes
+// "Who's the Bot?" host orchestration: AI asks a question, everyone (including AI) writes
 // an answer, players hunt for the machine among the humans. AI IS the gameplay here.
 import { useEffect, useRef, useState } from "react";
 import { updateRoomState, genId } from "@/lib/room";
@@ -54,7 +54,7 @@ export function ImpostorHost({ roomId, state }: { roomId: string; state: RoomSta
     questionForRef.current = roundKey;
 
     void (async () => {
-      setBusy("Ведущий придумывает вопрос…");
+      setBusy("Host is writing a question…");
       try {
         const pastQuestions = (imp.roundResults ?? []).map((r) => r.question);
         const r = await generateImpostorQuestion({
@@ -65,7 +65,7 @@ export function ImpostorHost({ roomId, state }: { roomId: string; state: RoomSta
         const questionId = r.fallback || !r.question ? fallbackQuestion.id : genId("q");
         if (imp.roundNumber === 1) {
           speak(
-            `Игра «Кто здесь бот?». Все пишут смешной ответ на вопрос, а я тайно подброшу свой. Найдите мой — получите очки.`,
+            `Who's the Bot? Everyone writes a funny answer to the question, and I secretly slip in mine. Find mine — earn points.`,
           );
         }
         if (r.intro && !r.fallback) speak(r.intro);
@@ -105,7 +105,7 @@ export function ImpostorHost({ roomId, state }: { roomId: string; state: RoomSta
     mixedForRef.current = roundKey;
 
     void (async () => {
-      setBusy("Бот пишет свой ответ…");
+      setBusy("The bot is writing its answer…");
       try {
         const humanEntries = Object.entries(imp.answers ?? {});
         const ai = await generateImpostorAnswer({
@@ -132,7 +132,7 @@ export function ImpostorHost({ roomId, state }: { roomId: string; state: RoomSta
           voteEndsAt: Date.now() + IMPOSTOR_VOTE_MS,
           aiFallback: imp.aiFallback || ai.fallback,
         });
-        speak("Ответы на экране. Один из них — мой. Голосуйте.");
+        speak("Answers are on screen. One of them is mine. Vote.");
       } catch (e) {
         console.error(e);
         mixedForRef.current = null;
@@ -225,10 +225,10 @@ export function ImpostorHost({ roomId, state }: { roomId: string; state: RoomSta
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-            Кто здесь бот?
+            Who's the Bot?
           </div>
           <h2 className="font-display text-3xl mt-1">
-            Раунд {Math.min(imp.roundNumber, imp.totalRounds)} / {imp.totalRounds}
+            Round {Math.min(imp.roundNumber, imp.totalRounds)} / {imp.totalRounds}
           </h2>
         </div>
         <PhasePill phase={imp.phase} />
@@ -237,16 +237,16 @@ export function ImpostorHost({ roomId, state }: { roomId: string; state: RoomSta
       {busy && <p className="text-sm text-muted-foreground animate-pulse">{busy}</p>}
 
       {imp.phase === "briefing" && (
-        <Panel title="Готовимся">
+        <Panel title="Getting ready">
           <p className="text-muted-foreground">
-            Все пишут остроумный ответ на вопрос с телефона. AI тайно подбрасывает свой. Потом ищем,
-            какой ответ — машинный.
+            Everyone writes a witty answer on their phone. AI secretly adds its own. Then we hunt for
+            the machine answer.
           </p>
         </Panel>
       )}
 
       {imp.phase === "answering" && imp.question && (
-        <Panel title="Пишем ответы">
+        <Panel title="Writing answers">
           <p className="font-display text-2xl sm:text-3xl leading-snug">{imp.question}</p>
           {imp.answerEndsAt && (
             <div className="mt-4 font-display text-4xl tabular-nums">
@@ -254,13 +254,13 @@ export function ImpostorHost({ roomId, state }: { roomId: string; state: RoomSta
             </div>
           )}
           <p className="text-sm text-muted-foreground mt-2">
-            Ответило {Object.keys(imp.answers ?? {}).length} из {state.players.length}
+            Answered {Object.keys(imp.answers ?? {}).length} of {state.players.length}
           </p>
         </Panel>
       )}
 
       {imp.phase === "voting" && imp.question && imp.shuffled && (
-        <Panel title="Где бот?">
+        <Panel title="Where's the bot?">
           <p className="text-sm text-muted-foreground">{imp.question}</p>
           {imp.voteEndsAt && (
             <div className="mt-2 font-display text-3xl tabular-nums">
@@ -279,13 +279,13 @@ export function ImpostorHost({ roomId, state }: { roomId: string; state: RoomSta
             ))}
           </div>
           <p className="text-sm text-muted-foreground mt-3">
-            Проголосовало {Object.keys(imp.votes ?? {}).length} из {state.players.length}
+            Voted {Object.keys(imp.votes ?? {}).length} of {state.players.length}
           </p>
         </Panel>
       )}
 
       {imp.phase === "reveal" && lastResult && (
-        <Panel title="Разоблачение">
+        <Panel title="Reveal">
           <p className="text-sm text-muted-foreground">{lastResult.question}</p>
           <div className="mt-3 space-y-2">
             {lastResult.answers.map((answer) => {
@@ -306,7 +306,7 @@ export function ImpostorHost({ roomId, state }: { roomId: string; state: RoomSta
                   <div className="min-w-0">
                     <span className="font-medium">{answer.text}</span>
                     <span className="ml-2 text-xs text-muted-foreground">
-                      {isAi ? "🤖 БОТ" : (author?.name ?? "аноним")}
+                      {isAi ? "🤖 BOT" : (author?.name ?? "anonymous")}
                     </span>
                   </div>
                   {voteCount > 0 && (
@@ -319,14 +319,14 @@ export function ImpostorHost({ roomId, state }: { roomId: string; state: RoomSta
             })}
           </div>
           <p className="text-sm text-muted-foreground mt-3">
-            Вычислили бота: {lastResult.correctVoterIds.length} из{" "}
+            Caught the bot: {lastResult.correctVoterIds.length} of{" "}
             {Object.keys(lastResult.votes).length}
           </p>
         </Panel>
       )}
 
       {imp.phase === "results" && (
-        <Panel title="Итоги охоты на бота">
+        <Panel title="Bot hunt results">
           <BotHunterRanking state={state} imp={imp} />
           <div className="mt-4 grid sm:grid-cols-2 gap-2">
             {[...state.teams]
@@ -353,7 +353,7 @@ export function ImpostorHost({ roomId, state }: { roomId: string; state: RoomSta
             }
             className="mt-4 rounded-2xl bg-white/10 hover:bg-white/15 px-4 py-2 text-sm"
           >
-            ↺ В лобби
+            ↺ Back to lobby
           </button>
         </Panel>
       )}
@@ -386,7 +386,7 @@ function BotHunterRanking({ state, imp }: { state: RoomState; imp: ImpostorState
     .sort((a, b) => b.caught - a.caught || b.fooled - a.fooled);
 
   if (ranking.length === 0) {
-    return <p className="text-sm text-muted-foreground">Бот остался неуловим. Тревожно.</p>;
+    return <p className="text-sm text-muted-foreground">The bot stayed uncaught. Concerning.</p>;
   }
 
   return (
@@ -404,7 +404,7 @@ function BotHunterRanking({ state, imp }: { state: RoomState; imp: ImpostorState
               {i + 1}. {player?.name ?? "?"} {i === 0 && "🕵️"}
             </span>
             <span className="opacity-80">
-              {entry.caught}× поймал бота · {entry.fooled}× сошёл за бота
+              {entry.caught}× caught the bot · {entry.fooled}× passed for the bot
             </span>
           </div>
         );
@@ -415,11 +415,11 @@ function BotHunterRanking({ state, imp }: { state: RoomState; imp: ImpostorState
 
 function PhasePill({ phase }: { phase: ImpostorState["phase"] }) {
   const label = {
-    briefing: "Старт",
-    answering: "Пишем",
-    voting: "Ищем бота",
-    reveal: "Разоблачение",
-    results: "Финал",
+    briefing: "Start",
+    answering: "Writing",
+    voting: "Hunting",
+    reveal: "Reveal",
+    results: "Final",
   }[phase];
   return (
     <span className="rounded-full bg-white/10 px-3 py-1 text-xs uppercase tracking-widest">

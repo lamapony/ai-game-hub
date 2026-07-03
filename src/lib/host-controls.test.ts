@@ -289,7 +289,7 @@ describe("host controls state helpers", () => {
         roundNumber: 1,
         totalRounds: 4,
         usedSpectrumIds: [],
-        prompt: "парная татуировка",
+        prompt: "matching tattoos",
         clueTeamId: "forest",
       },
     });
@@ -301,7 +301,7 @@ describe("host controls state helpers", () => {
         roundNumber: 1,
         totalRounds: 4,
         usedSpectrumIds: [],
-        clue: "парная татуировка",
+        clue: "matching tattoos",
       },
     });
 
@@ -309,7 +309,7 @@ describe("host controls state helpers", () => {
     expect(canSkipCurrentPhase(withClue)).toBe(true);
     const result = skipCurrentPhaseState(noClue, now);
     expect(result.spectrumcourt?.phase).toBe("guessing");
-    expect(result.spectrumcourt?.clue).toBe("парная татуировка");
+    expect(result.spectrumcourt?.clue).toBe("matching tattoos");
     expect(result.spectrumcourt?.cluePlayerId).toBe("p1");
     expect(result.spectrumcourt?.guessEndsAt).toBe(now + 35_000);
   });
@@ -343,7 +343,7 @@ describe("host controls state helpers", () => {
         totalRounds: 5,
         usedPromptIds: ["sleep-party"],
         promptId: "sleep-party",
-        prompt: "Кто из нас заснёт?",
+        prompt: "Who among us would fall asleep?",
         voteEndsAt: now + 25_000,
       },
     });
@@ -502,7 +502,7 @@ describe("host controls state helpers", () => {
     expect(buildWinnerAnnouncement(solo)).toBe("Party winners: team Foxes! 12 points!");
   });
 
-  test("place and points formatting", () => {
+  test("English place and points formatting", () => {
     expect(formatRussianPlace(1)).toBe("1st");
     expect(formatRussianPlace(2)).toBe("2nd");
     expect(formatRussianPlace(5)).toBe("5th");

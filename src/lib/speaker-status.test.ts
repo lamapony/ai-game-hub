@@ -6,7 +6,7 @@ describe("speaker readiness", () => {
     const status = speakerReadiness(1, undefined, 1000);
 
     expect(status.status).toBe("host");
-    expect(status.label).toBe("ведущий");
+    expect(status.label).toBe("host");
     expect(status.ageMs).toBe(0);
   });
 
@@ -24,7 +24,7 @@ describe("speaker readiness", () => {
     );
 
     expect(status.status).toBe("ready");
-    expect(status.label).toBe("на связи");
+    expect(status.label).toBe("online");
     expect(status.ageMs).toBe(24_000);
   });
 
@@ -38,9 +38,9 @@ describe("speaker readiness", () => {
   });
 
   test("formats heartbeat age for host diagnostics", () => {
-    expect(formatSpeakerHeartbeatAge(undefined)).toBe("нет heartbeat");
-    expect(formatSpeakerHeartbeatAge(500)).toBe("только что");
-    expect(formatSpeakerHeartbeatAge(15_000)).toBe("15 сек назад");
-    expect(formatSpeakerHeartbeatAge(120_000)).toBe("2 мин назад");
+    expect(formatSpeakerHeartbeatAge(undefined)).toBe("no heartbeat");
+    expect(formatSpeakerHeartbeatAge(500)).toBe("just now");
+    expect(formatSpeakerHeartbeatAge(15_000)).toBe("15 sec ago");
+    expect(formatSpeakerHeartbeatAge(120_000)).toBe("2 min ago");
   });
 });

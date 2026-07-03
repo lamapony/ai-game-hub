@@ -63,19 +63,19 @@ export function PhotoHuntPlayer({
   if (ph.phase === "briefing") {
     return (
       <Card>
-        <Pill>Готовься</Pill>
+        <Pill>Get ready</Pill>
         {ph.task ? (
           <>
-            <H>Задание:</H>
+            <H>Task:</H>
             <p className="text-white text-xl mt-2 leading-snug">«{ph.task}»</p>
             <P>
-              Когда ведущий нажмёт старт — у тебя будет 60 секунд, чтобы найти и снять ОДИН кадр.
+              When the host hits start — you&apos;ve got 60 seconds to find and snap ONE shot.
             </P>
             <GameRulesChecklist gameId="phototunt" />
           </>
         ) : (
           <>
-            <H>Дух парка придумывает охоту…</H>
+            <H>The park spirit is cooking up a hunt…</H>
             <GameRulesChecklist gameId="phototunt" />
           </>
         )}
@@ -88,21 +88,21 @@ export function PhotoHuntPlayer({
     if (submitted) {
       return (
         <Card>
-          <Pill>Кадр отправлен</Pill>
-          <H>Жди остальных…</H>
+          <Pill>Shot sent</Pill>
+          <H>Waiting on everyone else…</H>
           <div className="text-right text-xs text-white/60 mt-1">
-            {formatClock(remaining)} до конца
+            {formatClock(remaining)} left
           </div>
           {myPhotoUrl && (
             <div className="mt-3 rounded-2xl overflow-hidden bg-black/30 border border-white/10">
               <img
                 src={myPhotoUrl}
-                alt="Твой кадр"
+                alt="Your shot"
                 className="w-full max-h-[40vh] object-contain"
               />
             </div>
           )}
-          <P>Менять уже нельзя — что снял, то снял.</P>
+          <P>No take-backs — what you shot is what you got.</P>
         </Card>
       );
     }
@@ -111,13 +111,13 @@ export function PhotoHuntPlayer({
         <div className="rounded-3xl bg-black/40 backdrop-blur p-5 border border-white/10 text-white">
           <div className="flex items-baseline justify-between">
             <div className="text-xs uppercase tracking-widest text-[var(--color-park-bright)]">
-              Охота идёт
+              Hunt on
             </div>
             <div className="font-display text-2xl tabular-num">{formatClock(remaining)}</div>
           </div>
-          <div className="font-display text-xl mt-1">Найди и сними:</div>
+          <div className="font-display text-xl mt-1">Find and snap:</div>
           <p className="text-white text-lg mt-1 leading-snug">«{ph.task}»</p>
-          <p className="text-white/60 text-xs mt-2">Только ОДИН кадр. Жмёшь — отправляешь.</p>
+          <p className="text-white/60 text-xs mt-2">ONE shot only. Tap to send.</p>
         </div>
 
         <PhotoCapture
@@ -167,7 +167,7 @@ export function PhotoHuntPlayer({
             }
           }}
         />
-        {uploading && <p className="text-center text-white/70 text-sm">Загружаем кадр…</p>}
+        {uploading && <p className="text-center text-white/70 text-sm">Uploading shot…</p>}
         {err && <p className="text-center text-red-300 text-sm">{err}</p>}
       </div>
     );
@@ -176,12 +176,12 @@ export function PhotoHuntPlayer({
   if (ph.phase === "judging") {
     return (
       <Card>
-        <Pill>AI смотрит</Pill>
-        <H>Дух парка щурится на твой кадр…</H>
-        <P>Сейчас огласит вердикт через колонку.</P>
+        <Pill>AI watching</Pill>
+        <H>The park spirit squints at your shot…</H>
+        <P>Verdict coming through the speaker any second.</P>
         {myPhotoUrl && (
           <div className="mt-3 rounded-2xl overflow-hidden bg-black/30 border border-white/10">
-            <img src={myPhotoUrl} alt="Твой кадр" className="w-full max-h-[40vh] object-contain" />
+            <img src={myPhotoUrl} alt="Your shot" className="w-full max-h-[40vh] object-contain" />
           </div>
         )}
       </Card>
@@ -193,7 +193,7 @@ export function PhotoHuntPlayer({
     const winner = ph.results.find((r) => r.rank === 1);
     return (
       <Card>
-        <Pill>Результаты</Pill>
+        <Pill>Results</Pill>
         {mine ? (
           <>
             <div className="font-display text-6xl mt-1">
@@ -205,13 +205,13 @@ export function PhotoHuntPlayer({
                     ? "🥉"
                     : `#${mine.rank}`}
             </div>
-            <div className="font-display text-2xl mt-1">+{mine.points} команде</div>
+            <div className="font-display text-2xl mt-1">+{mine.points} to team</div>
             <p className="text-white mt-3 leading-snug">«{mine.comment}»</p>
             {mine.photoUrl && (
               <div className="mt-3 rounded-2xl overflow-hidden bg-black/30 border border-white/10">
                 <img
                   src={mine.photoUrl}
-                  alt="Твой кадр"
+                  alt="Your shot"
                   className="w-full max-h-[40vh] object-contain"
                 />
               </div>
@@ -219,18 +219,18 @@ export function PhotoHuntPlayer({
           </>
         ) : (
           <>
-            <H>Ты не сдал кадр</H>
-            <P>Грустно. В следующий раз шевелись быстрее.</P>
+            <H>You didn&apos;t submit a shot</H>
+            <P>Tough break. Move faster next time.</P>
           </>
         )}
-        {winner && winner.playerId !== me.id && <P>Первое место: {winner.playerName}.</P>}
+        {winner && winner.playerId !== me.id && <P>First place: {winner.playerName}.</P>}
       </Card>
     );
   }
 
   return (
     <Card>
-      <H>Стой смирно…</H>
+      <H>Stand by…</H>
     </Card>
   );
 }

@@ -33,8 +33,8 @@ export function ChallengePlayer({
     if (!ch.task) {
       return (
         <Card>
-          <Pill>Раунд готовится</Pill>
-          <H>Дух парка придумывает задание…</H>
+          <Pill>Round loading</Pill>
+          <H>The park spirit is cooking up a task…</H>
           <GameRulesChecklist gameId="challenge" />
         </Card>
       );
@@ -44,12 +44,12 @@ export function ChallengePlayer({
     }
     return (
       <Card>
-        <Pill>Готовься выступать</Pill>
-        <H>Задание:</H>
+        <Pill>Get ready to perform</Pill>
+        <H>Task:</H>
         <p className="text-white text-xl mt-2 leading-snug">«{ch.task}»</p>
         <P>
-          Снимает <strong className="text-white">{ch.operatorName}</strong>. Как только он откроет
-          камеру — погнали.
+          <strong className="text-white">{ch.operatorName}</strong> is filming. As soon as they open
+          the camera — let&apos;s go.
         </P>
         <GameRulesChecklist gameId="challenge" />
       </Card>
@@ -62,13 +62,13 @@ export function ChallengePlayer({
       return <OperatorRecord roomId={roomId} state={state} me={me} remaining={remaining} />;
     return (
       <Card>
-        <Pill>Снимают тебя!</Pill>
+        <Pill>You&apos;re on camera!</Pill>
         <div className="text-right text-xs text-white/60">{formatClock(remaining)}</div>
-        <H>Задание:</H>
+        <H>Task:</H>
         <p className="text-white text-xl mt-2 leading-snug">«{ch.task}»</p>
         <P>
-          Снимает: <strong className="text-white">{ch.operatorName}</strong>. Жги по полной — AI
-          смотрит и оценивает.
+          Filming: <strong className="text-white">{ch.operatorName}</strong>. Go all out — AI is
+          watching and scoring.
         </P>
       </Card>
     );
@@ -77,9 +77,9 @@ export function ChallengePlayer({
   if (ch.phase === "judging") {
     return (
       <Card>
-        <Pill>Судья смотрит запись</Pill>
-        <H>AI анализирует кадры…</H>
-        <P>Распознаём речь, оцениваем сценку. 10 секунд.</P>
+        <Pill>Judge is watching</Pill>
+        <H>AI is analyzing the footage…</H>
+        <P>Transcribing speech, scoring the scene. 10 seconds.</P>
       </Card>
     );
   }
@@ -87,20 +87,20 @@ export function ChallengePlayer({
   if (ch.phase === "results" && ch.result) {
     return (
       <Card>
-        <Pill>Вердикт</Pill>
+        <Pill>Verdict</Pill>
         <div className="font-display text-7xl text-[var(--color-park-bright)] tabular-num">
           {ch.result.score}
           <span className="text-white/40 text-3xl">/10</span>
         </div>
         <p className="text-white mt-3">«{ch.result.feedback}»</p>
-        <P>Видео сохранили в галерею комнаты.</P>
+        <P>Video saved to the room gallery.</P>
       </Card>
     );
   }
 
   return (
     <Card>
-      <H>Стой по стойке…</H>
+      <H>Stand by…</H>
     </Card>
   );
 }
@@ -135,13 +135,13 @@ function OperatorReady({ roomId, me, task }: { roomId: string; me: { id: string 
     <div className="space-y-3">
       <div className="rounded-3xl bg-[var(--color-park-bright)]/15 border border-[var(--color-park-bright)]/40 p-5 text-white">
         <div className="text-xs uppercase tracking-widest text-[var(--color-park-bright)]">
-          Ты — оператор 🎥
+          You&apos;re the operator 🎥
         </div>
-        <div className="font-display text-2xl mt-1">Снимаешь ты</div>
-        <p className="text-white/80 mt-3 text-sm">Задание для остальных:</p>
+        <div className="font-display text-2xl mt-1">You&apos;re filming</div>
+        <p className="text-white/80 mt-3 text-sm">Task for everyone else:</p>
         <p className="text-white text-lg mt-1 leading-snug">«{task}»</p>
         <p className="text-white/60 text-xs mt-3">
-          Прочитай вслух задание, наведи камеру — и жми кнопку.
+          Read the task out loud, point the camera — then hit the button.
         </p>
         <GameRulesChecklist gameId="challenge" />
       </div>
@@ -150,7 +150,7 @@ function OperatorReady({ roomId, me, task }: { roomId: string; me: { id: string 
         disabled={starting}
         className="w-full rounded-3xl bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] py-6 text-xl font-display disabled:opacity-50"
       >
-        {starting ? "Включаем…" : "📷 Открыть камеру"}
+        {starting ? "Starting…" : "📷 Open camera"}
       </button>
       {err && <p className="text-sm text-red-300 text-center">{err}</p>}
     </div>
@@ -256,21 +256,21 @@ function OperatorRecord({
     <div className="space-y-3">
       <div className="rounded-3xl bg-black/40 backdrop-blur p-5 border border-white/10 text-white">
         <div className="text-xs uppercase tracking-widest text-[var(--color-park-bright)]">
-          Ты — оператор
+          You&apos;re the operator
         </div>
         <div className="flex items-baseline justify-between mt-1">
-          <div className="font-display text-2xl">Снимай сценку</div>
+          <div className="font-display text-2xl">Film the scene</div>
           <div className="font-display text-2xl tabular-num">{formatClock(remaining)}</div>
         </div>
-        <p className="text-white/80 mt-2 text-sm">Задание для остальных:</p>
+        <p className="text-white/80 mt-2 text-sm">Task for everyone else:</p>
         <p className="text-white text-lg mt-1 leading-snug">«{ch.task}»</p>
       </div>
       {!uploaded && <VideoRecorder onComplete={handleUpload} />}
       {uploaded && (
         <Card>
-          <Pill>Готово</Pill>
-          <H>Видео улетело судье</H>
-          <P>Через секунд 10 — вердикт через колонку.</P>
+          <Pill>Done</Pill>
+          <H>Video sent to the judge</H>
+          <P>Verdict through the speaker in about 10 seconds.</P>
         </Card>
       )}
     </div>

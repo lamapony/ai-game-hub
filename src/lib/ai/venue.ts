@@ -8,8 +8,8 @@ export type VenueInput = Venue | undefined;
  */
 export function venuePromptContext(venue: VenueInput): string {
   if (venue === "bar") {
-    return `ЛОКАЦИЯ: уютный бар (бодега), вечер дня рождения. Внутри: столики, барная стойка, бокалы, тёплый свет, музыка, тесно и весело. На улице плохая погода — все уже согрелись и осмелели.
-Задания должны быть выполнимы ЗА СТОЛОМ или в пределах бара: без беготни по улице, без криков на всё помещение. Реквизит сцены: напитки, салфетки, меню, телефоны, соседи по столику. Шути про тосты, барную философию и то, как «по одной» превращается в «ещё по одной».`;
+    return `LOCATION: a cozy bar (bodega), birthday evening. Inside: tables, bar counter, glasses, warm light, music, crowded and fun. Bad weather outside — everyone is warmed up and bold.
+Tasks must be doable AT THE TABLE or within the bar: no running in the street, no shouting across the whole room. Scene props: drinks, napkins, menus, phones, table neighbors. Joke about toasts, bar philosophy, and how "just one more" becomes "one more again."`;
   }
-  return `ЛОКАЦИЯ: городской парк, день. Простор, деревья, скамейки, прохожие. Задания могут быть активными: бегать, орать, изображать сценки.`;
+  return `LOCATION: city park, daytime. Open space, trees, benches, passersby. Tasks can be active: run, yell, act out scenes.`;
 }

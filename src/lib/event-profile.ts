@@ -5,30 +5,20 @@ export type EventProfile = {
   titleLines: string[];
   defaultHostName: string;
   storagePrefix: string;
-  venue: {
-    ru: string;
-    en: string;
-  };
+  venue: string;
   hostPersona: {
-    ru: string;
-    en: string;
-    voiceRu: string;
-    voiceEn: string;
+    name: string;
+    voice: string;
   };
   speakerSlots: Record<number, string>;
   seo: {
-    titleRu: string;
-    titleEn: string;
-    descriptionRu: string;
-    descriptionEn: string;
-    ogDescriptionRu: string;
-    ogDescriptionEn: string;
+    title: string;
+    description: string;
+    ogDescription: string;
   };
   landing: {
-    badgeRu: string;
-    descriptionRu: string;
-    badgeEn: string;
-    descriptionEn: string;
+    badge: string;
+    description: string;
   };
 };
 
@@ -39,15 +29,10 @@ export const eventProfile: EventProfile = {
   titleLines: ["DIMAS", "fest."],
   defaultHostName: "Host",
   storagePrefix: "dimas",
-  venue: {
-    ru: "парк",
-    en: "park",
-  },
+  venue: "park",
   hostPersona: {
-    ru: "дух парка",
-    en: "park spirit",
-    voiceRu: "едкий, остроумный, как саркастичный конферансье",
-    voiceEn:
+    name: "park spirit",
+    voice:
       "witty, energetic, a little sarcastic, like a friend who is also a master of ceremonies",
   },
   speakerSlots: {
@@ -58,22 +43,15 @@ export const eventProfile: EventProfile = {
     5: "Forest Echo",
   },
   seo: {
-    titleRu: "DIMAS fest — AI-игры в парке",
-    titleEn: "DIMAS fest — AI park party games",
-    descriptionRu:
-      "Jackbox в парке: один телефон ведущего, остальные подключаются по QR. AI ведёт игру, колонки разговаривают.",
-    descriptionEn:
+    title: "DIMAS fest — AI park party games",
+    description:
       "DIMAS fest: Jackbox-style AI party games for the park. One host screen, every phone joins, five speakers turn the park into a stage.",
-    ogDescriptionRu: "AI-игры для тусовки. Телефон ведущего + QR. Без ноутбука.",
-    ogDescriptionEn:
+    ogDescription:
       "AI park party games. One screen, every phone joins, the park becomes the stage.",
   },
   landing: {
-    badgeRu: "AI-игры для парка",
-    descriptionRu:
-      "Тусовка в стиле Jackbox прямо в парке. Один телефон ведущего, остальные сканируют QR. AI выдаёт темы, колонки разговаривают. Ноутбук не нужен.",
-    badgeEn: "AI park games",
-    descriptionEn:
+    badge: "AI park games",
+    description:
       "Jackbox-style party games right in the park. One host phone, everyone else scans the QR. AI creates the prompts, speakers talk, no laptop needed.",
   },
 };
@@ -90,4 +68,28 @@ export function playerStorageKey(code: string) {
 
 export function hostStorageKey(code: string) {
   return `${eventProfile.storagePrefix}:host:${code}`;
+}
+
+export function hostPersonaName() {
+  return eventProfile.hostPersona.name;
+}
+
+export function hostPersonaVoice() {
+  return eventProfile.hostPersona.voice;
+}
+
+export function seoTitle() {
+  return eventProfile.seo.title;
+}
+
+export function seoDescription() {
+  return eventProfile.seo.description;
+}
+
+export function landingBadge() {
+  return eventProfile.landing.badge;
+}
+
+export function landingDescription() {
+  return eventProfile.landing.description;
 }

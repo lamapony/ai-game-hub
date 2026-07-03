@@ -35,8 +35,8 @@ describe("AI response sanitizers", () => {
     const judgement = sanitizeChallengeJudgement({ score: 100, feedback: "", verdict: "" });
 
     expect(judgement.score).toBe(10);
-    expect(judgement.feedback).toBe("Молча принято.");
-    expect(judgement.verdict).toBe("10 из 10. Идём дальше.");
+    expect(judgement.feedback).toBe("Accepted silently.");
+    expect(judgement.verdict).toBe("10 out of 10. Moving on.");
   });
 
   test("sanitizeMixResponse clamps cues, skips invalid clips and sorts by time", () => {
@@ -95,16 +95,16 @@ describe("AI response sanitizers", () => {
       ],
     );
 
-    expect(result.verdict).toBe("Ну, кто-то выиграл, кто-то нет. Идём дальше.");
+    expect(result.verdict).toBe("Someone won, someone didn't. Moving on.");
     expect(result.ranking.length).toBe(3);
     expect(result.ranking[0]?.playerId).toBe("p2");
     expect(result.ranking[0]?.rank).toBe(1);
     expect(result.ranking[0]?.comment).toBe("Sharp photo");
     expect(result.ranking[1]?.playerId).toBe("p1");
     expect(result.ranking[1]?.rank).toBe(2);
-    expect(result.ranking[1]?.comment).toBe("Дух парка промолчал.");
+    expect(result.ranking[1]?.comment).toBe("The park spirit stayed silent.");
     expect(result.ranking[2]?.playerId).toBe("p3");
     expect(result.ranking[2]?.rank).toBe(3);
-    expect(result.ranking[2]?.comment).toBe("Дух парка проглядел тебя.");
+    expect(result.ranking[2]?.comment).toBe("The park spirit overlooked you.");
   });
 });

@@ -60,7 +60,7 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
     if (introSpokenRef.current) return;
     introSpokenRef.current = true;
     speak(
-      `Раунд «Настоящий или AI». ${tg.totalRounds} треков. Слушайте внимательно и угадайте, живой это трек или сгенерированный искусственным интеллектом.`,
+      `Real or AI. ${tg.totalRounds} tracks. Listen carefully and guess whether it's a live recording or AI-generated.`,
     );
     const t = window.setTimeout(() => startRound(), 3500);
     return () => window.clearTimeout(t);
@@ -107,8 +107,8 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
     const revealEndsAt = Date.now() + TRACK_GUESS_REVEAL_MS;
     speak(
       roundResult.isAi
-        ? `Это был AI-трек: ${roundResult.title}.`
-        : `Это был настоящий трек: ${roundResult.title}.`,
+        ? `That was an AI track: ${roundResult.title}.`
+        : `That was a real track: ${roundResult.title}.`,
     );
 
     void updateRoomState(roomId, {
@@ -167,25 +167,26 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-            Настоящий или AI?
+            Real or AI?
           </div>
           <h2 className="font-display text-3xl mt-1">
-            Раунд {Math.min(tg.roundNumber, tg.totalRounds)} / {tg.totalRounds}
+            Round {Math.min(tg.roundNumber, tg.totalRounds)} / {tg.totalRounds}
           </h2>
         </div>
         <PhasePill phase={tg.phase} />
       </header>
 
       {tg.phase === "briefing" && (
-        <Panel title="Готовимся">
+        <Panel title="Getting ready">
           <p className="text-muted-foreground">
-            Сейчас пойдёт первый трек. Игроки слушают на телефонах и жмут «Настоящий» или «AI».
+            First track coming up. Players listen on their phones and tap &quot;Real&quot; or
+            &quot;AI&quot;.
           </p>
         </Panel>
       )}
 
       {(tg.phase === "listening" || tg.phase === "guessing" || tg.phase === "reveal") && (
-        <Panel title={tg.trackTitle ?? "Трек"}>
+        <Panel title={tg.trackTitle ?? "Track"}>
           <div className="text-sm text-muted-foreground">{tg.trackGenre}</div>
           {tg.phase === "listening" && tg.listeningEndsAt && (
             <div className="mt-3 font-display text-4xl tabular-nums">
@@ -195,7 +196,7 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
           {tg.phase === "guessing" && tg.guessEndsAt && (
             <>
               <div className="mt-2 text-xs uppercase tracking-widest text-[var(--color-park-bright)]">
-                Голосование
+                Voting
               </div>
               <div className="font-display text-4xl tabular-nums">
                 {formatClock(Math.max(0, tg.guessEndsAt - now))}
@@ -208,7 +209,7 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
               className={`mt-4 rounded-2xl border p-4 ${tg.isAi ? "border-violet-400/40 bg-violet-500/10" : "border-[var(--color-park-bright)]/40 bg-[var(--color-park-bright)]/10"}`}
             >
               <div className="text-xs uppercase tracking-widest opacity-70">
-                {tg.isAi ? "🤖 AI-трек" : "🎸 Настоящий трек"}
+                {tg.isAi ? "🤖 AI track" : "🎸 Real track"}
               </div>
               <div className="font-display text-2xl mt-1">{tg.trackTitle}</div>
               <RevealTally state={state} tg={tg} />
@@ -221,7 +222,7 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
       )}
 
       {tg.phase === "results" && (
-        <Panel title="Итоги">
+        <Panel title="Results">
           <div className="space-y-2">
             {(tg.roundResults ?? []).map((r, i) => (
               <div
@@ -231,7 +232,7 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
                 <span>
                   {i + 1}. {r.title} <span className="opacity-60">({r.isAi ? "AI" : "real"})</span>
                 </span>
-                <span className="opacity-70">{r.correctPlayerIds.length} угадали</span>
+                <span className="opacity-70">{r.correctPlayerIds.length} guessed right</span>
               </div>
             ))}
           </div>
@@ -260,7 +261,7 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
             }
             className="mt-4 rounded-2xl bg-white/10 hover:bg-white/15 px-4 py-2 text-sm"
           >
-            ↺ В лобби
+            ↺ Back to lobby
           </button>
         </Panel>
       )}
@@ -270,11 +271,11 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
 
 function PhasePill({ phase }: { phase: TrackGuessState["phase"] }) {
   const label = {
-    briefing: "Старт",
-    listening: "Слушаем",
-    guessing: "Голосуем",
-    reveal: "Ответ",
-    results: "Итоги",
+    briefing: "Start",
+    listening: "Listening",
+    guessing: "Voting",
+    reveal: "Answer",
+    results: "Results",
   }[phase];
   return (
     <span className="rounded-full bg-white/10 px-3 py-1 text-xs uppercase tracking-widest">
@@ -296,7 +297,7 @@ function GuessTally({ state, tg }: { state: RoomState; tg: TrackGuessState }) {
   const voted = Object.keys(tg.guesses ?? {}).length;
   return (
     <p className="text-sm text-muted-foreground mt-2">
-      Проголосовало {voted} из {state.players.length}
+      {voted} of {state.players.length} voted
     </p>
   );
 }
@@ -309,7 +310,7 @@ function RevealTally({ state, tg }: { state: RoomState; tg: TrackGuessState }) {
     .filter(Boolean);
   return (
     <p className="text-sm mt-2 opacity-80">
-      {names.length > 0 ? `Угадали: ${names.join(", ")}` : "Никто не угадал — бывает!"}
+      {names.length > 0 ? `Got it right: ${names.join(", ")}` : "Nobody guessed — it happens!"}
     </p>
   );
 }

@@ -1,48 +1,48 @@
-// Server functions for "Челлендж духа парка" — AI invents a scene task and judges the recorded video.
+// Server functions for Park Spirit Challenge — AI invents a scene task and judges the recorded video.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { eventProfile } from "../event-profile";
 import { sanitizeChallengeJudgement, sanitizeTask } from "./sanitize";
 import { venuePromptContext } from "./venue";
 
-const HOST_VOICE_SYSTEM = `Ты — ${eventProfile.hostPersona.ru}, ведущий вечеринки ${eventProfile.title}. Голос: ${eventProfile.hostPersona.voiceRu}.
-Всегда отвечай на русском. Всегда отвечай строгим валидным JSON, без markdown-обёрток.`;
+const HOST_VOICE_SYSTEM = `You are the ${eventProfile.hostPersona.name}, host of the ${eventProfile.title} party. Voice: ${eventProfile.hostPersona.voice}.
+Always reply in English. Always reply with strict valid JSON, with no markdown wrappers.`;
 
 const BAR_FALLBACK_TASKS = [
   {
-    task: "Изобразите дегустацию самого дорогого напитка в истории — по очереди, с лицами сомелье, у которых рушится жизнь.",
-    intro: "Бар превращается в театр. Простите, бар.",
+    task: "Act out a tasting of the most expensive drink in history — in turns, with sommelier faces falling apart.",
+    intro: "The bar becomes a theater. Sorry, bar.",
   },
   {
-    task: "Сыграйте сцену: вы совет директоров, который экстренно решает, кто скажет следующий тост.",
-    intro: "Корпоративная драма за столиком.",
+    task: "Perform a scene: you are a board of directors urgently deciding who gives the next toast.",
+    intro: "Corporate drama at the table.",
   },
   {
-    task: "Покажите немой фильм «последний час до закрытия бара» — драма, погоня и happy end обязательны.",
-    intro: "Свет, камера, бодега.",
+    task: 'Show a silent film called "the last hour before closing" — drama, chase, and happy end required.',
+    intro: "Lights, camera, bodega.",
   },
   {
-    task: "Изобразите оркестр, где все инструменты — это то, что стоит на столе.",
-    intro: "Филармония имени этой бодеги открывается.",
+    task: "Act out an orchestra where every instrument is something on the table.",
+    intro: "The Philharmonic of this bodega opens tonight.",
   },
 ];
 
 const FALLBACK_TASKS = [
   {
-    task: "Изобразите заседание совета деревьев, которые только что узнали, что их назначили вай-фай роутерами.",
-    intro: "Дух парка включает аварийный театр.",
+    task: "Act out a council of trees that just learned they were assigned to be Wi-Fi routers.",
+    intro: "The park spirit switches on emergency theater.",
   },
   {
-    task: "Сыграйте сцену: вы команда спасателей, которая пытается реанимировать очень драматичный лист.",
-    intro: "Листу плохо. Вам тоже скоро будет.",
+    task: "Perform a scene: you are a rescue team trying to revive a very dramatic leaf.",
+    intro: "The leaf is not okay. You won't be either.",
   },
   {
-    task: "Покажите, как выглядел бы парк, если бы все скамейки внезапно стали начальниками.",
-    intro: "Скамейки требуют уважения.",
+    task: "Show what the park would look like if every bench suddenly became a manager.",
+    intro: "The benches demand respect.",
   },
   {
-    task: "Изобразите спортивный финал по невидимому фрисби. Комментатор, травма и победный жест обязательны.",
-    intro: "Невидимый спорт, видимый позор.",
+    task: "Act out the championship final of invisible frisbee. Commentator, injury, and victory pose required.",
+    intro: "Invisible sport, visible embarrassment.",
   },
 ];
 
@@ -69,23 +69,23 @@ export const generateChallengeTask = createServerFn({ method: "POST" })
       (data.pastTasks ?? [])
         .slice(-5)
         .map((t) => `- ${t}`)
-        .join("\n") || "(пока ничего)";
+        .join("\n") || "(none yet)";
     try {
       const r = await chatJSON<{ task: string; intro: string }>({
         system: HOST_VOICE_SYSTEM,
         user: `${venuePromptContext(data.venue)}
 
-Сейчас оператор — ${data.operatorName}. Он снимает видео остальных игроков 20 секунд.
-Придумай ОДНО абсурдное задание-сценку для остальных. Что-то такое, что заставит их играть, орать или строить рожи. Не больше 2 предложений. Без подсказок «как сделать». Задание обязано быть выполнимым в текущей локации.
+The operator right now is ${data.operatorName}. They are filming the other players for 20 seconds.
+Invent ONE absurd scene task for everyone else. Something that makes them perform, yell, or make faces. No more than 2 sentences. No "how to do it" hints. The task must be doable in the current location.
 
-Примеры стиля (НЕ копируй):
-- «Сыграйте сцену: вы три белки, узнавшие что орехи подорожали. Один из вас должен расплакаться по-настоящему».
-- «Изобразите ансамбль рыцарей дождя. Кто-то — гром, кто-то — молния, кто-то — оскорблённая туча».
+Style examples (do NOT copy):
+- "Act out a scene: you are three squirrels who just learned nuts got expensive. One of you must cry for real."
+- "Perform as a rain-knight ensemble. Someone is thunder, someone is lightning, someone is an offended cloud."
 
-Избегай вот этих недавних заданий:
+Avoid these recent tasks:
 ${avoid}
 
-Также напиши короткий intro (1 короткая фраза, до 12 слов), которую дух парка скажет голосом перед заданием. С характером.
+Also write a short intro (1 short phrase, up to 12 words) that the park spirit will say out loud before the task. Full of character.
 
 JSON: { "task": "...", "intro": "..." }`,
         temperature: 0.95,
@@ -118,29 +118,29 @@ export const judgeChallenge = createServerFn({ method: "POST" })
       > = [
         {
           type: "text",
-          text: `Задание было: «${data.task}»
-Оператор (снимал): ${data.operatorName}.
-Расшифровка звука с видео: "${data.transcript || "(без речи или неразборчиво)"}"
+          text: `The task was: "${data.task}"
+Operator (filming): ${data.operatorName}.
+Audio transcript from the video: "${data.transcript || "(no speech or unintelligible)"}"
 
-Я даю тебе ${data.frames.length} кадров из видео. Посмотри их и оцени по СТРОГИМ критериям:
-1. Насколько игроки реально выполнили задание (не просто стояли).
-2. Креативность интерпретации.
-3. Энергия и вовлечённость (видно ли движение, эмоции).
-4. Бонус если оператор поймал кульминацию в кадр.
+I am giving you ${data.frames.length} frames from the video. Look at them and judge by STRICT criteria:
+1. How well the players actually performed the task (not just standing around).
+2. Creativity of interpretation.
+3. Energy and engagement (visible movement, emotion).
+4. Bonus if the operator caught the climax on camera.
 
-Шкала 1-10:
-- 1-3: ничего не происходит, скучно или не по теме.
-- 4-6: попытались, но без огонька.
-- 7-8: годная сценка, видно усилия.
-- 9-10: гениально, аплодирую.
+Scale 1-10:
+- 1-3: nothing happens, boring or off-topic.
+- 4-6: they tried, but no spark.
+- 7-8: solid scene, effort shows.
+- 9-10: brilliant, I'm applauding.
 
-НЕ занижай за технику съёмки. Цени попытку.
+Do NOT dock points for filming technique. Reward the attempt.
 
-Ответь JSON:
+Reply with JSON:
 {
-  "score": <число 1-10>,
-  "feedback": "<твой комментарий 1-2 предложения, как саркастичный судья, со ссылкой на КОНКРЕТНУЮ деталь которую видишь>",
-  "verdict": "<КОРОТКАЯ фраза до 12 слов которую дух парка скажет голосом в колонку, с оценкой>"
+  "score": <number 1-10>,
+  "feedback": "<your comment in 1-2 sentences, like a sarcastic judge, referencing a SPECIFIC detail you see>",
+  "verdict": "<SHORT phrase up to 12 words that the park spirit says out loud over the speaker, with the score>"
 }`,
         },
         ...data.frames.map((url) => ({ type: "image_url" as const, image_url: { url } })),
@@ -156,12 +156,12 @@ export const judgeChallenge = createServerFn({ method: "POST" })
       } catch (error) {
         console.error("[AI fallback] judgeChallenge", error);
         const transcriptHint = data.transcript
-          ? "Судья видел расшифровку, но не смог дозвониться до своего хрустального шара."
-          : "Видео принято, но судья сегодня без зрения и без слуха.";
+          ? "The judge saw the transcript but could not reach the crystal ball."
+          : "Video accepted, but the judge is blind and deaf today.";
         return {
           score: 6,
-          feedback: `${transcriptHint} Засчитываю попытку и энергию команды.`,
-          verdict: "Шесть из десяти. Дух парка работает офлайн.",
+          feedback: `${transcriptHint} Crediting the attempt and team energy.`,
+          verdict: "Six out of ten. The park spirit is working offline.",
           fallback: true,
         };
       }

@@ -6,15 +6,15 @@ import { createRoom } from "@/lib/room";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: eventProfile.seo.titleEn },
+      { title: eventProfile.seo.title },
       {
         name: "description",
-        content: eventProfile.seo.descriptionEn,
+        content: eventProfile.seo.description,
       },
       { property: "og:title", content: eventProfile.title },
       {
         property: "og:description",
-        content: eventProfile.seo.ogDescriptionEn,
+        content: eventProfile.seo.ogDescription,
       },
     ],
   }),
@@ -60,7 +60,7 @@ function Landing() {
         <header className="mb-8 sm:mb-10">
           <div className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur px-3 py-1 text-[11px] tracking-wide uppercase text-white/80">
             <span className="size-1.5 rounded-full bg-[var(--color-park-bright)]" />{" "}
-            {eventProfile.landing.badgeEn}
+            {eventProfile.landing.badge}
           </div>
           <h1 className="font-display mt-5 text-6xl sm:text-7xl text-white leading-[0.95]">
             {eventProfile.titleLines.map((line) => (
@@ -70,7 +70,7 @@ function Landing() {
             ))}
           </h1>
           <p className="mt-4 max-w-lg text-white/80 text-base sm:text-lg">
-            {eventProfile.landing.descriptionEn}
+            {eventProfile.landing.description}
           </p>
         </header>
 

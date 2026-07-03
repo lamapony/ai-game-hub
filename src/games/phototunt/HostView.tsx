@@ -78,7 +78,7 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
   }, [state.paused, ph.phase, ph.task]);
 
   async function generate() {
-    setBusy("Дух парка придумывает охоту…");
+    setBusy("The park spirit is cooking up a hunt…");
     try {
       const r = await generatePhotoTask({
         data: { pastTasks: ph.pastTasks ?? [], venue: state.venue },
@@ -145,7 +145,7 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
   }, [state.paused]);
 
   async function runJudgement(judgingPhotos: PhotoRow[]) {
-    setBusy("AI рассматривает фотографии…");
+    setBusy("AI is reviewing the photos…");
     try {
       await update({ phase: "judging" });
       const r = await judgePhotos({
@@ -257,7 +257,7 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
       <div className="rounded-3xl park-gradient p-6 text-white">
         <div className="flex items-baseline justify-between flex-wrap gap-2">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.25em] text-white/70">Фотоохота</div>
+            <div className="text-[10px] uppercase tracking-[0.25em] text-white/70">Photo Hunt</div>
             <h2 className="font-display text-3xl mt-1">{phaseTitle(ph.phase)}</h2>
           </div>
           {busy && <div className="text-xs text-white/80 animate-pulse">{busy}</div>}
@@ -268,28 +268,28 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
         <Panel>
           {ph.aiFallback && <AiFallbackNotice />}
           {!ph.task ? (
-            <div className="font-display text-2xl">Дух парка диктует задание…</div>
+            <div className="font-display text-2xl">The park spirit is setting the task…</div>
           ) : (
             <>
               <div className="text-xs uppercase tracking-widest text-[var(--color-park-bright)]">
-                Задание
+                Task
               </div>
               <p className="font-display text-3xl mt-1 leading-tight">«{ph.task}»</p>
               <p className="mt-4 text-sm text-white/70">
-                У каждого игрока на телефоне появится задание. Когда все готовы — жми старт, у них
-                будет {Math.round(HUNT_MS / 1000)} секунд.
+                Every player gets the task on their phone. When everyone&apos;s ready — hit start,
+                they&apos;ll have {Math.round(HUNT_MS / 1000)} seconds.
               </p>
               <button
                 onClick={startHunt}
                 className="mt-5 w-full rounded-2xl bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] font-display text-xl py-4"
               >
-                🏃 Поехали! ({Math.round(HUNT_MS / 1000)} сек)
+                🏃 Let&apos;s go! ({Math.round(HUNT_MS / 1000)} sec)
               </button>
               <button
                 onClick={generate}
                 className="mt-2 w-full rounded-2xl bg-white/5 text-white/70 text-sm py-2"
               >
-                ↻ Другое задание
+                ↻ Another task
               </button>
             </>
           )}
@@ -299,14 +299,14 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
       {ph.phase === "hunting" && (
         <Panel>
           <div className="flex items-baseline justify-between">
-            <div className="font-display text-2xl">Все охотятся</div>
+            <div className="font-display text-2xl">Everyone&apos;s hunting</div>
             <div className="font-display text-5xl tabular-num text-[var(--color-park-bright)]">
               {formatClock(remaining)}
             </div>
           </div>
           <p className="mt-3 text-white/80">«{ph.task}»</p>
           <div className="mt-4 flex items-baseline justify-between">
-            <div className="text-sm text-white/60">Прислали кадр</div>
+            <div className="text-sm text-white/60">Photos in</div>
             <div className="font-display text-2xl tabular-num">
               {submitted} / {totalPlayers}
             </div>
@@ -339,10 +339,10 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
       {ph.phase === "judging" && (
         <Panel>
           <div className="font-display text-2xl">
-            AI сравнивает {displayPhotos.length}{" "}
-            {displayPhotos.length === 1 ? "фотографию" : "фотографий"}…
+            AI is comparing {displayPhotos.length}{" "}
+            {displayPhotos.length === 1 ? "photo" : "photos"}…
           </div>
-          <p className="mt-3 text-white/65 text-sm">Дух парка щурится и придумывает гадости.</p>
+          <p className="mt-3 text-white/65 text-sm">The park spirit squints and cooks up some mischief.</p>
           <div className="mt-4 grid grid-cols-3 gap-2">
             {displayPhotos.map((p) => (
               <div
@@ -359,10 +359,10 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
       {ph.phase === "results" && ph.results && (
         <Panel>
           {ph.aiFallback && <AiFallbackNotice />}
-          <div className="text-xs uppercase tracking-widest text-white/60">Вердикт духа парка</div>
+          <div className="text-xs uppercase tracking-widest text-white/60">Park spirit verdict</div>
           <div className="font-display text-2xl mt-1">«{ph.task}»</div>
           {ph.results.length === 0 ? (
-            <p className="mt-4 text-white/70">Никто не прислал ни одного фото. Грустно.</p>
+            <p className="mt-4 text-white/70">Nobody sent a single photo. Sad.</p>
           ) : (
             <ol className="mt-4 space-y-3">
               {ph.results.map((r) => {
@@ -401,10 +401,10 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
               onClick={nextRound}
               className="flex-1 min-w-[180px] rounded-2xl bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] font-medium px-5 py-3"
             >
-              Следующая охота →
+              Next hunt →
             </button>
             <button onClick={backToHub} className="rounded-2xl bg-white/10 text-white px-5 py-3">
-              В меню игр
+              Back to games
             </button>
           </div>
         </Panel>
@@ -414,7 +414,7 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
 }
 
 function phaseTitle(p: PhotoHuntState["phase"]) {
-  return { briefing: "Задание", hunting: "Охота", judging: "AI судит", results: "Победители" }[p];
+  return { briefing: "Task", hunting: "Hunt", judging: "AI judging", results: "Winners" }[p];
 }
 
 function Panel({ children }: { children: React.ReactNode }) {
@@ -424,7 +424,7 @@ function Panel({ children }: { children: React.ReactNode }) {
 function AiFallbackNotice() {
   return (
     <div className="mb-4 rounded-2xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-      AI-провайдер не ответил стабильно, поэтому раунд продолжен в аварийном режиме.
+      The AI provider didn&apos;t respond reliably, so this round continued in fallback mode.
     </div>
   );
 }

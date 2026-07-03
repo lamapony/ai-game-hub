@@ -64,11 +64,11 @@ export function ImpostorPlayer({
   if (imp.phase === "briefing") {
     return (
       <Card>
-        <Pill>Готовься писать</Pill>
-        <H>Кто здесь бот?</H>
+        <Pill>Get ready to write</Pill>
+        <H>Who's the Bot?</H>
         <P>
-          На экране появится вопрос. Напиши смешной ответ — AI тайно подбросит свой. Найди машинный
-          ответ: угадал +3, а если твой ответ приняли за ботовский — +1 за каждый голос.
+          A question will appear on screen. Write a funny answer — AI secretly adds its own. Spot the
+          machine answer: +3 if you're right; +1 per vote if people mistake your answer for the bot's.
         </P>
         <GameRulesChecklist gameId="impostor" />
       </Card>
@@ -80,18 +80,18 @@ export function ImpostorPlayer({
     return (
       <Card compact>
         <Pill>
-          Раунд {imp.roundNumber} · {formatClock(remaining)}
+          Round {imp.roundNumber} · {formatClock(remaining)}
         </Pill>
         <H className="text-left">{imp.question}</H>
         {myAnswer ? (
           <>
             <div className="mt-3 rounded-2xl bg-[var(--color-park-bright)]/15 px-4 py-3 text-sm text-[var(--color-park-bright)]">
-              Ответ принят: «{myAnswer}»
+              Answer saved: "{myAnswer}"
             </div>
-            <P>Можно переписать, пока время не вышло.</P>
+            <P>You can rewrite until time runs out.</P>
           </>
         ) : (
-          <P>Пиши как есть, слишком гладкий текст выдаёт ботов.</P>
+          <P>Write like you text — too polished gives the bot away.</P>
         )}
         <form
           className="mt-3 flex flex-col gap-2"
@@ -104,7 +104,7 @@ export function ImpostorPlayer({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             maxLength={140}
-            placeholder="Твой ответ…"
+            placeholder="Your answer…"
             className="w-full rounded-2xl bg-white/10 px-4 py-3 text-white placeholder-white/40 outline-none focus:bg-white/15"
           />
           <button
@@ -112,7 +112,7 @@ export function ImpostorPlayer({
             disabled={sending || !draft.trim()}
             className="rounded-2xl bg-[var(--color-park-bright)] px-4 py-3 font-medium text-[oklch(0.16_0.05_160)] disabled:opacity-50"
           >
-            {myAnswer ? "Переписать" : "Отправить"}
+            {myAnswer ? "Rewrite" : "Submit"}
           </button>
         </form>
       </Card>
@@ -124,10 +124,10 @@ export function ImpostorPlayer({
     return (
       <div className="space-y-3">
         <Card compact>
-          <Pill>Ищем бота · {formatClock(remaining)}</Pill>
+          <Pill>Hunting the bot · {formatClock(remaining)}</Pill>
           <H className="text-left text-xl">{imp.question}</H>
           {myVote && (
-            <P className="text-[var(--color-park-bright)]">Голос принят — можно передумать</P>
+            <P className="text-[var(--color-park-bright)]">Vote saved — you can change your mind</P>
           )}
         </Card>
         <div className="space-y-2">
@@ -150,7 +150,7 @@ export function ImpostorPlayer({
               >
                 <span className="text-xs text-white/50 mr-2">#{i + 1}</span>
                 <span className="text-white">{answer.text}</span>
-                {mine && <span className="ml-2 text-xs text-white/50">(твой)</span>}
+                {mine && <span className="ml-2 text-xs text-white/50">(yours)</span>}
               </button>
             );
           })}
@@ -168,7 +168,7 @@ export function ImpostorPlayer({
     })();
     return (
       <Card>
-        <Pill>{caught ? "🕵️ Поймал!" : "Разоблачение"}</Pill>
+        <Pill>{caught ? "🕵️ Got them!" : "Reveal"}</Pill>
         <H className="text-left text-xl">{lastResult.question}</H>
         <div
           className={`mt-3 rounded-2xl px-4 py-3 text-center ${
@@ -178,14 +178,15 @@ export function ImpostorPlayer({
           }`}
         >
           {caught
-            ? "Ты вычислил бота! +3 команде"
+            ? "You caught the bot! +3 to your team"
             : myVote
-              ? "Это был человек. Бот ускользнул."
-              : "Ты не проголосовал"}
+              ? "That was a human. The bot slipped away."
+              : "You didn't vote"}
         </div>
         {myFoolVotes > 0 && (
           <div className="mt-2 rounded-2xl bg-white/10 px-4 py-3 text-center text-sm text-white/80">
-            Твой ответ приняли за ботовский {myFoolVotes} раз — +{myFoolVotes} команде. Талант.
+            People mistook your answer for the bot {myFoolVotes} time{myFoolVotes === 1 ? "" : "s"} —
+            +{myFoolVotes} to your team. Talent.
           </div>
         )}
       </Card>
@@ -202,21 +203,21 @@ export function ImpostorPlayer({
     }, 0);
     return (
       <Card>
-        <Pill>Финал</Pill>
-        <H>Твоя статистика</H>
+        <Pill>Final</Pill>
+        <H>Your stats</H>
         <div className="mt-3 rounded-2xl bg-white/10 px-4 py-3 text-sm">
-          <div>Поймал бота: {caughtCount} раз</div>
-          <div className="mt-1">Сошёл за бота: {fooledCount} голосов</div>
+          <div>Caught the bot: {caughtCount} time{caughtCount === 1 ? "" : "s"}</div>
+          <div className="mt-1">Passed for the bot: {fooledCount} vote{fooledCount === 1 ? "" : "s"}</div>
         </div>
-        <P className="mt-3">Полный рейтинг охотников — на экране ведущего.</P>
+        <P className="mt-3">Full hunter ranking — on the host screen.</P>
       </Card>
     );
   }
 
   return (
     <Card>
-      <H>Жди…</H>
-      <P>Бот думает. Или притворяется, что думает.</P>
+      <H>Hold on…</H>
+      <P>The bot is thinking. Or pretending to think.</P>
     </Card>
   );
 }

@@ -113,7 +113,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
 
   async function generate() {
     if (!ch.operatorName) return;
-    setBusy("Генерируем задание…");
+    setBusy("Generating task…");
     try {
       const r = await generateChallengeTask({
         data: {
@@ -129,7 +129,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
         aiFallback: r.fallback,
         briefingEndsAt: Date.now() + CHALLENGE_BRIEFING_MS,
       });
-      // Recording starts when the operator taps "Открыть камеру" on their phone.
+      // Recording starts when the operator taps "Open camera" on their phone.
     } catch (e) {
       console.error(e);
     } finally {
@@ -137,7 +137,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
     }
   }
 
-  // Auto-start recording if operator doesn't tap "Открыть камеру"
+  // Auto-start recording if operator doesn't tap "Open camera"
   useEffect(() => {
     if (state.paused) return;
     if (ch.phase !== "briefing" || !ch.task || !ch.briefingEndsAt) return;
@@ -159,7 +159,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
     // No upload? Skip to results with score 0.
     update({
       phase: "results",
-      result: { score: 0, feedback: "Никто ничего не снял. Дух парка разочарован.", videoUrl: "" },
+      result: { score: 0, feedback: "Nobody filmed anything. The park spirit is disappointed.", videoUrl: "" },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.paused, now, ch.phase, ch.recordingEndsAt]);
@@ -177,7 +177,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
     operatorName: string;
     task: string;
   }) {
-    setBusy("AI смотрит видео…");
+    setBusy("AI is watching the video…");
     try {
       await update({ phase: "judging" });
       const r = await judgeChallenge({
@@ -269,7 +269,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
         <div className="flex items-baseline justify-between flex-wrap gap-2">
           <div>
             <div className="text-[10px] uppercase tracking-[0.25em] text-white/70">
-              Челлендж духа парка
+              Park Spirit Challenge
             </div>
             <h2 className="font-display text-3xl mt-1">{phaseTitle(ch.phase)}</h2>
           </div>
@@ -277,7 +277,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
         </div>
         {ch.operatorName && (
           <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-sm">
-            🎥 Оператор: <strong>{ch.operatorName}</strong>
+            🎥 Operator: <strong>{ch.operatorName}</strong>
             {operatorTeam && <span className="opacity-70">· {operatorTeam.name}</span>}
           </div>
         )}
@@ -286,12 +286,12 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
       {ch.phase === "briefing" && (
         <Panel>
           {ch.aiFallback && <AiFallbackNotice />}
-          <div className="font-display text-2xl">Дух парка диктует задание…</div>
+          <div className="font-display text-2xl">The park spirit is setting the task…</div>
           {ch.task && <p className="mt-3 text-lg text-white">«{ch.task}»</p>}
           {ch.task && (
             <p className="mt-4 text-sm text-[var(--color-park-bright)]">
-              📱 Передай телефон оператору <strong>{ch.operatorName}</strong> — он жмёт «Открыть
-              камеру», и поехали.
+              📱 Hand the phone to operator <strong>{ch.operatorName}</strong> — they tap &quot;Open
+              camera&quot; and you&apos;re off.
               {ch.briefingEndsAt && (
                 <span className="block mt-2 font-display text-2xl tabular-nums">
                   {formatClock(remaining)}
@@ -305,22 +305,22 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
       {ch.phase === "recording" && (
         <Panel>
           <div className="flex items-baseline justify-between">
-            <div className="font-display text-2xl">Идёт съёмка</div>
+            <div className="font-display text-2xl">Filming in progress</div>
             <div className="font-display text-5xl tabular-num text-[var(--color-park-bright)]">
               {formatClock(remaining)}
             </div>
           </div>
           <p className="mt-3 text-white/80">«{ch.task}»</p>
           <p className="mt-2 text-sm text-white/55">
-            Когда {ch.operatorName} нажмёт «Стоп» — видео полетит судье.
+            When {ch.operatorName} hits &quot;Stop&quot; — the video goes to the judge.
           </p>
         </Panel>
       )}
 
       {ch.phase === "judging" && (
         <Panel>
-          <div className="font-display text-2xl">AI разбирает сценку…</div>
-          <p className="mt-3 text-white/65 text-sm">Распознаём речь и кадры. Секунд 10.</p>
+          <div className="font-display text-2xl">AI is breaking down the scene…</div>
+          <p className="mt-3 text-white/65 text-sm">Transcribing speech and scanning frames. About 10 seconds.</p>
           <div className="mt-4 inline-flex gap-1.5">
             <span className="size-2 rounded-full bg-white/70 animate-pulse" />
             <span className="size-2 rounded-full bg-white/70 animate-pulse [animation-delay:150ms]" />
@@ -334,7 +334,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
           {ch.aiFallback && <AiFallbackNotice />}
           <div className="flex items-baseline justify-between flex-wrap gap-3">
             <div>
-              <div className="text-xs uppercase tracking-widest text-white/60">Вердикт</div>
+              <div className="text-xs uppercase tracking-widest text-white/60">Verdict</div>
               <div className="font-display text-7xl tabular-num text-[var(--color-park-bright)]">
                 {ch.result.score}
                 <span className="text-white/40 text-3xl">/10</span>
@@ -342,7 +342,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
             </div>
             {operatorTeam && (
               <div className="text-right">
-                <div className="text-xs text-white/60">+{ch.result.score} команде</div>
+                <div className="text-xs text-white/60">+{ch.result.score} to team</div>
                 <div className="font-display text-lg">{operatorTeam.name}</div>
               </div>
             )}
@@ -360,10 +360,10 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
               onClick={nextRound}
               className="flex-1 min-w-[180px] rounded-2xl bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] font-medium px-5 py-3"
             >
-              Следующий раунд →
+              Next round →
             </button>
             <button onClick={backToHub} className="rounded-2xl bg-white/10 text-white px-5 py-3">
-              В меню игр
+              Back to games
             </button>
           </div>
         </Panel>
@@ -375,7 +375,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
 }
 
 function phaseTitle(p: ChallengeState["phase"]) {
-  return { briefing: "Задание", recording: "Снимаем", judging: "AI судит", results: "Вердикт" }[p];
+  return { briefing: "Task", recording: "Filming", judging: "AI judging", results: "Verdict" }[p];
 }
 
 function Panel({ children }: { children: React.ReactNode }) {
@@ -385,7 +385,7 @@ function Panel({ children }: { children: React.ReactNode }) {
 function AiFallbackNotice() {
   return (
     <div className="mb-4 rounded-2xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-      AI-провайдер не ответил стабильно, поэтому раунд продолжен в аварийном режиме.
+      The AI provider didn&apos;t respond reliably, so this round continued in fallback mode.
     </div>
   );
 }
@@ -395,7 +395,7 @@ function Gallery({ history }: { history: ChallengeRow[] }) {
   return (
     <div className="rounded-3xl bg-card border p-5">
       <div className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
-        Галерея вечера ({scored.length})
+        Evening gallery ({scored.length})
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
         {scored.map((h) => (

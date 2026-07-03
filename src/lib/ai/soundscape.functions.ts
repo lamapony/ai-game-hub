@@ -5,8 +5,8 @@ import { eventProfile, speakerSlotPrompt } from "../event-profile";
 import type { SoundscapeMix } from "../types";
 import { sanitizeMixJudgement, sanitizeMixResponse, sanitizeTopics } from "./sanitize";
 
-const HOST_VOICE_SYSTEM = `You are the AI host of an outdoor party in a ${eventProfile.venue.en} called "${eventProfile.title}".
-Voice: ${eventProfile.hostPersona.voiceEn}.
+const HOST_VOICE_SYSTEM = `You are the AI host of an outdoor party in a ${eventProfile.venue} called "${eventProfile.title}".
+Voice: ${eventProfile.hostPersona.voice}.
 Always reply in English. Always reply with strict valid JSON when asked.`;
 
 const FALLBACK_TOPICS = [
@@ -22,7 +22,7 @@ export const generateTopics = createServerFn({ method: "POST" })
     try {
       const result = await chatJSON<{ topics: string[] }>({
         system: HOST_VOICE_SYSTEM,
-        user: `Invent 3 wild, evocative themes for a 3-minute "field recording" game in a public ${eventProfile.venue.en}.
+        user: `Invent 3 wild, evocative themes for a 3-minute "field recording" game in a public ${eventProfile.venue}.
 Themes must spark physical action and silly recordings (people running around capturing sounds).
 Mix absurd, atmospheric, and cinematic. Keep each under 6 words.
 
@@ -75,7 +75,7 @@ export const composeMix = createServerFn({ method: "POST" })
         system: HOST_VOICE_SYSTEM,
         user: `You are directing a 60-second SPATIAL audio piece for team "${data.teamName}".
 Theme: "${data.topic}".
-There are 5 speakers placed across a ${eventProfile.venue.en}: ${speakerSlotPrompt()}.
+There are 5 speakers placed across a ${eventProfile.venue}: ${speakerSlotPrompt()}.
 
 You have ${numClips} recorded clips from the team:
 ${clipsForPrompt}

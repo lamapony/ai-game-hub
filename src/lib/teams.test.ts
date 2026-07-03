@@ -10,11 +10,11 @@ describe("team helpers", () => {
 
   test("addTeamToState appends a team with the next color", () => {
     const state = emptyRoomState();
-    const next = addTeamToState(state, "Ежи", "team_ezh");
+    const next = addTeamToState(state, "Hedgehogs", "team_ezh");
     expect(next?.teams).toHaveLength(5);
     expect(next?.teams[4]).toEqual({
       id: "team_ezh",
-      name: "Ежи",
+      name: "Hedgehogs",
       color: "green",
       score: 0,
     });
@@ -22,8 +22,8 @@ describe("team helpers", () => {
 
   test("renameTeamInState updates the team name", () => {
     const state = emptyRoomState();
-    const next = renameTeamInState(state, "forest", "Лес");
-    expect(next?.teams.find((t) => t.id === "forest")?.name).toBe("Лес");
+    const next = renameTeamInState(state, "forest", "Forest Team");
+    expect(next?.teams.find((t) => t.id === "forest")?.name).toBe("Forest Team");
   });
 
   test("removeTeamFromState refuses when players are assigned", () => {

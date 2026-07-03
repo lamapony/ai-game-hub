@@ -35,11 +35,11 @@ export function WhoAmongPlayer({
   if (wa.phase === "briefing") {
     return (
       <Card>
-        <Pill>Готовься голосовать</Pill>
-        <H>Кто из нас?</H>
+        <Pill>Get ready to vote</Pill>
+        <H>Who Among Us?</H>
         <P>
-          На экране — острый вопрос. Тайно выбираешь игрока, который подходит лучше всех — можно и
-          себя. {wa.totalRounds} раундов: звезда +3 команде, угадал звезду +2.
+          A spicy question shows on the big screen. Secretly pick the player who fits best — yourself
+          counts too. {wa.totalRounds} rounds: star +3 to team, guessed the star +2.
         </P>
         <GameRulesChecklist gameId="whoamong" />
       </Card>
@@ -52,11 +52,11 @@ export function WhoAmongPlayer({
       <div className="space-y-3">
         <Card compact>
           <Pill>
-            Раунд {wa.roundNumber} · {formatClock(remaining)}
+            Round {wa.roundNumber} · {formatClock(remaining)}
           </Pill>
           <H className="text-left">{wa.prompt}</H>
           {myVote && (
-            <P className="text-[var(--color-park-bright)]">Голос принят — можно передумать</P>
+            <P className="text-[var(--color-park-bright)]">Vote locked in — tap to change your mind</P>
           )}
         </Card>
         <div className="grid grid-cols-2 gap-2">
@@ -64,7 +64,7 @@ export function WhoAmongPlayer({
             const team = state.teams.find((t) => t.id === player.teamId);
             const c = team ? teamColorClasses(team.color) : teamColorClasses("green");
             const selected = myVote === player.id;
-            const label = player.id === me.id ? `${player.name} (ты)` : player.name;
+            const label = player.id === me.id ? `${player.name} (you)` : player.name;
             return (
               <button
                 key={player.id}
@@ -95,7 +95,7 @@ export function WhoAmongPlayer({
     const hitStar = lastResult.correctVoterIds.includes(me.id);
     return (
       <Card>
-        <Pill>{isStar ? "👑 Звезда раунда" : hitStar ? "Попал!" : "Итог раунда"}</Pill>
+        <Pill>{isStar ? "👑 Round star" : hitStar ? "Nailed it!" : "Round result"}</Pill>
         <H className="text-left text-xl">{lastResult.prompt}</H>
         <div
           className={`mt-3 rounded-2xl px-4 py-3 text-center ${
@@ -107,12 +107,12 @@ export function WhoAmongPlayer({
           }`}
         >
           {isStar
-            ? "Ты — звезда раунда! +3 команде"
+            ? "You&apos;re the round star! +3 to team"
             : hitStar
-              ? "+2 команде!"
+              ? "+2 to team!"
               : myVote
-                ? "Не угадал звезду — в следующий раз!"
-                : "Ты не успел проголосовать"}
+                ? "Missed the star — next time!"
+                : "You didn&apos;t vote in time"}
         </div>
       </Card>
     );
@@ -126,20 +126,20 @@ export function WhoAmongPlayer({
     );
     return (
       <Card>
-        <Pill>Финал</Pill>
-        <H>Твоя статистика</H>
+        <Pill>Final</Pill>
+        <H>Your stats</H>
         <div className="mt-3 rounded-2xl bg-white/10 px-4 py-3 text-sm">
-          <div>Звёзд раунда: {starCount}</div>
-          <div className="mt-1">Голосов за тебя: {votesReceived}</div>
+          <div>Round stars: {starCount}</div>
+          <div className="mt-1">Votes for you: {votesReceived}</div>
         </div>
-        <P className="mt-3">Полный рейтинг — на экране ведущего.</P>
+        <P className="mt-3">Full leaderboard — on the host screen.</P>
       </Card>
     );
   }
 
   return (
     <Card>
-      <H>Жди…</H>
+      <H>Hang tight…</H>
     </Card>
   );
 }

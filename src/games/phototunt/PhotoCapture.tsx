@@ -46,13 +46,13 @@ export function PhotoCapture({
       />
       {preview ? (
         <div className="rounded-2xl overflow-hidden bg-black/40 border border-white/10">
-          <img src={preview} alt="Твой кадр" className="w-full max-h-[60vh] object-contain" />
+          <img src={preview} alt="Your shot" className="w-full max-h-[60vh] object-contain" />
           <button
             onClick={open}
             disabled={disabled}
             className="w-full py-3 text-sm bg-white/10 text-white disabled:opacity-50"
           >
-            ↻ Переснять
+            ↻ Retake
           </button>
         </div>
       ) : (
@@ -61,7 +61,7 @@ export function PhotoCapture({
           disabled={disabled}
           className="w-full rounded-3xl bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] py-6 text-xl font-display disabled:opacity-50"
         >
-          📸 Открыть камеру
+          📸 Open camera
         </button>
       )}
       {err && <p className="text-sm text-red-300 text-center">{err}</p>}

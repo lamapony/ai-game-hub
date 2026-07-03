@@ -23,7 +23,7 @@ function activeTeams(state: RoomState) {
 }
 
 function teamName(state: RoomState, teamId?: string) {
-  return state.teams.find((team) => team.id === teamId)?.name ?? "Команда";
+  return state.teams.find((team) => team.id === teamId)?.name ?? "Team";
 }
 
 export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: RoomState }) {
@@ -73,7 +73,7 @@ export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: Ro
     if (introSpokenRef.current) return;
     introSpokenRef.current = true;
     speak(
-      "Spectrum Court. Команда получает скрытую точку на шкале, дает подсказку, остальные спорят и ставят маркер.",
+      "Spectrum Court. One team gets a hidden point on the spectrum, gives a clue, everyone else argues and places a marker.",
     );
     const t = window.setTimeout(() => startRound(), 3000);
     return () => window.clearTimeout(t);
@@ -136,7 +136,7 @@ export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: Ro
       });
       return;
     }
-    speak(`Вердикт суда. Цель была ${sc.target} из 100.`);
+    speak(`Court verdict. Target was ${sc.target} out of 100.`);
     void updateRoomState(roomId, {
       ...state,
       teams: scored.teams,
@@ -201,32 +201,32 @@ export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: Ro
             Spectrum Court
           </div>
           <h2 className="font-display text-3xl mt-1">
-            Раунд {Math.min(sc.roundNumber, sc.totalRounds)} / {sc.totalRounds}
+            Round {Math.min(sc.roundNumber, sc.totalRounds)} / {sc.totalRounds}
           </h2>
         </div>
         <PhasePill phase={sc.phase} />
       </header>
 
       {sc.phase === "briefing" && (
-        <Panel title="Суд собирается">
+        <Panel title="Court is assembling">
           <p className="text-muted-foreground">
-            Сейчас одна команда увидит скрытую точку на шкале и даст подсказку. Остальные будут
-            спорить, где она находится.
+            One team will see a hidden point on the spectrum and give a clue. Everyone else argues
+            about where it lands.
           </p>
         </Panel>
       )}
 
       {sc.phase !== "briefing" && sc.phase !== "results" && (
-        <Panel title={sc.prompt ?? "Шкала"}>
+        <Panel title={sc.prompt ?? "Spectrum"}>
           <SpectrumScale state={state} sc={sc} now={now} />
           {sc.phase === "clue" && (
             <p className="mt-4 text-sm text-muted-foreground">
-              Подсказку дает команда{" "}
+              Clue from{" "}
               <span className="text-foreground font-medium">{teamName(state, sc.clueTeamId)}</span>.
-              Цель скрыта от остальных.
+              Target hidden from everyone else.
               {!sc.clue && sc.clueEndsAt && (
                 <span className="block mt-1">
-                  Осталось времени: {formatClock(Math.max(0, sc.clueEndsAt - now))}
+                  Time left: {formatClock(Math.max(0, sc.clueEndsAt - now))}
                 </span>
               )}
             </p>
@@ -234,7 +234,7 @@ export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: Ro
           {sc.clue && (
             <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
               <div className="text-xs uppercase tracking-widest text-muted-foreground">
-                Подсказка
+                Clue
               </div>
               <div className="font-display text-2xl mt-1">{sc.clue}</div>
               <div className="text-sm text-muted-foreground mt-1">
@@ -250,12 +250,12 @@ export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: Ro
       )}
 
       {sc.phase === "results" && (
-        <Panel title="Итоги суда">
+        <Panel title="Court results">
           <div className="space-y-2">
             {(sc.roundResults ?? []).map((result, index) => (
               <div key={`${result.spectrumId}-${index}`} className="rounded-2xl bg-white/5 p-3">
                 <div className="text-xs uppercase tracking-widest text-muted-foreground">
-                  Раунд {index + 1} · {teamName(state, result.clueTeamId)}
+                  Round {index + 1} · {teamName(state, result.clueTeamId)}
                 </div>
                 <div className="mt-1 font-medium">
                   {result.leftLabel} ← {result.target} → {result.rightLabel}
@@ -277,7 +277,7 @@ export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: Ro
             }
             className="mt-4 rounded-2xl bg-white/10 hover:bg-white/15 px-4 py-2 text-sm"
           >
-            ↺ В лобби
+            ↺ Back to lobby
           </button>
         </Panel>
       )}
@@ -287,12 +287,12 @@ export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: Ro
 
 function PhasePill({ phase }: { phase: SpectrumCourtState["phase"] }) {
   const label = {
-    briefing: "Старт",
-    clue: "Подсказка",
-    guessing: "Маркер",
-    appeal: "Апелляция",
-    reveal: "Вердикт",
-    results: "Итоги",
+    briefing: "Start",
+    clue: "Clue",
+    guessing: "Marker",
+    appeal: "Appeal",
+    reveal: "Verdict",
+    results: "Results",
   }[phase];
   return (
     <span className="rounded-full bg-white/10 px-3 py-1 text-xs uppercase tracking-widest">
@@ -343,7 +343,7 @@ function SpectrumScale({
       </div>
       <div className="relative h-14 rounded-full bg-gradient-to-r from-emerald-400 via-yellow-300 to-rose-400">
         {targetVisible && typeof sc.target === "number" && (
-          <Marker value={sc.target} label="цель" className="bg-black text-white" />
+          <Marker value={sc.target} label="target" className="bg-black text-white" />
         )}
         {teamGuesses.map((guess) => (
           <Marker
@@ -394,7 +394,7 @@ function GuessTally({ state, sc }: { state: RoomState; sc: SpectrumCourtState })
   const voted = eligible.filter((player) => typeof sc.guesses?.[player.id] === "number").length;
   return (
     <p className="text-sm text-muted-foreground mt-4">
-      Маркеры поставили {voted} из {eligible.length} игроков.
+      {voted} of {eligible.length} players placed markers.
     </p>
   );
 }
@@ -405,10 +405,10 @@ function AppealTally({ state, sc }: { state: RoomState; sc: SpectrumCourtState }
   const higher = appeals.filter((appeal) => appeal.direction === "higher").length;
   return (
     <div className="mt-4 grid grid-cols-2 gap-2 text-center text-sm">
-      <div className="rounded-2xl bg-white/5 p-3">Левее: {lower}</div>
-      <div className="rounded-2xl bg-white/5 p-3">Правее: {higher}</div>
+      <div className="rounded-2xl bg-white/5 p-3">Left: {lower}</div>
+      <div className="rounded-2xl bg-white/5 p-3">Right: {higher}</div>
       <div className="col-span-2 text-muted-foreground">
-        Апелляция сдвигает маркер команды на 5 пунктов по большинству.
+        An appeal shifts a team&apos;s marker 5 points by majority vote.
       </div>
     </div>
   );
@@ -432,16 +432,16 @@ function Reveal({ state, sc }: { state: RoomState; sc: SpectrumCourtState }) {
               <span className="font-display text-xl">+{teamResult.points}</span>
             </div>
             <div className="text-xs opacity-75">
-              Маркер {teamResult.finalGuess}, дистанция {teamResult.distance}
+              Marker {teamResult.finalGuess}, distance {teamResult.distance}
               {teamResult.appealDirection
-                ? `, апелляция ${teamResult.appealDirection === "higher" ? "правее" : "левее"}`
+                ? `, appeal ${teamResult.appealDirection === "higher" ? "right" : "left"}`
                 : ""}
             </div>
           </div>
         );
       })}
       <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm">
-        Команда подсказки {teamName(state, result.clueTeamId)} получает +{result.clueTeamPoints}.
+        Clue team {teamName(state, result.clueTeamId)} gets +{result.clueTeamPoints}.
       </div>
     </div>
   );

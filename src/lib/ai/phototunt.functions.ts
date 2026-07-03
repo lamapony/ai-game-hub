@@ -1,48 +1,48 @@
-// Server functions for "Фотоохота" — AI picks an absurd photo task and ranks all submitted photos.
+// Server functions for Photo Hunt — AI picks an absurd photo task and ranks all submitted photos.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { eventProfile } from "../event-profile";
 import { sanitizePhotoRanking, sanitizeTask } from "./sanitize";
 import { venuePromptContext } from "./venue";
 
-const VOICE = `Ты — ${eventProfile.hostPersona.ru}, ведущий вечеринки ${eventProfile.title}. Голос: ${eventProfile.hostPersona.voiceRu}.
-Всегда отвечай на русском. Всегда возвращай строгий валидный JSON, без markdown-обёрток.`;
+const VOICE = `You are the ${eventProfile.hostPersona.name}, host of the ${eventProfile.title} party. Voice: ${eventProfile.hostPersona.voice}.
+Always reply in English. Always return strict valid JSON, with no markdown wrappers.`;
 
 const BAR_FALLBACK_TASKS = [
   {
-    task: "Сфоткай натюрморт из того, что есть на столе, который выглядит как обложка джазового альбома.",
-    intro: "Стол — теперь студия звукозаписи.",
+    task: "Photograph a still life from what's on the table that looks like a jazz album cover.",
+    intro: "The table is now a recording studio.",
   },
   {
-    task: "Сними кадр, который доказывает, что этот бар скрывает тёмное прошлое.",
-    intro: "Бодега что-то знает.",
+    task: "Take a shot that proves this bar is hiding a dark past.",
+    intro: "The bodega knows something.",
   },
   {
-    task: "Найди в баре предмет, который выглядит самым разочарованным в этом вечере.",
-    intro: "Ищем усталость среди бокалов.",
+    task: "Find the object in the bar that looks most disappointed with this evening.",
+    intro: "Hunting exhaustion among the glasses.",
   },
   {
-    task: "Сделай фото соседа так, чтобы оно годилось на обложку делового журнала «Успех».",
-    intro: "Форбс уже звонит.",
+    task: 'Photograph your neighbor so it could be a "Success" business magazine cover.',
+    intro: "Forbes is calling.",
   },
 ];
 
 const FALLBACK_TASKS = [
   {
-    task: "Сфоткай предмет, который выглядит так, будто он устал от этой вечеринки сильнее всех.",
-    intro: "Ищем усталость в естественной среде.",
+    task: "Snap an object that looks more tired of this party than anyone else.",
+    intro: "We're hunting exhaustion in the wild.",
   },
   {
-    task: "Найди кадр, который мог бы называться «последний день нормальности».",
-    intro: "Красота закончилась, начинаем фотоохоту.",
+    task: 'Find a shot that could be titled "the last day of normalcy."',
+    intro: "Beauty is over. Photo hunt begins.",
   },
   {
-    task: "Сфоткай самый подозрительный объект в радиусе минуты бега.",
-    intro: "Парк что-то скрывает.",
+    task: "Photograph the most suspicious object within a one-minute jog.",
+    intro: "The park is hiding something.",
   },
   {
-    task: "Сними фото, где обычная вещь выглядит как важная историческая улика.",
-    intro: "Следствие ведёт дух парка.",
+    task: "Take a photo where an ordinary thing looks like key historical evidence.",
+    intro: "The park spirit is on the case.",
   },
 ];
 
@@ -68,28 +68,28 @@ export const generatePhotoTask = createServerFn({ method: "POST" })
       (data.pastTasks ?? [])
         .slice(-6)
         .map((t) => `- ${t}`)
-        .join("\n") || "(пока ничего)";
+        .join("\n") || "(none yet)";
     try {
       const r = await chatJSON<{ task: string; intro: string }>({
         system: VOICE,
         user: `${venuePromptContext(data.venue)}
 
-Придумай ОДНО задание для фотоохоты. Все игроки одновременно должны за 60 секунд сделать ОДИН снимок на телефон, который лучше других попадёт в задание. Задание обязано быть выполнимым в текущей локации.
-Задание должно быть:
-- абсурдным, но физически выполнимым здесь и сейчас;
-- ОДНОЗНАЧНЫМ для оценки (можно посмотреть фото и понять, насколько попал);
-- провоцировать креатив, а не просто «сфоткай что видишь».
+Invent ONE photo-hunt task. All players at once have 60 seconds to take ONE phone photo that best fits the task. The task must be doable in the current location.
+The task must be:
+- absurd but physically doable here and now;
+- UNAMBIGUOUS to judge (you can look at the photo and tell how well it fits);
+- creative, not just "photograph whatever you see."
 
-Примеры стиля (НЕ копируй):
-- «Найди объект, который выглядит самым одиноким в этом парке».
-- «Сними кадр, который мог бы стать обложкой грустного русского рэп-альбома».
-- «Сфоткай предмет, похожий на лицо твоей бывшей».
-- «Найди самую неудачную попытку благоустройства».
+Style examples (do NOT copy):
+- "Find the object that looks loneliest in this park."
+- "Take a shot that could be the cover of a sad indie album."
+- "Photograph something that looks like your ex's face."
+- "Find the worst landscaping attempt."
 
-Избегай недавних:
+Avoid recent tasks:
 ${avoid}
 
-Также напиши короткий intro (1 фраза, до 12 слов) — её дух парка скажет голосом перед стартом.
+Also write a short intro (1 phrase, up to 12 words) that the park spirit will say out loud before the start.
 
 JSON: { "task": "...", "intro": "..." }`,
         temperature: 0.95,
@@ -126,34 +126,34 @@ export const judgePhotos = createServerFn({ method: "POST" })
     }> => {
       const { chatJSON } = await import("../ai-gateway.server");
 
-      const intro = `Задание было: «${data.task}»
+      const intro = `The task was: "${data.task}"
 
-Ниже ${data.photos.length} фотографий от разных игроков. Каждая подписана номером и именем. Посмотри их ВСЕ и сравни между собой.
+Below are ${data.photos.length} photos from different players. Each is labeled with a number and name. Look at ALL of them and compare.
 
-Список игроков (в том же порядке, что и фото):
+Player list (same order as the photos):
 ${data.photos.map((p, i) => `${i + 1}. ${p.playerName} (id: ${p.playerId})`).join("\n")}
 
-Оцени по СТРОГИМ критериям:
-1. Точность попадания в задание (а не «красивое фото»).
-2. Креативность интерпретации.
-3. Какую-то изюминку или шутку — за это бонус.
+Judge by STRICT criteria:
+1. How well the photo fits the task (not just "a pretty photo").
+2. Creativity of interpretation.
+3. A spark of humor or surprise — bonus points for that.
 
-Ранжируй ВСЕХ от 1 (лучший) до ${data.photos.length} (худший). Никаких ничьих.
+Rank EVERYONE from 1 (best) to ${data.photos.length} (worst). No ties.
 
-Ответь JSON:
+Reply with JSON:
 {
   "ranking": [
-    { "playerId": "<id игрока>", "rank": <число от 1 до N>, "comment": "<едкий комментарий 1 предложение, ссылайся на конкретную деталь фото>" },
+    { "playerId": "<player id>", "rank": <number from 1 to N>, "comment": "<one sharp sentence, reference a specific detail in the photo>" },
     ...
   ],
-  "verdict": "<КОРОТКАЯ фраза до 14 слов, которую дух парка скажет вслух в колонку, объявляя победителя по имени>"
+  "verdict": "<SHORT phrase up to 14 words that the park spirit says out loud over the speaker, announcing the winner by name>"
 }`;
 
       const parts: Array<
         { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }
       > = [{ type: "text", text: intro }];
       data.photos.forEach((p, i) => {
-        parts.push({ type: "text", text: `Фото №${i + 1} — ${p.playerName}:` });
+        parts.push({ type: "text", text: `Photo #${i + 1} — ${p.playerName}:` });
         parts.push({ type: "image_url", image_url: { url: p.url } });
       });
 
@@ -177,9 +177,9 @@ ${data.photos.map((p, i) => `${i + 1}. ${p.playerName} (id: ${p.playerId})`).joi
           ranking: data.photos.map((photo, index) => ({
             playerId: photo.playerId,
             rank: index + 1,
-            comment: "AI-судья не вышел на связь, поэтому решает порядок загрузки.",
+            comment: "The AI judge went offline, so upload order decides.",
           })),
-          verdict: `${data.photos[0]?.playerName ?? "Первый загрузивший"} забирает аварийную победу.`,
+          verdict: `${data.photos[0]?.playerName ?? "First uploader"} takes the emergency win.`,
         };
         return { ...sanitizePhotoRanking(r, data.photos), fallback: true };
       }

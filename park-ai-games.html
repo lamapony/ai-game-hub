@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌳 AI Park Games • Party</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+    
+    :root {
+      --primary: #22c55e;
+    }
+    
+    body {
+      font-family: 'Inter', system_ui, sans-serif;
+    }
+    
+    .title-font {
+      font-family: 'Space Grotesk', 'Inter', sans-serif;
+      font-weight: 600;
+    }
+
+    .park-gradient {
+      background: linear-gradient(135deg, #166534 0%, #4ade80 100%);
+    }
+
+    .game-card {
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
+    }
+    
+    .game-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    }
+
+    .magic {
+      animation: magic-glow 2s ease-in-out infinite;
+    }
+
+    @keyframes magic-glow {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.85; }
+    }
+
+    .result-card {
+      animation: slideUp 0.4s ease-out forwards;
+    }
+
+    .photo-preview {
+      max-height: 320px;
+      object-fit: cover;
+      border-radius: 16px;
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    }
+
+    .big-button {
+      transition: all 0.1s ease;
+    }
+    
+    .big-button:active {
+      transform: scale(0.98);
+    }
+
+    .ai-badge {
+      background: linear-gradient(90deg, #22c55e, #86efac);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 700;
+    }
+
+    .fun-fact {
+      background: #f0fdf4;
+      border-left: 4px solid #22c55e;
+    }
+
+    .leaderboard-item {
+      transition: all 0.2s ease;
+    }
+  </style>
+</head>
+<body class="bg-zinc-950 text-white">
+  <!-- Header -->
+  <div class="park-gradient py-5 px-4 sticky top-0 z-50">
+    <div class="max-w-2xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-x-3">
+        <div class="w-11 h-11 bg-white rounded-2xl flex items-center justify-center shadow-inner">
+          <i class="fa-solid fa-tree text-emerald-600 text-3xl"></i>
+        </div>
+        <div>
+          <h1 class="title-font text-3xl font-semibold tracking-tighter">AI Park</h1>
+          <p class="text-emerald-100 text-xs -mt-1 tracking-[1px]">PARTY 2026</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-x-2 bg-white/20 px-3 py-1.5 rounded-3xl text-sm backdrop-blur">
+        <div class="flex -space-x-1">
+          <div class="w-6 h-6 bg-white rounded-full border border-emerald-600 overflow-hidden"><img src="https://i.pravatar.cc/24?img=28" class="w-full h-full object-cover"></div>
+          <div class="w-6 h-6 bg-white rounded-full border border-emerald-600 overflow-hidden"><img src="https://i.pravatar.cc/24?img=47" class="w-full h-full object-cover"></div>
+          <div class="w-6 h-6 bg-white rounded-full border border-emerald-600 overflow-hidden"><img src="https://i.pravatar.cc/24?img=12" class="w-full h-full object-cover"></div>
+        </div>
+        <span class="text-xs font-medium text-emerald-100">12 players</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="max-w-2xl mx-auto px-4 pb-12">
+    
+    <!-- Quick intro -->
+    <div class="mt-6 mb-8 text-center">
+      <div class="inline-flex items-center gap-x-2 bg-zinc-900 px-4 py-1 rounded-full text-xs border border-zinc-800">
+        <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+        <span class="font-medium">Mobile-first • Works on your phone</span>
+      </div>
+      <h2 class="mt-3 text-4xl tracking-tighter font-semibold">Magical AI games<br>right in the park</h2>
+      <p class="text-zinc-400 mt-2 text-[15px]">Camera + mic + AI = full party mode</p>
+    </div>
+
+    <!-- Game Modes -->
+    <div class="mb-6">
+      <div class="flex items-center justify-between mb-3 px-1">
+        <div class="font-semibold text-lg">Pick a game</div>
+        <div onclick="showAllModes()" class="text-xs px-3 py-1 bg-zinc-900 hover:bg-zinc-800 active:bg-zinc-950 cursor-pointer rounded-full text-emerald-400 flex items-center gap-x-1 text-sm">
+          <span>all modes</span>
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-2 gap-3">
+        <!-- Mode 1 -->
+        <div onclick="switchMode(1)" class="game-card cursor-pointer bg-zinc-900 border border-zinc-800 hover:border-emerald-900 p-4 rounded-3xl active:scale-[0.985]">
+          <div class="flex items-start gap-x-3">
+            <div class="text-3xl mt-0.5">🔍</div>
+            <div class="flex-1 min-w-0">
+              <div class="font-semibold">AI Detective</div>
+              <div class="text-xs text-zinc-400 mt-0.5 line-clamp-2">Snap something → AI identifies it + fun facts and a verdict</div>
+              <div class="mt-3 flex items-center text-[10px]">
+                <span class="px-2 py-px bg-emerald-950 text-emerald-400 rounded-full">VISION</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mode 2 -->
+        <div onclick="switchMode(2)" class="game-card cursor-pointer bg-zinc-900 border border-zinc-800 hover:border-emerald-900 p-4 rounded-3xl active:scale-[0.985]">
+          <div class="flex items-start gap-x-3">
+            <div class="text-3xl mt-0.5">🗺️</div>
+            <div class="flex-1 min-w-0">
+              <div class="font-semibold">AI Scavenger</div>
+              <div class="text-xs text-zinc-400 mt-0.5 line-clamp-2">AI gives missions. You find proof with photos or sound</div>
+              <div class="mt-3 flex items-center text-[10px] gap-x-1">
+                <span class="px-2 py-px bg-emerald-950 text-emerald-400 rounded-full">VISION + AUDIO</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mode 3 -->
+        <div onclick="switchMode(3)" class="game-card cursor-pointer bg-zinc-900 border border-zinc-800 hover:border-emerald-900 p-4 rounded-3xl active:scale-[0.985]">
+          <div class="flex items-start gap-x-3">
+            <div class="text-3xl mt-0.5">🎭</div>
+            <div class="flex-1 min-w-0">
+              <div class="font-semibold">AI Charades</div>
+              <div class="text-xs text-zinc-400 mt-0.5 line-clamp-2">Act it out or make a sound — AI tries to guess</div>
+              <div class="mt-3 flex items-center text-[10px]">
+                <span class="px-2 py-px bg-violet-950 text-violet-400 rounded-full">VISION + AUDIO</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mode 4 -->
+        <div onclick="switchMode(4)" class="game-card cursor-pointer bg-zinc-900 border border-zinc-800 hover:border-emerald-900 p-4 rounded-3xl active:scale-[0.985]">
+          <div class="flex items-start gap-x-3">
+            <div class="text-3xl mt-0.5">😂</div>
+            <div class="flex-1 min-w-0">
+              <div class="font-semibold">Caption Battle</div>
+              <div class="text-xs text-zinc-400 mt-0.5 line-clamp-2">AI writes 6 funny captions for your photo. Vote for the best</div>
+              <div class="mt-3 flex items-center text-[10px]">
+                <span class="px-2 py-px bg-amber-950 text-amber-400 rounded-full">VISION + LLM</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Game Area -->
+    <div id="game-area" class="bg-zinc-900 border border-zinc-800 rounded-3xl p-5">
+      
+      <!-- Mode 1: Detective -->
+      <div id="mode-1" class="mode-content">
+        <div class="flex items-center gap-x-2 mb-4">
+          <span class="text-2xl">🔍</span>
+          <div>
+            <div class="font-semibold text-xl">Park AI Detective</div>
+            <div class="text-emerald-400 text-xs font-medium">FIND • SNAP • LEARN EVERYTHING</div>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <!-- Camera -->
+          <div>
+            <label class="block text-xs font-medium text-zinc-400 mb-1.5 ml-1">SNAP SOMETHING INTERESTING</label>
+            <div onclick="capturePhoto()" 
+                 class="border-2 border-dashed border-zinc-700 hover:border-emerald-600 active:bg-zinc-950 transition-colors rounded-2xl h-40 flex flex-col items-center justify-center cursor-pointer group">
+              <i class="fa-solid fa-camera text-4xl text-zinc-600 group-hover:text-emerald-500 transition-colors"></i>
+              <div class="text-xs mt-2 text-zinc-400">Tap to open the camera</div>
+              <div class="text-[10px] text-zinc-500 mt-0.5">or pick from your gallery</div>
+            </div>
+            <input type="file" id="photo-input" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoSelect(event)">
+          </div>
+
+          <!-- Preview -->
+          <div id="photo-preview-container" class="hidden">
+            <img id="photo-preview" class="photo-preview w-full border border-zinc-800">
+            
+            <div class="flex gap-x-2 mt-3">
+              <button onclick="analyzePhoto()" 
+                      class="flex-1 big-button bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white py-3 rounded-2xl font-semibold flex items-center justify-center gap-x-2 text-sm">
+                <i class="fa-solid fa-magic"></i>
+                <span>Analyze with AI</span>
+              </button>
+              <button onclick="retakePhoto()" 
+                      class="px-4 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-2xl text-sm">
+                <i class="fa-solid fa-redo"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- AI Result -->
+          <div id="detective-result" class="hidden result-card bg-zinc-950 border border-emerald-900/60 rounded-2xl p-4">
+            <div class="flex items-center gap-x-2 mb-2">
+              <span class="ai-badge text-sm">AI VERDICT</span>
+            </div>
+            
+            <div id="result-name" class="text-2xl font-semibold tracking-tight"></div>
+            
+            <div class="mt-3 grid grid-cols-1 gap-2 text-sm">
+              <div id="result-facts" class="space-y-1.5 text-emerald-200"></div>
+            </div>
+
+            <div class="mt-3 pt-3 border-t border-zinc-800 flex items-center justify-between">
+              <div>
+                <span class="text-xs text-zinc-400">POINTS</span>
+                <div id="result-score" class="font-mono text-3xl font-bold text-emerald-400"></div>
+              </div>
+              <div onclick="addToLeaderboard()" class="cursor-pointer px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-sm font-medium rounded-2xl flex items-center gap-x-2">
+                <span>Add to leaderboard</span>
+              </div>
+            </div>
+
+            <div id="result-comment" class="mt-3 text-xs bg-zinc-900 p-3 rounded-xl text-zinc-300"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mode 2: Scavenger -->
+      <div id="mode-2" class="mode-content hidden">
+        <div class="flex items-center gap-x-2 mb-4">
+          <span class="text-2xl">🗺️</span>
+          <div>
+            <div class="font-semibold text-xl">AI Scavenger Hunt</div>
+            <div class="text-emerald-400 text-xs font-medium">MISSIONS FROM THE AI</div>
+          </div>
+        </div>
+
+        <button onclick="generateChallenges()" 
+                class="w-full big-button bg-zinc-800 hover:bg-zinc-700 py-3 rounded-2xl font-medium flex items-center justify-center gap-x-2 mb-4">
+          <i class="fa-solid fa-sync"></i>
+          <span>Generate 5 missions</span>
+        </button>
+
+        <div id="challenges-list" class="space-y-2"></div>
+      </div>
+
+      <!-- Mode 3: Charades -->
+      <div id="mode-3" class="mode-content hidden">
+        <div class="flex items-center gap-x-2 mb-4">
+          <span class="text-2xl">🎭</span>
+          <div>
+            <div class="font-semibold text-xl">AI Charades</div>
+            <div class="text-emerald-400 text-xs font-medium">ACT IT OUT — AI GUESSES</div>
+          </div>
+        </div>
+
+        <div class="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 mb-4">
+          <div class="text-xs text-zinc-400 mb-1">YOUR PROMPT</div>
+          <div id="charades-word" class="text-2xl font-semibold tracking-tight">Tap "New prompt"</div>
+        </div>
+
+        <div class="flex gap-x-2 mb-4">
+          <button onclick="newCharadesWord()" class="flex-1 bg-zinc-800 hover:bg-zinc-700 py-3 rounded-2xl text-sm font-medium">New prompt</button>
+          <button onclick="startCharadesRecording()" class="flex-1 bg-violet-600 hover:bg-violet-500 py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-x-2">
+            <i class="fa-solid fa-video"></i>
+            <span>Show the AI</span>
+          </button>
+        </div>
+
+        <div id="charades-result" class="hidden bg-zinc-950 border border-violet-900/60 rounded-2xl p-4 text-sm">
+          <div class="font-medium mb-1 text-violet-400">AI GUESSED:</div>
+          <div id="charades-guess" class="font-semibold text-lg"></div>
+          <div id="charades-confidence" class="text-xs mt-1"></div>
+          <button onclick="rateCharades()" class="mt-3 text-xs px-4 py-1.5 bg-zinc-800 rounded-full">Rate the guess</button>
+        </div>
+      </div>
+
+      <!-- Mode 4: Captions -->
+      <div id="mode-4" class="mode-content hidden">
+        <div class="flex items-center gap-x-2 mb-4">
+          <span class="text-2xl">😂</span>
+          <div>
+            <div class="font-semibold text-xl">Caption Battle</div>
+            <div class="text-emerald-400 text-xs font-medium">AI ROASTS YOUR PHOTO</div>
+          </div>
+        </div>
+
+        <div onclick="capturePhotoForCaptions()" class="border-2 border-dashed border-zinc-700 hover:border-amber-600 transition-colors rounded-2xl h-36 flex flex-col items-center justify-center cursor-pointer mb-4">
+          <i class="fa-solid fa-image text-3xl text-zinc-600"></i>
+          <div class="text-xs mt-2 text-zinc-400">Snap yourself or your friends</div>
+        </div>
+
+        <div id="captions-preview-container" class="hidden mb-4">
+          <img id="captions-preview" class="photo-preview w-full mb-3 border border-zinc-800">
+          <button onclick="generateCaptions()" class="w-full bg-amber-500 hover:bg-amber-600 active:bg-amber-700 py-3 text-sm font-semibold rounded-2xl">AI, write some captions!</button>
+        </div>
+
+        <div id="captions-result" class="hidden space-y-2"></div>
+      </div>
+
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="mt-6">
+      <div class="flex items-center justify-between mb-2 px-1">
+        <div class="font-semibold flex items-center gap-x-2">
+          <i class="fa-solid fa-trophy text-amber-400"></i>
+          <span>Party leaderboard</span>
+        </div>
+        <button onclick="clearLeaderboard()" class="text-xs text-zinc-500 hover:text-red-400">clear</button>
+      </div>
+      <div id="leaderboard" class="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden divide-y divide-zinc-800 text-sm"></div>
+    </div>
+
+    <!-- Footer tips -->
+    <div class="mt-8 text-center">
+    <div class="inline-block bg-zinc-900 px-4 py-2 rounded-3xl text-xs border border-zinc-800 text-zinc-400">
+      Runs fully on your phone • Demo uses mock AI
+    </div>
+    </div>
+
+    <!-- Real AI instructions -->
+    <div class="mt-6 bg-zinc-900 border border-zinc-800 rounded-3xl p-5 text-xs">
+    <div class="font-medium mb-2 flex items-center gap-x-2">
+      <i class="fa-solid fa-plug"></i>
+      <span>How to plug in real AI (5 minutes)</span>
+    </div>
+    <div class="text-zinc-400 space-y-1.5">
+      <div>1. Add a Next.js or Cloudflare Worker route at /api/analyze</div>
+      <div>2. Use <span class="font-mono text-emerald-400">gpt-4o</span> or <span class="font-mono text-emerald-400">grok-2-vision</span></div>
+      <div>3. Prompt (copy this):</div>
+      <div class="bg-black p-2 rounded font-mono text-[10px] text-emerald-300 overflow-x-auto">
+        You are a fun, slightly sarcastic park guide. Identify the object in the photo. Return:<br>
+        - exact name<br>
+        - 3 interesting facts in English<br>
+        - a funny 1–2 sentence comment<br>
+        Strict JSON only: { "name": "...", "facts": [...], "score": 85, "comment": "..." }
+      </div>
+      <div>4. Use Whisper for audio. Use a regular LLM for captions.</div>
+      <div class="pt-1 text-emerald-400">Need a hand? I can sketch a ready-made /api route.</div>
+    </div>
+    </div>
+  </div>
+
+  <script>
+    function initTailwind() {
+      document.documentElement.style.setProperty('--accent', '#22c55e');
+    }
+    
+    let currentMode = 1;
+    let currentPhotoBase64 = null;
+    let currentPhotoForCaptions = null;
+    let currentChallenge = null;
+    let leaderboard = JSON.parse(localStorage.getItem('parkLeaderboard') || '[]');
+
+    function switchMode(mode) {
+      document.querySelectorAll('.mode-content').forEach(el => el.classList.add('hidden'));
+      document.getElementById(`mode-${mode}`).classList.remove('hidden');
+      currentMode = mode;
+      
+      if (mode === 1) {
+        document.getElementById('photo-preview-container').classList.add('hidden');
+        document.getElementById('detective-result').classList.add('hidden');
+      }
+      if (mode === 4) {
+        document.getElementById('captions-result').classList.add('hidden');
+        document.getElementById('captions-preview-container').classList.add('hidden');
+      }
+    }
+
+    function showAllModes() {
+      alert('All modes are already shown above. Pick a card!');
+    }
+
+    function capturePhoto() {
+      const input = document.getElementById('photo-input');
+      input.click();
+    }
+
+    function handlePhotoSelect(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        currentPhotoBase64 = ev.target.result;
+        
+        const preview = document.getElementById('photo-preview');
+        preview.src = currentPhotoBase64;
+        
+        document.getElementById('photo-preview-container').classList.remove('hidden');
+        document.getElementById('detective-result').classList.add('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function retakePhoto() {
+      document.getElementById('photo-preview-container').classList.add('hidden');
+      document.getElementById('detective-result').classList.add('hidden');
+      currentPhotoBase64 = null;
+      document.getElementById('photo-input').value = '';
+    }
+
+    function analyzePhoto() {
+      if (!currentPhotoBase64) return;
+      
+      const resultEl = document.getElementById('detective-result');
+      resultEl.classList.remove('hidden');
+      
+      const mockResponses = [
+        {
+          name: "English oak (Quercus robur)",
+          facts: [
+            "This tree could easily be 150+ years old",
+            "Squirrels and wild boar love its acorns",
+            "Folk wisdom calls it the king of the forest"
+          ],
+          score: 87,
+          comment: "Park classic. Bold and confident. AI gives it 9/10 for sheer epicness."
+        },
+        {
+          name: "Great tit (Parus major)",
+          facts: [
+            "A clever bird — it can solve simple puzzles",
+            "Often visits feeders in winter",
+            "Sings beautiful trills"
+          ],
+          score: 94,
+          comment: "Great spot! Great tits are among the boldest birds in the park."
+        },
+        {
+          name: "Sphagnum moss",
+          facts: [
+            "Can absorb up to 20× its weight in water",
+            "Was used as a wound dressing in wartime",
+            "Only grows in very damp places"
+          ],
+          score: 72,
+          comment: "Nice eye! That's a whole tiny world under your feet."
+        },
+        {
+          name: "Pose: \"I found treasure\"",
+          facts: [
+            "The person in the photo looks extremely pleased",
+            "They probably just spotted something awesome",
+            "AI recommends repeating this pose in every photo"
+          ],
+          score: 65,
+          comment: "Ha — great energy. This is already party-meme material."
+        }
+      ];
+      
+      const res = mockResponses[Math.floor(Math.random() * mockResponses.length)];
+      
+      document.getElementById('result-name').innerHTML = res.name;
+      document.getElementById('result-score').innerHTML = res.score;
+      
+      const factsHtml = res.facts.map(f => 
+        `<div class="fun-fact text-xs px-3 py-2 rounded-xl flex gap-x-2">
+          <span class="text-emerald-400">•</span> 
+          <span>${f}</span>
+        </div>`
+      ).join('');
+      document.getElementById('result-facts').innerHTML = factsHtml;
+      
+      document.getElementById('result-comment').innerHTML = 
+        `<i class="fa-solid fa-robot mr-1.5 text-emerald-400"></i> ${res.comment}`;
+      
+      window.lastDetectiveResult = {
+        name: res.name,
+        score: res.score,
+        type: "Detective"
+      };
+    }
+
+    function generateChallenges() {
+      const container = document.getElementById('challenges-list');
+      container.innerHTML = '';
+      
+      const challenges = [
+        { id: 1, text: "Find something that looks like a heart", type: "photo", points: 25 },
+        { id: 2, text: "Record a sound like a bird (5 seconds)", type: "audio", points: 30 },
+        { id: 3, text: "Photo 3 people standing in the same pose", type: "photo", points: 40 },
+        { id: 4, text: "Find an object you could use as a musical instrument", type: "photo", points: 20 },
+        { id: 5, text: "Snap something red + explain why it's cool", type: "photo+text", points: 35 },
+      ];
+      
+      challenges.forEach(ch => {
+        const div = document.createElement('div');
+        div.className = `bg-zinc-950 border border-zinc-800 rounded-2xl p-3 flex items-center gap-x-3`;
+        div.innerHTML = `
+          <div class="flex-1">
+            <div class="text-sm">${ch.text}</div>
+            <div class="flex items-center gap-x-2 mt-1">
+              <span class="text-[10px] px-2 py-px bg-zinc-900 rounded">${ch.type}</span>
+              <span class="text-emerald-400 text-xs font-mono">+${ch.points} pts</span>
+            </div>
+          </div>
+          <button onclick="completeChallenge(${ch.id}, this)" 
+                  class="px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 rounded-xl whitespace-nowrap">
+            Complete
+          </button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function completeChallenge(id, btn) {
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
+      btn.disabled = true;
+      
+      setTimeout(() => {
+        const success = Math.random() > 0.15;
+        
+        if (success) {
+          btn.outerHTML = `<div class="text-emerald-400 text-xs px-3 flex items-center"><i class="fa-solid fa-check mr-1"></i> +${20 + Math.floor(Math.random()*25)} pts</div>`;
+          
+          const entry = {
+            name: "Scavenger mission #" + id,
+            score: 20 + Math.floor(Math.random() * 25),
+            type: "Scavenger"
+          };
+          addToLeaderboardDirect(entry);
+        } else {
+          btn.outerHTML = `<div class="text-red-400 text-xs px-3">AI wasn't convinced 😅 Try again</div>`;
+        }
+      }, 1400);
+    }
+
+    let currentCharadesWord = '';
+
+    const charadesWords = [
+      "Squirrel hiding a nut", "Person scared of a spider", "Tree swaying in the wind",
+      "Bird singing on a branch", "Kids playing tag", "Dog sniffing a flower",
+      "Person photographing the sunset", "Leaf falling from a tree", "Frog jumping into a puddle"
+    ];
+
+    function newCharadesWord() {
+      currentCharadesWord = charadesWords[Math.floor(Math.random() * charadesWords.length)];
+      document.getElementById('charades-word').innerHTML = currentCharadesWord;
+      document.getElementById('charades-result').classList.add('hidden');
+    }
+
+    function startCharadesRecording() {
+      if (!currentCharadesWord) {
+        newCharadesWord();
+      }
+      
+      const result = document.getElementById('charades-result');
+      result.classList.remove('hidden');
+      
+      const guesses = [
+        { guess: currentCharadesWord, conf: 87 },
+        { guess: "An animal doing something", conf: 64 },
+        { guess: "A person in the park", conf: 52 }
+      ];
+      
+      const chosen = guesses[Math.floor(Math.random() * guesses.length)];
+      
+      document.getElementById('charades-guess').innerHTML = chosen.guess;
+      document.getElementById('charades-confidence').innerHTML = 
+        `AI confidence: <span class="font-mono">${chosen.conf}%</span>`;
+      
+      window.lastCharades = { word: currentCharadesWord, guess: chosen.guess, conf: chosen.conf };
+    }
+
+    function rateCharades() {
+      const entry = {
+        name: "Charades: " + (window.lastCharades?.word || "game"),
+        score: Math.floor(Math.random() * 40) + 45,
+        type: "Charades"
+      };
+      addToLeaderboardDirect(entry);
+      alert("Thanks! Result added to the leaderboard.");
+    }
+
+    function capturePhotoForCaptions() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.capture = 'environment';
+      
+      input.onchange = function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+          currentPhotoForCaptions = ev.target.result;
+          const preview = document.getElementById('captions-preview');
+          preview.src = currentPhotoForCaptions;
+          document.getElementById('captions-preview-container').classList.remove('hidden');
+          document.getElementById('captions-result').classList.add('hidden');
+        };
+        reader.readAsDataURL(file);
+      };
+      
+      input.click();
+    }
+
+    function generateCaptions() {
+      const container = document.getElementById('captions-result');
+      container.innerHTML = '';
+      container.classList.remove('hidden');
+      
+      const captions = [
+        "When you realize the park works fine without Wi‑Fi",
+        "AI: \"That's clearly someone who just found signal\"",
+        "Facial expression: \"I won the lottery… or just ate ice cream\"",
+        "Official title: \"Person who is way too happy about nature\"",
+        "This pose screams: \"I'm at the party and life is good\"",
+        "10/10 vibes. AI approves."
+      ];
+      
+      captions.forEach((cap, i) => {
+        const div = document.createElement('div');
+        div.className = `bg-zinc-950 border border-amber-900/40 p-3 rounded-2xl flex gap-x-3 items-start cursor-pointer hover:border-amber-600`;
+        div.innerHTML = `
+          <div class="flex-1 text-sm">${cap}</div>
+          <div onclick="voteCaption(this, ${i})" class="text-xs bg-zinc-900 px-3 py-1 rounded-xl whitespace-nowrap self-start">Vote</div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function voteCaption(el, index) {
+      const parent = el.parentElement;
+      parent.style.borderColor = '#f59e0b';
+      el.innerHTML = 'Vote counted!';
+      el.style.pointerEvents = 'none';
+      
+      setTimeout(() => {
+        const entry = {
+          name: "Caption #" + (index + 1),
+          score: 55 + Math.floor(Math.random() * 30),
+          type: "Caption battle"
+        };
+        addToLeaderboardDirect(entry);
+      }, 800);
+    }
+
+    function addToLeaderboard() {
+      if (!window.lastDetectiveResult) return;
+      addToLeaderboardDirect(window.lastDetectiveResult);
+      window.lastDetectiveResult = null;
+    }
+
+    function addToLeaderboardDirect(entry) {
+      leaderboard.unshift({
+        ...entry,
+        time: new Date().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'})
+      });
+      
+      if (leaderboard.length > 12) leaderboard.pop();
+      
+      localStorage.setItem('parkLeaderboard', JSON.stringify(leaderboard));
+      renderLeaderboard();
+      
+      confettiBurst();
+    }
+
+    function renderLeaderboard() {
+      const container = document.getElementById('leaderboard');
+      container.innerHTML = '';
+      
+      if (leaderboard.length === 0) {
+        container.innerHTML = `<div class="p-4 text-xs text-center text-zinc-500">Empty for now. Make your first discovery!</div>`;
+        return;
+      }
+      
+      leaderboard.forEach((item, idx) => {
+        const div = document.createElement('div');
+        div.className = `leaderboard-item px-4 py-3 flex items-center gap-x-3 ${idx === 0 ? 'bg-emerald-950/30' : ''}`;
+        div.innerHTML = `
+          <div class="w-6 text-center font-mono text-xs text-emerald-400">${idx + 1}</div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm truncate">${item.name}</div>
+            <div class="text-[10px] text-zinc-500">${item.type} • ${item.time}</div>
+          </div>
+          <div class="font-mono font-semibold text-lg text-emerald-400">${item.score}</div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function clearLeaderboard() {
+      if (confirm('Clear the leaderboard?')) {
+        leaderboard = [];
+        localStorage.removeItem('parkLeaderboard');
+        renderLeaderboard();
+      }
+    }
+
+    function confettiBurst() {
+      const colors = ['#22c55e', '#86efac', '#4ade80'];
+      for (let i = 0; i < 28; i++) {
+        setTimeout(() => {
+          const conf = document.createElement('div');
+          conf.style.position = 'fixed';
+          conf.style.left = Math.random() * 100 + 'vw';
+          conf.style.top = '-10px';
+          conf.style.width = '8px';
+          conf.style.height = '8px';
+          conf.style.background = colors[Math.floor(Math.random() * colors.length)];
+          conf.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+          conf.style.zIndex = '99999';
+          conf.style.pointerEvents = 'none';
+          conf.style.opacity = Math.random() + 0.4;
+          document.body.appendChild(conf);
+          
+          const duration = 1400 + Math.random() * 800;
+          conf.animate([
+            { transform: `translateY(0) rotate(0deg)` },
+            { transform: `translateY(${window.innerHeight + 100}px) rotate(${Math.random()*360}deg)` }
+          ], {
+            duration: duration,
+            easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)'
+          }).onfinish = () => conf.remove();
+        }, i * 1.5);
+      }
+    }
+
+    let mediaRecorder;
+    let audioChunks = [];
+
+    function startAudioCapture(onComplete) {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          mediaRecorder = new MediaRecorder(stream);
+          audioChunks = [];
+          
+          mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+          
+          mediaRecorder.onstop = () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            onComplete(audioBlob);
+            stream.getTracks().forEach(t => t.stop());
+          };
+          
+          mediaRecorder.start();
+          
+          setTimeout(() => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+              mediaRecorder.stop();
+            }
+          }, 6000);
+        })
+        .catch(err => {
+          alert('Microphone unavailable. You can use a photo instead.');
+        });
+    }
+
+    function init() {
+      initTailwind();
+      document.getElementById('mode-1').classList.remove('hidden');
+      renderLeaderboard();
+      
+      console.log('%c[AI Park Games] Ready. Open on your phone. For real AI — connect OpenAI/Groq.', 'color:#666');
+      
+      const header = document.querySelector('.park-gradient');
+      if (header) {
+        header.addEventListener('click', () => {
+          const facts = [
+            "Perfect park weather for AI games right now 🌲",
+            "AI just awarded you +10 curiosity points",
+            "The rarest thing in this park — people without phones"
+          ];
+          const fact = facts[Math.floor(Math.random()*facts.length)];
+          const toast = document.createElement('div');
+          toast.className = `fixed bottom-4 left-1/2 -translate-x-1/2 bg-zinc-900 border border-zinc-700 text-xs px-4 py-2 rounded-2xl shadow`;
+          toast.textContent = fact;
+          document.body.appendChild(toast);
+          setTimeout(() => toast.remove(), 2200);
+        });
+      }
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>

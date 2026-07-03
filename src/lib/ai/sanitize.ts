@@ -81,8 +81,8 @@ export function sanitizeChallengeJudgement(value: ChallengeJudgementLike) {
   const score = clampNumber(value.score, 5, 1, 10);
   return {
     score,
-    feedback: cleanString(value.feedback, "Молча принято."),
-    verdict: cleanString(value.verdict, `${score} из 10. Идём дальше.`),
+    feedback: cleanString(value.feedback, "Accepted silently."),
+    verdict: cleanString(value.verdict, `${score} out of 10. Moving on.`),
   };
 }
 
@@ -142,7 +142,7 @@ export function sanitizePhotoRanking(value: PhotoRankingLike, photos: RankedPhot
     if (!validPlayerIds.has(playerId) || seen.has(playerId)) return;
     seen.set(playerId, {
       rank: clampNumber(entry?.rank, 99, 1, Math.max(photos.length, 1)),
-      comment: cleanString(entry?.comment, "Дух парка промолчал."),
+      comment: cleanString(entry?.comment, "The park spirit stayed silent."),
       order,
     });
   });
@@ -151,7 +151,7 @@ export function sanitizePhotoRanking(value: PhotoRankingLike, photos: RankedPhot
     if (!seen.has(photo.playerId)) {
       seen.set(photo.playerId, {
         rank: 99,
-        comment: "Дух парка проглядел тебя.",
+        comment: "The park spirit overlooked you.",
         order: rawRanking.length + index,
       });
     }
@@ -167,6 +167,6 @@ export function sanitizePhotoRanking(value: PhotoRankingLike, photos: RankedPhot
 
   return {
     ranking,
-    verdict: cleanString(value.verdict, "Ну, кто-то выиграл, кто-то нет. Идём дальше."),
+    verdict: cleanString(value.verdict, "Someone won, someone didn't. Moving on."),
   };
 }

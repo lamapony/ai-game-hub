@@ -1,25 +1,25 @@
-// Fallback questions for "Кто здесь бот?" — used when the AI generator is unreachable.
+// Fallback questions for "Who's the Bot?" — used when the AI generator is unreachable.
 export type ImpostorQuestion = {
   id: string;
   text: string;
 };
 
 export const IMPOSTOR_QUESTION_CATALOG: ImpostorQuestion[] = [
-  { id: "excuse-late", text: "Самая нелепая отмазка, чтобы уйти с вечеринки пораньше?" },
-  { id: "cocktail-name", text: "Как бы назывался коктейль в честь сегодняшнего вечера?" },
-  { id: "bar-superpower", text: "Бесполезная суперспособность, которая пригодится только в баре?" },
-  { id: "toast-worst", text: "Худший тост, который можно произнести на дне рождения?" },
+  { id: "excuse-late", text: "Silliest excuse to leave the party early?" },
+  { id: "cocktail-name", text: "What would tonight's cocktail be called?" },
+  { id: "bar-superpower", text: "Useless superpower that only helps in a bar?" },
+  { id: "toast-worst", text: "Worst toast you could give at a birthday?" },
   {
     id: "dating-bio",
-    text: "Первая строчка анкеты в приложении для знакомств, после которой сразу свайпают влево?",
+    text: "First line of a dating profile that gets an instant left swipe?",
   },
-  { id: "secret-menu", text: "Что должно быть в секретном меню этой бодеги?" },
-  { id: "hangover-cure", text: "Народное средство от похмелья, которое звучит как заговор?" },
-  { id: "karaoke-ban", text: "Песня, которую стоило бы запретить в караоке навсегда?" },
-  { id: "wifi-name", text: "Название вай-фая, по которому сразу понятно, что за люди тут живут?" },
-  { id: "last-message", text: "Сообщение в 3 часа ночи, после которого лучше сменить номер?" },
-  { id: "job-title", text: "Выдуманная должность, которая звучит важно, но ничего не значит?" },
-  { id: "museum-item", text: "Какой предмет с этой вечеринки попадёт в музей через 100 лет?" },
+  { id: "secret-menu", text: "What should be on this bodega's secret menu?" },
+  { id: "hangover-cure", text: "Folk hangover cure that sounds like a witchcraft spell?" },
+  { id: "karaoke-ban", text: "Song that should be banned from karaoke forever?" },
+  { id: "wifi-name", text: "Wi-Fi name that instantly tells you what kind of people live here?" },
+  { id: "last-message", text: "3 AM text after which you should probably change your number?" },
+  { id: "job-title", text: "Made-up job title that sounds important but means nothing?" },
+  { id: "museum-item", text: "Which item from this party ends up in a museum in 100 years?" },
 ];
 
 export function pickImpostorQuestion(

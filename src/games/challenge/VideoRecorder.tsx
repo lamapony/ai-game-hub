@@ -94,7 +94,7 @@ export function VideoRecorder({
       streamRef.current = null;
       if (blob.size < 10_000) {
         setState("error");
-        setErr("Слишком короткое видео");
+        setErr("Video too short");
         return;
       }
       setState("uploading");
@@ -136,8 +136,8 @@ export function VideoRecorder({
           <div className="absolute inset-0 grid place-items-center bg-black/60 text-center px-4">
             <div className="text-white">
               <div className="text-5xl">🎥</div>
-              <div className="font-display text-xl mt-2">Готов снимать?</div>
-              <div className="text-xs text-white/60 mt-1">Дай доступ к камере и микрофону</div>
+              <div className="font-display text-xl mt-2">Ready to film?</div>
+              <div className="text-xs text-white/60 mt-1">Allow camera and microphone access</div>
             </div>
           </div>
         )}
@@ -154,8 +154,8 @@ export function VideoRecorder({
         {state === "uploading" && (
           <div className="absolute inset-0 grid place-items-center bg-black/70 text-white text-center">
             <div>
-              <div className="font-display text-xl">Отправляем духу парка…</div>
-              <div className="text-xs text-white/60 mt-1">Распознаём речь, нарезаем кадры</div>
+              <div className="font-display text-xl">Sending to the park spirit…</div>
+              <div className="text-xs text-white/60 mt-1">Transcribing speech, slicing frames</div>
             </div>
           </div>
         )}
@@ -166,7 +166,7 @@ export function VideoRecorder({
           onClick={openCamera}
           className="w-full rounded-3xl bg-[var(--color-park-bright)] text-[oklch(0.18_0.05_160)] py-5 text-lg font-medium"
         >
-          📷 Открыть камеру
+          📷 Open camera
         </button>
       )}
       {state === "preview" && (
@@ -174,7 +174,7 @@ export function VideoRecorder({
           onClick={start}
           className="w-full rounded-3xl bg-red-500 text-white py-6 text-xl font-display"
         >
-          ● Поехали! ({Math.round(maxMs / 1000)}с)
+          ● Let&apos;s go! ({Math.round(maxMs / 1000)}s)
         </button>
       )}
       {state === "recording" && (
@@ -182,12 +182,12 @@ export function VideoRecorder({
           onClick={stop}
           className="w-full rounded-3xl bg-red-500 text-white py-6 text-xl font-display animate-pulse"
         >
-          ⏹ Стоп
+          ⏹ Stop
         </button>
       )}
       {state === "done" && (
         <div className="rounded-3xl bg-[var(--color-park-bright)]/15 border border-[var(--color-park-bright)]/40 text-white py-5 text-center">
-          ✓ Видео улетело судье. Ждём вердикт.
+          ✓ Video sent to the judge. Waiting for verdict.
         </div>
       )}
       {err && <p className="text-sm text-red-300 text-center">{err}</p>}

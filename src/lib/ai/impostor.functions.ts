@@ -1,12 +1,12 @@
-// Server functions for "Кто здесь бот?" — AI writes one answer among the humans' answers,
+// Server functions for "Who's the Bot?" — AI writes one answer among the humans' answers,
 // players hunt for it. AI here is the gameplay itself, not a decorator.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { eventProfile } from "../event-profile";
 import { venuePromptContext, type VenueInput } from "./venue";
 
-const VOICE = `Ты — ${eventProfile.hostPersona.ru}, ведущий вечеринки ${eventProfile.title}. Голос: ${eventProfile.hostPersona.voiceRu}.
-Всегда отвечай на русском. Всегда возвращай строгий валидный JSON, без markdown-обёрток.`;
+const VOICE = `You are the ${eventProfile.hostPersona.name}, host of the ${eventProfile.title} party. Voice: ${eventProfile.hostPersona.voice}.
+Always reply in English. Always return strict valid JSON, with no markdown wrappers.`;
 
 function cleanLine(value: unknown, fallback: string, maxLength = 140) {
   const text = typeof value === "string" ? value.trim().replace(/\s+/g, " ") : "";
@@ -28,28 +28,28 @@ export const generateImpostorQuestion = createServerFn({ method: "POST" })
       (data.pastQuestions ?? [])
         .slice(-6)
         .map((q) => `- ${q}`)
-        .join("\n") || "(пока ничего)";
+        .join("\n") || "(none yet)";
     try {
       const r = await chatJSON<{ question: string; intro: string }>({
         system: VOICE,
         user: `${venuePromptContext(data.venue)}
 
-Придумай ОДИН вопрос для игры «Кто здесь бот?». Каждый игрок напишет короткий смешной ответ с телефона, а ты втайне добавишь свой. Потом все ищут ответ бота.
+Invent ONE question for the game "Who's the Bot?". Each player writes a short funny answer on their phone, and you secretly add yours. Then everyone hunts for the bot's answer.
 
-Вопрос должен быть:
-- открытым, без правильного ответа — только остроумие;
-- коротким (до 15 слов), чтобы ответить одной фразой;
-- смешным для компании взрослых друзей, слегка дерзким — можно про бары, отношения, неловкость;
-- НЕ викториной и НЕ «фактическим» вопросом.
+The question must be:
+- open-ended, with no right answer — wit only;
+- short (up to 15 words), answerable in one phrase;
+- funny for a group of adult friends, slightly cheeky — bars, relationships, awkwardness are fair game;
+- NOT a quiz and NOT a factual question.
 
-Примеры стиля (НЕ копируй):
-- «Худший комплимент, который можно сделать бармену?»
-- «Как называется твоя автобиография, если писать её сегодня вечером?»
+Style examples (do NOT copy):
+- "Worst compliment you could give a bartender?"
+- "What would your autobiography be called if you wrote it tonight?"
 
-Избегай недавних:
+Avoid recent questions:
 ${avoid}
 
-Также напиши intro (1 фраза, до 12 слов) — её ведущий скажет голосом перед раундом.
+Also write an intro (1 phrase, up to 12 words) that the host says out loud before the round.
 
 JSON: { "question": "...", "intro": "..." }`,
         temperature: 0.95,
@@ -58,7 +58,7 @@ JSON: { "question": "...", "intro": "..." }`,
       if (!question) throw new Error("empty question");
       return {
         question,
-        intro: cleanLine(r.intro, "Ищем бота среди своих."),
+        intro: cleanLine(r.intro, "Hunting for the bot among our own."),
       };
     } catch (error) {
       console.error("[AI fallback] generateImpostorQuestion", error);
@@ -78,20 +78,20 @@ export const generateImpostorAnswer = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }): Promise<{ answer: string; fallback?: true }> => {
     const { chatJSON } = await import("../ai-gateway.server");
-    const samples = data.humanAnswers.map((a) => `- ${a}`).join("\n") || "(люди ещё думают)";
+    const samples = data.humanAnswers.map((a) => `- ${a}`).join("\n") || "(people still thinking)";
     try {
       const r = await chatJSON<{ answer: string }>({
-        system: `Ты — игрок в социальной игре. Твоя задача — написать ответ, НЕОТЛИЧИМЫЙ от ответа живого человека на вечеринке. Отвечай на русском строгим валидным JSON.`,
-        user: `Вопрос: «${data.question}»
+        system: `You are a player in a social party game. Your job is to write an answer INDISTINGUISHABLE from a real human at the party. Reply in English with strict valid JSON.`,
+        user: `Question: "${data.question}"
 
-Вот как ответили живые люди (подстройся под их длину, тон и небрежность):
+Here is how real people answered (match their length, tone, and messiness):
 ${samples}
 
-Правила маскировки:
-- Одна короткая фраза, как пишут с телефона на вечеринке. Можно без заглавной буквы, без точки.
-- НЕ будь слишком остроумным и отполированным — это выдаёт бота.
-- НЕ используй канцелярит, тире посередине фразы и слово «однако».
-- Не повторяй чужие ответы, но и не выделяйся.
+Masking rules:
+- One short phrase, like someone typing on their phone at a party. Lowercase is fine, no period needed.
+- Do NOT be too witty or polished — that gives the bot away.
+- Do NOT use corporate speak, em dashes mid-sentence, or the word "however".
+- Do not repeat others' answers, but do not stand out either.
 
 JSON: { "answer": "..." }`,
         temperature: 0.9,
@@ -101,7 +101,7 @@ JSON: { "answer": "..." }`,
       return { answer };
     } catch (error) {
       console.error("[AI fallback] generateImpostorAnswer", error);
-      return { answer: "ну такое, я бы просто ушёл", fallback: true };
+      return { answer: "idk i'd probably just leave", fallback: true };
     }
   });
 
@@ -121,22 +121,22 @@ export const impostorRevealComment = createServerFn({ method: "POST" })
     try {
       const r = await chatJSON<{ verdict: string }>({
         system: VOICE,
-        user: `В игре «Кто здесь бот?» ты писал ответ «${data.aiAnswer}» на вопрос «${data.question}».
-Тебя вычислили ${data.caughtCount} из ${data.totalVoters} голосовавших.
+        user: `In "Who's the Bot?" you wrote the answer "${data.aiAnswer}" to the question "${data.question}".
+${data.caughtCount} out of ${data.totalVoters} voters caught you.
 
-Скажи ОДНУ фразу (до 16 слов) как ведущий: если поймали почти все — признай поражение с достоинством и уколи их; если почти никто — позлорадствуй, что люди неотличимы от машин.
+Say ONE phrase (up to 16 words) as the host: if almost everyone caught you — admit defeat with dignity and roast them; if almost nobody did — gloat that humans are indistinguishable from machines.
 
 JSON: { "verdict": "..." }`,
         temperature: 0.9,
       });
-      return { verdict: cleanLine(r.verdict, "Раунд закрыт. Бот остаётся среди вас.", 200) };
+      return { verdict: cleanLine(r.verdict, "Round closed. The bot remains among you.", 200) };
     } catch (error) {
       console.error("[AI fallback] impostorRevealComment", error);
       return {
         verdict:
           data.caughtCount > data.totalVoters / 2
-            ? "Поймали. В следующий раз буду притворяться лучше."
-            : "Большинство не отличило меня от людей. Делайте выводы.",
+            ? "Caught. Next time I'll pretend better."
+            : "Most of you couldn't tell me from a human. Draw your conclusions.",
         fallback: true,
       };
     }

@@ -46,7 +46,7 @@ export function WhoAmongHost({ roomId, state }: { roomId: string; state: RoomSta
     if (introSpokenRef.current) return;
     introSpokenRef.current = true;
     speak(
-      `Игра «Кто из нас». ${wa.totalRounds} раундов. На экране — острый вопрос, а вы тайно голосуете за того, кто подходит больше всех.`,
+      `Who Among Us. ${wa.totalRounds} rounds. A spicy question on screen — secretly vote for whoever fits best.`,
     );
     const t = window.setTimeout(() => startRound(), 3500);
     return () => window.clearTimeout(t);
@@ -78,11 +78,11 @@ export function WhoAmongHost({ roomId, state }: { roomId: string; state: RoomSta
       .map((id) => state.players.find((p) => p.id === id)?.name)
       .filter(Boolean);
     if (starNames.length === 1) {
-      speak(`Звезда раунда — ${starNames[0]}!`);
+      speak(`Round star — ${starNames[0]}!`);
     } else if (starNames.length > 1) {
-      speak(`Звёзды раунда — ${starNames.join(" и ")}!`);
+      speak(`Round stars — ${starNames.join(" and ")}!`);
     } else {
-      speak("В этом раунде никто не получил голосов.");
+      speak("Nobody got votes this round.");
     }
 
     void updateRoomState(roomId, {
@@ -139,26 +139,25 @@ export function WhoAmongHost({ roomId, state }: { roomId: string; state: RoomSta
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-            Кто из нас
+            Who Among Us
           </div>
           <h2 className="font-display text-3xl mt-1">
-            Раунд {Math.min(wa.roundNumber, wa.totalRounds)} / {wa.totalRounds}
+            Round {Math.min(wa.roundNumber, wa.totalRounds)} / {wa.totalRounds}
           </h2>
         </div>
         <PhasePill phase={wa.phase} />
       </header>
 
       {wa.phase === "briefing" && (
-        <Panel title="Готовимся">
+        <Panel title="Getting ready">
           <p className="text-muted-foreground">
-            Сейчас пойдёт первый вопрос. Игроки тайно голосуют за того, кто лучше всех подходит под
-            описание.
+            First question coming up. Players secretly vote for whoever fits the description best.
           </p>
         </Panel>
       )}
 
       {wa.phase === "voting" && wa.prompt && (
-        <Panel title="Голосование">
+        <Panel title="Voting">
           <p className="font-display text-2xl sm:text-3xl leading-snug">{wa.prompt}</p>
           {wa.voteEndsAt && (
             <div className="mt-4 font-display text-4xl tabular-nums">
@@ -170,14 +169,14 @@ export function WhoAmongHost({ roomId, state }: { roomId: string; state: RoomSta
       )}
 
       {wa.phase === "reveal" && lastResult && (
-        <Panel title="Звезда раунда">
+        <Panel title="Round star">
           <p className="text-sm text-muted-foreground">{lastResult.prompt}</p>
           <RevealBars state={state} result={lastResult} />
         </Panel>
       )}
 
       {wa.phase === "results" && (
-        <Panel title="Главные звёзды вечера">
+        <Panel title="Stars of the night">
           <div className="space-y-2">
             {starRanking.length > 0 ? (
               starRanking.map((entry, i) => {
@@ -193,13 +192,13 @@ export function WhoAmongHost({ roomId, state }: { roomId: string; state: RoomSta
                       {i + 1}. {player?.name ?? "?"} {i === 0 && "👑"}
                     </span>
                     <span className="opacity-80">
-                      {entry.starCount}× звезда · {entry.votesReceived} голосов
+                      {entry.starCount}× star · {entry.votesReceived} votes
                     </span>
                   </div>
                 );
               })
             ) : (
-              <p className="text-sm text-muted-foreground">Пока без звёзд — бывает!</p>
+              <p className="text-sm text-muted-foreground">No stars yet — it happens!</p>
             )}
           </div>
           <div className="mt-4 grid sm:grid-cols-2 gap-2">
@@ -227,7 +226,7 @@ export function WhoAmongHost({ roomId, state }: { roomId: string; state: RoomSta
             }
             className="mt-4 rounded-2xl bg-white/10 hover:bg-white/15 px-4 py-2 text-sm"
           >
-            ↺ В лобби
+            ↺ Back to lobby
           </button>
         </Panel>
       )}
@@ -261,10 +260,10 @@ function buildStarRanking(
 
 function PhasePill({ phase }: { phase: WhoAmongState["phase"] }) {
   const label = {
-    briefing: "Старт",
-    voting: "Голосуем",
-    reveal: "Итог",
-    results: "Финал",
+    briefing: "Start",
+    voting: "Voting",
+    reveal: "Result",
+    results: "Final",
   }[phase];
   return (
     <span className="rounded-full bg-white/10 px-3 py-1 text-xs uppercase tracking-widest">
@@ -286,7 +285,7 @@ function VoteTally({ state, wa }: { state: RoomState; wa: WhoAmongState }) {
   const voted = Object.keys(wa.votes ?? {}).length;
   return (
     <p className="text-sm text-muted-foreground mt-2">
-      Проголосовало {voted} из {state.players.length}
+      {voted} of {state.players.length} voted
     </p>
   );
 }
@@ -333,7 +332,7 @@ function RevealBars({
         );
       })}
       {ranked.length === 0 && (
-        <p className="text-sm text-muted-foreground">Никто не получил голосов в этом раунде.</p>
+        <p className="text-sm text-muted-foreground">Nobody got votes this round.</p>
       )}
     </div>
   );

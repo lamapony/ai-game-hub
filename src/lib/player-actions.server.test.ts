@@ -199,7 +199,7 @@ describe("player server actions", () => {
         totalRounds: 5,
         usedPromptIds: [],
         promptId: "chaos",
-        prompt: "Кто устроит хаос?",
+        prompt: "Who would cause chaos?",
         voteEndsAt: 12_000,
       },
     });
