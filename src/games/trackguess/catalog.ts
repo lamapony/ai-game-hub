@@ -11,17 +11,19 @@ export type CatalogTrack = {
 };
 
 /**
- * Improved catalog for TrackGuess ("Real or AI?")
- * 
- * Base tracks use royalty-free Mixkit previews (playable).
- * For much harder rounds see:
- *   - spotify-suggestions.ts (ready tracks on Spotify)
- *   - recommended-tracks.md (Suno prompts + hyper-real ideas)
- * 
- * Goal: Blur the line for grill + bar party.
+ * Track catalog for TrackGuess ("Real or AI?")
+ *
+ * Playable tracks use royalty-free sources (Mixkit + SoundHelix for more variety).
+ * These are base/demo tracks.
+ *
+ * For hard, realistic rounds with real human performances:
+ * - Use spotify-suggestions.ts
+ * - Add via TrackVault in the Host UI (supports Spotify sourceUrl)
+ *
+ * Grill + Bar theme: prefer acoustic, soul, lounge, live-feel tracks.
  */
 
-// === REAL TRACKS (human-produced stock, more varied) ===
+// === PLAYABLE REAL TRACKS (royalty-free, human-produced feel) ===
 const REAL_TRACKS: CatalogTrack[] = [
   {
     id: "real-lounge",
@@ -36,7 +38,7 @@ const REAL_TRACKS: CatalogTrack[] = [
     id: "real-acoustic-guitar",
     title: "Acoustic Morning",
     artist: "Mixkit",
-    genre: "Acoustic / Fingerstyle",
+    genre: "Acoustic Guitar",
     url: "https://assets.mixkit.co/music/preview/mixkit-guitar-ascend-2326.mp3",
     isAi: false,
     sourceLabel: "Mixkit",
@@ -45,7 +47,7 @@ const REAL_TRACKS: CatalogTrack[] = [
     id: "real-piano-intimate",
     title: "Piano Moment",
     artist: "Mixkit",
-    genre: "Piano / Intimate",
+    genre: "Intimate Piano",
     url: "https://assets.mixkit.co/music/preview/mixkit-piano-horror-669.mp3",
     isAi: false,
     sourceLabel: "Mixkit",
@@ -54,7 +56,7 @@ const REAL_TRACKS: CatalogTrack[] = [
     id: "real-ambient-warm",
     title: "Silent Description",
     artist: "Mixkit",
-    genre: "Ambient / Warm",
+    genre: "Warm Ambient",
     url: "https://assets.mixkit.co/music/preview/mixkit-silent-description-1218.mp3",
     isAi: false,
     sourceLabel: "Mixkit",
@@ -63,14 +65,42 @@ const REAL_TRACKS: CatalogTrack[] = [
     id: "real-pop-acoustic",
     title: "Life is a Wonder",
     artist: "Mixkit",
-    genre: "Pop / Acoustic",
+    genre: "Acoustic Pop",
     url: "https://assets.mixkit.co/music/preview/mixkit-life-is-a-wonder-369.mp3",
     isAi: false,
     sourceLabel: "Mixkit",
   },
+  // Additional real tracks from SoundHelix (free for testing)
+  {
+    id: "real-soundhelix-1",
+    title: "SoundHelix Song 1",
+    artist: "SoundHelix",
+    genre: "Acoustic / Guitar",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    isAi: false,
+    sourceLabel: "SoundHelix",
+  },
+  {
+    id: "real-soundhelix-2",
+    title: "SoundHelix Song 2",
+    artist: "SoundHelix",
+    genre: "Folk / Instrumental",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+    isAi: false,
+    sourceLabel: "SoundHelix",
+  },
+  {
+    id: "real-soundhelix-16",
+    title: "SoundHelix Song 16",
+    artist: "SoundHelix",
+    genre: "Chill / Guitar",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3",
+    isAi: false,
+    sourceLabel: "SoundHelix",
+  },
 ];
 
-// === AI TRACKS (synthetic but trying to be less obvious) ===
+// === PLAYABLE AI / SYNTHETIC TRACKS ===
 const AI_TRACKS: CatalogTrack[] = [
   {
     id: "ai-synth-bar",
@@ -84,7 +114,7 @@ const AI_TRACKS: CatalogTrack[] = [
     id: "ai-scifi-atmosphere",
     title: "Sci-Fi Intro",
     artist: "Synthetic",
-    genre: "Atmospheric / Synthwave",
+    genre: "Atmospheric Synth",
     url: "https://assets.mixkit.co/music/preview/mixkit-sci-fi-intro-898.mp3",
     isAi: true,
   },
@@ -114,24 +144,49 @@ const AI_TRACKS: CatalogTrack[] = [
   },
 ];
 
-// === SPOTIFY HARD MODE SUGGESTIONS (not playable yet) ===
-// These are real tracks on Spotify. Use them via custom tracks or inspiration.
-// See spotify-suggestions.ts for full list with search terms.
-const SPOTIFY_HARD_REAL: Partial<CatalogTrack>[] = [
-  // Cool live performances
-  { id: "spotify-hozier-live", title: "Take Me To Church (Live/Tiny Desk)", artist: "Hozier", genre: "Soul / Live", isAi: false, sourceLabel: "Spotify" },
-  { id: "spotify-jacob-collier", title: "Tiny Desk (Live)", artist: "Jacob Collier", genre: "Vocal Jazz / Live", isAi: false, sourceLabel: "Spotify" },
-  // Hyper-real / AI-like real
-  { id: "spotify-charli-360", title: "360", artist: "Charli XCX", genre: "Hyperpop", isAi: false, sourceLabel: "Spotify" },
-  { id: "spotify-charli-vondutch", title: "Von dutch", artist: "Charli XCX", genre: "Hyperpop / Digital", isAi: false, sourceLabel: "Spotify" },
-];
-
 export const TRACK_CATALOG: CatalogTrack[] = [
   ...REAL_TRACKS,
   ...AI_TRACKS,
 ];
 
-export const SPOTIFY_SUGGESTED = SPOTIFY_HARD_REAL;
+// Spotify suggestions (for reference and quick adding via UI)
+export const SPOTIFY_REAL_SUGGESTIONS = [
+  {
+    title: "Take Me To Church (Tiny Desk)",
+    artist: "Hozier",
+    genre: "Soul / Live Performance",
+    search: "Hozier Tiny Desk",
+    why: "Raw, emotional live vocal - perfect human performance",
+  },
+  {
+    title: "Tiny Desk Concert",
+    artist: "Jacob Collier",
+    genre: "Vocal / Jazz Live",
+    search: "Jacob Collier Tiny Desk",
+    why: "Insane vocal skill and harmonies - very hard to fake",
+  },
+  {
+    title: "360",
+    artist: "Charli XCX",
+    genre: "Hyperpop",
+    search: "Charli XCX 360",
+    why: "Hyper-produced, digital, uncanny - feels AI-like",
+  },
+  {
+    title: "Von dutch",
+    artist: "Charli XCX",
+    genre: "Hyperpop / Digital",
+    search: "Charli XCX Von dutch",
+    why: "Extremely clean production - blurs real/AI line",
+  },
+  {
+    title: "Tiny Desk",
+    artist: "Billie Eilish",
+    genre: "Intimate Pop Live",
+    search: "Billie Eilish Tiny Desk",
+    why: "Natural intimate live take",
+  },
+];
 
 export function getCatalogTrack(trackId: string | undefined): CatalogTrack | null {
   if (!trackId) return null;
@@ -154,11 +209,10 @@ export function pickCatalogTrack(usedTrackIds: string[], random = Math.random())
   return pickTrackFromPool(TRACK_CATALOG, usedTrackIds, random);
 }
 
-// For future: mix in Spotify suggestions when user adds custom tracks
 export function getAllRealTracks(): CatalogTrack[] {
-  return TRACK_CATALOG.filter(t => !t.isAi);
+  return TRACK_CATALOG.filter((t) => !t.isAi);
 }
 
 export function getAllAiTracks(): CatalogTrack[] {
-  return TRACK_CATALOG.filter(t => t.isAi);
+  return TRACK_CATALOG.filter((t) => t.isAi);
 }
