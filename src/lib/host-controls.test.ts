@@ -270,7 +270,7 @@ describe("host controls state helpers", () => {
         roundNumber: 1,
         totalRounds: 5,
         usedTrackIds: [],
-        trackId: "real-lounge",
+        trackId: "real-soundhelix-1",
         guessEndsAt: now + 20_000,
       },
     });

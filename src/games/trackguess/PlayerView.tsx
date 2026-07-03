@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { friendlyPlayerActionError } from "@/lib/player-action-errors";
 import { postPlayerAction } from "@/lib/player-action-client";
 import { formatClock } from "@/lib/team-style";
 import { GameRulesChecklist } from "@/components/game-rules-ui";
 import type { RoomState } from "@/lib/types";
+import { TrackAudioPlayer } from "./TrackAudioPlayer";
 
 export function TrackGuessPlayer({
   roomId,
@@ -18,28 +19,11 @@ export function TrackGuessPlayer({
   const [now, setNow] = useState(Date.now());
   const [pendingChoice, setPendingChoice] = useState<"real" | "ai" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(t);
   }, []);
-
-  useEffect(() => {
-    if (state.paused || tg.phase !== "listening" || !tg.trackUrl) return;
-    const audio = new Audio(tg.trackUrl);
-    audioRef.current = audio;
-    audio.play().catch(() => {});
-    return () => {
-      audio.pause();
-      audioRef.current = null;
-    };
-  }, [state.paused, tg.phase, tg.trackUrl, tg.roundNumber]);
-
-  useEffect(() => {
-    if (!state.paused) return;
-    audioRef.current?.pause();
-  }, [state.paused]);
 
   useEffect(() => {
     setPendingChoice(null);
@@ -87,7 +71,7 @@ export function TrackGuessPlayer({
         <H>Listen closely</H>
         <div className="font-display text-4xl tabular-nums mt-2">{formatClock(remaining)}</div>
         <P>{tg.trackGenre}</P>
-        {tg.trackUrl && <audio src={tg.trackUrl} controls className="mt-4 w-full" />}
+        {tg.trackUrl && <TrackAudioPlayer src={tg.trackUrl} disabled={!!state.paused} />}
         <P className="mt-3">No rush — voting opens soon.</P>
       </Card>
     );

@@ -13,8 +13,8 @@ export type CatalogTrack = {
 /**
  * Track catalog for TrackGuess ("Real or AI?")
  *
- * Playable tracks use royalty-free sources (Mixkit + SoundHelix for more variety).
- * These are base/demo tracks.
+ * Playable tracks avoid providers that block hotlinked previews. Real tracks use
+ * SoundHelix test MP3s; synthetic tracks are local generated assets.
  *
  * For hard, realistic rounds with real human performances:
  * - Use spotify-suggestions.ts
@@ -25,52 +25,6 @@ export type CatalogTrack = {
 
 // === PLAYABLE REAL TRACKS (royalty-free, human-produced feel) ===
 const REAL_TRACKS: CatalogTrack[] = [
-  {
-    id: "real-lounge",
-    title: "Retro Lounge",
-    artist: "Mixkit",
-    genre: "Jazz / Lounge",
-    url: "https://assets.mixkit.co/music/preview/mixkit-retro-lounge-140.mp3",
-    isAi: false,
-    sourceLabel: "Mixkit",
-  },
-  {
-    id: "real-acoustic-guitar",
-    title: "Acoustic Morning",
-    artist: "Mixkit",
-    genre: "Acoustic Guitar",
-    url: "https://assets.mixkit.co/music/preview/mixkit-guitar-ascend-2326.mp3",
-    isAi: false,
-    sourceLabel: "Mixkit",
-  },
-  {
-    id: "real-piano-intimate",
-    title: "Piano Moment",
-    artist: "Mixkit",
-    genre: "Intimate Piano",
-    url: "https://assets.mixkit.co/music/preview/mixkit-piano-horror-669.mp3",
-    isAi: false,
-    sourceLabel: "Mixkit",
-  },
-  {
-    id: "real-ambient-warm",
-    title: "Silent Description",
-    artist: "Mixkit",
-    genre: "Warm Ambient",
-    url: "https://assets.mixkit.co/music/preview/mixkit-silent-description-1218.mp3",
-    isAi: false,
-    sourceLabel: "Mixkit",
-  },
-  {
-    id: "real-pop-acoustic",
-    title: "Life is a Wonder",
-    artist: "Mixkit",
-    genre: "Acoustic Pop",
-    url: "https://assets.mixkit.co/music/preview/mixkit-life-is-a-wonder-369.mp3",
-    isAi: false,
-    sourceLabel: "Mixkit",
-  },
-  // Additional real tracks from SoundHelix (free for testing)
   {
     id: "real-soundhelix-1",
     title: "SoundHelix Song 1",
@@ -135,6 +89,51 @@ const REAL_TRACKS: CatalogTrack[] = [
     sourceLabel: "SoundHelix",
   },
   {
+    id: "real-soundhelix-8",
+    title: "SoundHelix Song 8",
+    artist: "SoundHelix",
+    genre: "Indie / Instrumental",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+    isAi: false,
+    sourceLabel: "SoundHelix",
+  },
+  {
+    id: "real-soundhelix-9",
+    title: "SoundHelix Song 9",
+    artist: "SoundHelix",
+    genre: "Guitar / Pop Rock",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3",
+    isAi: false,
+    sourceLabel: "SoundHelix",
+  },
+  {
+    id: "real-soundhelix-10",
+    title: "SoundHelix Song 10",
+    artist: "SoundHelix",
+    genre: "Acoustic / Groove",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3",
+    isAi: false,
+    sourceLabel: "SoundHelix",
+  },
+  {
+    id: "real-soundhelix-11",
+    title: "SoundHelix Song 11",
+    artist: "SoundHelix",
+    genre: "Instrumental / Rock",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3",
+    isAi: false,
+    sourceLabel: "SoundHelix",
+  },
+  {
+    id: "real-soundhelix-12",
+    title: "SoundHelix Song 12",
+    artist: "SoundHelix",
+    genre: "Chill / Instrumental",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3",
+    isAi: false,
+    sourceLabel: "SoundHelix",
+  },
+  {
     id: "real-soundhelix-16",
     title: "SoundHelix Song 16",
     artist: "SoundHelix",
@@ -150,42 +149,47 @@ const AI_TRACKS: CatalogTrack[] = [
   {
     id: "ai-synth-bar",
     title: "Virtual Pulse",
-    artist: "Synthetic",
+    artist: "Local Synthetic",
     genre: "Synth / Electronic",
-    url: "https://assets.mixkit.co/music/preview/mixkit-virtual-reality-842.mp3",
+    url: "/assets/tracks/ai-virtual-pulse.mp3",
     isAi: true,
+    sourceLabel: "Local generated",
   },
   {
     id: "ai-scifi-atmosphere",
-    title: "Sci-Fi Intro",
-    artist: "Synthetic",
+    title: "Neon Lullaby",
+    artist: "Local Synthetic",
     genre: "Atmospheric Synth",
-    url: "https://assets.mixkit.co/music/preview/mixkit-sci-fi-intro-898.mp3",
+    url: "/assets/tracks/ai-neon-lullaby.mp3",
     isAi: true,
+    sourceLabel: "Local generated",
   },
   {
     id: "ai-digital-glitch",
     title: "Digital Clock",
-    artist: "Synthetic",
+    artist: "Local Synthetic",
     genre: "Glitch / IDM",
-    url: "https://assets.mixkit.co/music/preview/mixkit-digital-clock-927.mp3",
+    url: "/assets/tracks/ai-digital-clock.mp3",
     isAi: true,
+    sourceLabel: "Local generated",
   },
   {
     id: "ai-urban-beat",
-    title: "Deep Urban",
-    artist: "Synthetic",
-    genre: "Techno / Beat",
-    url: "https://assets.mixkit.co/music/preview/mixkit-deep-urban-623.mp3",
+    title: "Circuit Funk",
+    artist: "Local Synthetic",
+    genre: "Synthetic Funk",
+    url: "/assets/tracks/ai-circuit-funk.mp3",
     isAi: true,
+    sourceLabel: "Local generated",
   },
   {
     id: "ai-worldbeat",
-    title: "Games Worldbeat",
-    artist: "Synthetic",
-    genre: "World / Chiptune",
-    url: "https://assets.mixkit.co/music/preview/mixkit-games-worldbeat-466.mp3",
+    title: "Plastic Choir",
+    artist: "Local Synthetic",
+    genre: "Synthetic Vocal Pad",
+    url: "/assets/tracks/ai-plastic-choir.mp3",
     isAi: true,
+    sourceLabel: "Local generated",
   },
 ];
 

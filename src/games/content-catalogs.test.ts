@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { IMPOSTOR_QUESTION_CATALOG } from "./impostor/catalog";
 import { SPECTRUM_PROMPTS } from "./spectrumcourt/catalog";
 import { pickBalancedTrackFromPool, TRACK_CATALOG, type CatalogTrack } from "./trackguess/catalog";
@@ -37,5 +39,14 @@ describe("game content catalogs", () => {
     expect(pickBalancedTrackFromPool(pool, ["real-1"], 0.1).isAi).toBe(true);
     expect(pickBalancedTrackFromPool(pool, ["ai-1"], 0.1).isAi).toBe(false);
     expect(pickBalancedTrackFromPool(pool, ["real-1", "ai-1"], 0.1).id).toBe("real-2");
+  });
+
+  test("track catalog avoids blocked preview hosts and missing local audio", () => {
+    for (const catalogTrack of TRACK_CATALOG) {
+      expect(catalogTrack.url.includes("assets.mixkit.co")).toBe(false);
+      if (catalogTrack.url.startsWith("/assets/")) {
+        expect(existsSync(join(process.cwd(), "public", catalogTrack.url.slice(1)))).toBe(true);
+      }
+    }
   });
 });

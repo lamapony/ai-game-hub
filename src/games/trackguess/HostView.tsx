@@ -22,6 +22,7 @@ import {
   type CustomRealTrack,
 } from "./custom-tracks";
 import { scoreTrackGuessRound } from "./scoring";
+import { TrackAudioPlayer } from "./TrackAudioPlayer";
 
 function speak(text: string) {
   const a = new Audio(`/api/speak?text=${encodeURIComponent(text)}`);
@@ -32,7 +33,6 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
   const tg = state.trackguess!;
   const [now, setNow] = useState(Date.now());
   const [customTracks, setCustomTracks] = useState<CustomRealTrack[]>(() => loadCustomRealTracks());
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const introSpokenRef = useRef(false);
   const scoredRoundRef = useRef<string | null>(null);
   const advancedRoundRef = useRef<string | null>(null);
@@ -43,11 +43,6 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
     const t = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(t);
   }, []);
-
-  useEffect(() => {
-    if (!state.paused) return;
-    audioRef.current?.pause();
-  }, [state.paused]);
 
   const update = (patch: Partial<TrackGuessState>) =>
     updateRoomState(roomId, { ...state, trackguess: { ...tg, ...patch } });
@@ -97,24 +92,11 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
     );
   }, [state.paused, tg.phase, tg.totalRounds]);
 
-  // Play audio during listening
-  useEffect(() => {
-    if (state.paused || tg.phase !== "listening" || !tg.trackUrl) return;
-    const audio = new Audio(tg.trackUrl);
-    audioRef.current = audio;
-    audio.play().catch(() => {});
-    return () => {
-      audio.pause();
-      audioRef.current = null;
-    };
-  }, [state.paused, tg.phase, tg.trackUrl, tg.roundNumber]);
-
   // listening → guessing
   useEffect(() => {
     if (state.paused) return;
     if (tg.phase !== "listening") return;
     if (!tg.listeningEndsAt || now < tg.listeningEndsAt) return;
-    audioRef.current?.pause();
     void update({
       phase: "guessing",
       guessEndsAt: Date.now() + TRACK_GUESS_GUESS_MS,
@@ -259,7 +241,7 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
             </div>
           )}
           {tg.trackUrl && tg.phase === "listening" && (
-            <audio src={tg.trackUrl} controls className="mt-4 w-full max-w-md" />
+            <TrackAudioPlayer src={tg.trackUrl} disabled={!!state.paused} className="max-w-md" />
           )}
         </Panel>
       )}
