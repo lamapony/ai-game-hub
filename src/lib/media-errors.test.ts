@@ -5,15 +5,15 @@ describe("friendlyMediaError", () => {
   test("explains denied microphone permission", () => {
     const error = new DOMException("Permission denied", "NotAllowedError");
 
-    expect(friendlyMediaError(error, "microphone")).toContain("микрофону");
-    expect(friendlyMediaError(error, "microphone")).toContain("Разреши доступ");
+    expect(friendlyMediaError(error, "microphone")).toContain("microphone");
+    expect(friendlyMediaError(error, "microphone")).toContain("Allow access");
   });
 
   test("explains unavailable camera/microphone device", () => {
     const error = new DOMException("No device", "NotFoundError");
 
-    expect(friendlyMediaError(error, "camera-microphone")).toContain("Устройство не нашло");
-    expect(friendlyMediaError(error, "camera-microphone")).toContain("камере и микрофону");
+    expect(friendlyMediaError(error, "camera-microphone")).toContain("Device did not find");
+    expect(friendlyMediaError(error, "camera-microphone")).toContain("camera and microphone");
   });
 
   test("keeps unknown media errors visible", () => {
@@ -27,21 +27,21 @@ describe("friendlyUploadError", () => {
   test("maps network upload failures to retry guidance", () => {
     const message = friendlyUploadError(new Error("Network request failed"), "video");
 
-    expect(message).toContain("видео");
-    expect(message).toContain("пропала сеть");
+    expect(message).toContain("video");
+    expect(message).toContain("network dropped");
   });
 
   test("maps missing signed url to retry guidance", () => {
     const message = friendlyUploadError(new Error("no signed url"), "photo");
 
-    expect(message).toContain("кадр");
-    expect(message).toContain("Попробуй отправить ещё раз");
+    expect(message).toContain("photo");
+    expect(message).toContain("Try sending again");
   });
 
   test("maps oversize payloads to shorter recording guidance", () => {
     const message = friendlyUploadError(new Error("413 Payload Too Large"), "audio");
 
-    expect(message).toContain("звук");
-    expect(message).toContain("файл слишком большой");
+    expect(message).toContain("sound");
+    expect(message).toContain("file too large");
   });
 });

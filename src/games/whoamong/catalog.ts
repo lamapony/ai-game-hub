@@ -49,6 +49,15 @@ export const PROMPT_CATALOG: CatalogPrompt[] = [
   { id: "late-legend", text: "Кто из нас опаздывает даже на онлайн-встречу?" },
   { id: "drama-queen", text: "Кто из нас раздувает маленькую историю до эпического сериала?" },
   { id: "lucky-charm", text: "Кто из нас носит «счастливые» носки на важные события?" },
+  { id: "bar-tab", text: "Кто из нас скажет «я угощаю» и втайне будет страдать весь вечер?" },
+  { id: "toast-master", text: "Кто из нас произнесёт тост на 5 минут, забыв, за что пьём?" },
+  { id: "bartender-friend", text: "Кто из нас подружится с барменом за один вечер?" },
+  { id: "cocktail-menu", text: "Кто из нас читает коктейльное меню как философский трактат?" },
+  { id: "last-dance", text: "Кто из нас уйдёт из бара последним, выключая за собой свет?" },
+  {
+    id: "storyteller",
+    text: "Кто из нас завтра будет рассказывать про этот вечер лучше, чем он был?",
+  },
 ];
 
 export function getCatalogPrompt(promptId: string | undefined): CatalogPrompt | null {

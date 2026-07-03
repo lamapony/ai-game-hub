@@ -30,6 +30,7 @@ export const GAME_IDS: GameId[] = [
   "trackguess",
   "spectrumcourt",
   "whoamong",
+  "impostor",
 ];
 
 const soundRecordingMin = Math.round(SOUND_RECORDING_MS / 60_000);
@@ -105,6 +106,19 @@ export const GAME_RULES: Record<GameId, GameRules> = {
     ],
     scoring: "0–10 by distance; clue team gets the best opponent score",
     minPlayers: "2+ active teams",
+  },
+  impostor: {
+    title: "Who's the Bot?",
+    emoji: "🤖",
+    tagline: "Everyone writes a witty answer — one is secretly AI",
+    steps: [
+      "A question appears — write a funny answer on your phone",
+      "AI secretly slips its own answer into the pile",
+      "All answers appear anonymously — vote for the bot's one",
+      "Reveal: spot the bot for points, or get mistaken for it",
+    ],
+    scoring: "Spot the bot +3; +1 per vote your answer steals",
+    minPlayers: "3+ players",
   },
   whoamong: {
     title: "Who Among Us",

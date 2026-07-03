@@ -3,9 +3,29 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { eventProfile } from "../event-profile";
 import { sanitizePhotoRanking, sanitizeTask } from "./sanitize";
+import { venuePromptContext } from "./venue";
 
 const VOICE = `Ты — ${eventProfile.hostPersona.ru}, ведущий вечеринки ${eventProfile.title}. Голос: ${eventProfile.hostPersona.voiceRu}.
 Всегда отвечай на русском. Всегда возвращай строгий валидный JSON, без markdown-обёрток.`;
+
+const BAR_FALLBACK_TASKS = [
+  {
+    task: "Сфоткай натюрморт из того, что есть на столе, который выглядит как обложка джазового альбома.",
+    intro: "Стол — теперь студия звукозаписи.",
+  },
+  {
+    task: "Сними кадр, который доказывает, что этот бар скрывает тёмное прошлое.",
+    intro: "Бодега что-то знает.",
+  },
+  {
+    task: "Найди в баре предмет, который выглядит самым разочарованным в этом вечере.",
+    intro: "Ищем усталость среди бокалов.",
+  },
+  {
+    task: "Сделай фото соседа так, чтобы оно годилось на обложку делового журнала «Успех».",
+    intro: "Форбс уже звонит.",
+  },
+];
 
 const FALLBACK_TASKS = [
   {
@@ -26,10 +46,10 @@ const FALLBACK_TASKS = [
   },
 ];
 
-function fallbackPhotoTask(pastTasks: string[] = []) {
+function fallbackPhotoTask(pastTasks: string[] = [], venue?: "park" | "bar") {
+  const pool = venue === "bar" ? BAR_FALLBACK_TASKS : FALLBACK_TASKS;
   return (
-    FALLBACK_TASKS.find((task) => !pastTasks.includes(task.task)) ??
-    FALLBACK_TASKS[pastTasks.length % FALLBACK_TASKS.length]
+    pool.find((task) => !pastTasks.includes(task.task)) ?? pool[pastTasks.length % pool.length]
   );
 }
 
@@ -38,6 +58,7 @@ export const generatePhotoTask = createServerFn({ method: "POST" })
     z
       .object({
         pastTasks: z.array(z.string()).optional(),
+        venue: z.enum(["park", "bar"]).optional(),
       })
       .parse(input),
   )
@@ -51,11 +72,13 @@ export const generatePhotoTask = createServerFn({ method: "POST" })
     try {
       const r = await chatJSON<{ task: string; intro: string }>({
         system: VOICE,
-        user: `Придумай ОДНО задание для фотоохоты. Все игроки одновременно бегут по парку и должны за 60 секунд сделать ОДИН снимок на телефон, который лучше других попадёт в задание.
+        user: `${venuePromptContext(data.venue)}
+
+Придумай ОДНО задание для фотоохоты. Все игроки одновременно должны за 60 секунд сделать ОДИН снимок на телефон, который лучше других попадёт в задание. Задание обязано быть выполнимым в текущей локации.
 Задание должно быть:
-- абсурдным, но физически выполнимым в обычном городском парке;
+- абсурдным, но физически выполнимым здесь и сейчас;
 - ОДНОЗНАЧНЫМ для оценки (можно посмотреть фото и понять, насколько попал);
-- провоцировать креатив, а не просто «сфоткай дерево».
+- провоцировать креатив, а не просто «сфоткай что видишь».
 
 Примеры стиля (НЕ копируй):
 - «Найди объект, который выглядит самым одиноким в этом парке».
@@ -71,10 +94,10 @@ ${avoid}
 JSON: { "task": "...", "intro": "..." }`,
         temperature: 0.95,
       });
-      return sanitizeTask(r, fallbackPhotoTask(data.pastTasks));
+      return sanitizeTask(r, fallbackPhotoTask(data.pastTasks, data.venue));
     } catch (error) {
       console.error("[AI fallback] generatePhotoTask", error);
-      return { ...fallbackPhotoTask(data.pastTasks), fallback: true };
+      return { ...fallbackPhotoTask(data.pastTasks, data.venue), fallback: true };
     }
   });
 

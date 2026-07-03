@@ -5,7 +5,7 @@ import { addTeamToState, removeTeamFromState, renameTeamInState, suggestTeamName
 describe("team helpers", () => {
   test("suggestTeamName increments from current count", () => {
     const state = emptyRoomState();
-    expect(suggestTeamName(state.teams)).toBe("Команда 5");
+    expect(suggestTeamName(state.teams)).toBe("Team 5");
   });
 
   test("addTeamToState appends a team with the next color", () => {

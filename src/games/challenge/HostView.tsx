@@ -119,6 +119,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
         data: {
           operatorName: ch.operatorName,
           pastTasks: history.map((h) => h.task),
+          venue: state.venue,
         },
       });
       // speak intro + task via slot 1

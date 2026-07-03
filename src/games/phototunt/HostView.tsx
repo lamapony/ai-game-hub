@@ -80,7 +80,9 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
   async function generate() {
     setBusy("Дух парка придумывает охоту…");
     try {
-      const r = await generatePhotoTask({ data: { pastTasks: ph.pastTasks ?? [] } });
+      const r = await generatePhotoTask({
+        data: { pastTasks: ph.pastTasks ?? [], venue: state.venue },
+      });
       // speak intro + task once
       if (taskSpokenRef.current !== ph.roundId) {
         taskSpokenRef.current = ph.roundId;

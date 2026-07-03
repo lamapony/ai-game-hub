@@ -82,7 +82,16 @@ export type ChallengeState = {
 };
 
 export type GameId =
-  "soundscape" | "challenge" | "phototunt" | "trackguess" | "spectrumcourt" | "whoamong";
+  | "soundscape"
+  | "challenge"
+  | "phototunt"
+  | "trackguess"
+  | "spectrumcourt"
+  | "whoamong"
+  | "impostor";
+
+/** Where the party is happening right now — affects AI prompts and available games. */
+export type Venue = "park" | "bar";
 
 export type WhoAmongPhase = "briefing" | "voting" | "reveal" | "results";
 
@@ -212,12 +221,50 @@ export type SpectrumCourtState = {
   roundResults?: SpectrumCourtRoundResult[];
 };
 
+export type ImpostorPhase = "briefing" | "answering" | "voting" | "reveal" | "results";
+
+export type ImpostorAnswer = {
+  id: string;
+  /** Missing playerId means the answer was written by AI. */
+  playerId?: string;
+  text: string;
+};
+
+export type ImpostorRoundResult = {
+  questionId: string;
+  question: string;
+  answers: ImpostorAnswer[];
+  aiAnswerId: string;
+  votes: Record<string, string>;
+  correctVoterIds: string[];
+};
+
+export type ImpostorState = {
+  phase: ImpostorPhase;
+  roundId: string;
+  roundNumber: number;
+  totalRounds: number;
+  usedQuestionIds: string[];
+  questionId?: string;
+  question?: string;
+  answers?: Record<string, string>;
+  shuffled?: ImpostorAnswer[];
+  aiAnswerId?: string;
+  votes?: Record<string, string>;
+  answerEndsAt?: number;
+  voteEndsAt?: number;
+  revealEndsAt?: number;
+  roundResults?: ImpostorRoundResult[];
+  aiFallback?: boolean;
+};
+
 export type RoomState = {
   hostName: string;
   status: "lobby" | "playing" | "finished";
   teams: Team[];
   players: Player[];
   currentGame: GameId | null;
+  venue?: Venue;
   paused?: {
     startedAt: number;
   };
@@ -227,6 +274,7 @@ export type RoomState = {
   trackguess?: TrackGuessState;
   spectrumcourt?: SpectrumCourtState;
   whoamong?: WhoAmongState;
+  impostor?: ImpostorState;
   speakerSlots: Record<number, { connected: boolean; name: string; lastSeenAt?: number }>; // 1..5
 };
 

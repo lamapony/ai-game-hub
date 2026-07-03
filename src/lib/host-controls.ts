@@ -17,6 +17,9 @@ const SPECTRUM_COURT_APPEAL_MS = 18_000;
 const SPECTRUM_COURT_REVEAL_MS = 10_000;
 const WHO_AMONG_VOTE_MS = 25_000;
 const WHO_AMONG_REVEAL_MS = 10_000;
+const IMPOSTOR_ANSWER_MS = 75_000;
+const IMPOSTOR_VOTE_MS = 45_000;
+const IMPOSTOR_REVEAL_MS = 14_000;
 
 export const SOUNDSCAPE_FALLBACK_TOPIC = "Morning park sounds";
 export const SPECTRUM_COURT_FALLBACK_CLUE = "No clue — trust the team instinct!";
@@ -117,6 +120,14 @@ export function resumeRoomState(state: RoomState, now = Date.now()): RoomState {
           revealEndsAt: shiftTime(state.whoamong.revealEndsAt, deltaMs),
         }
       : undefined,
+    impostor: state.impostor
+      ? {
+          ...state.impostor,
+          answerEndsAt: shiftTime(state.impostor.answerEndsAt, deltaMs),
+          voteEndsAt: shiftTime(state.impostor.voteEndsAt, deltaMs),
+          revealEndsAt: shiftTime(state.impostor.revealEndsAt, deltaMs),
+        }
+      : undefined,
   };
 }
 
@@ -132,6 +143,7 @@ export function forceBackToHubState(state: RoomState): RoomState {
     trackguess: undefined,
     spectrumcourt: undefined,
     whoamong: undefined,
+    impostor: undefined,
   };
 }
 
@@ -147,6 +159,7 @@ export function finishPartyState(state: RoomState): RoomState {
     trackguess: undefined,
     spectrumcourt: undefined,
     whoamong: undefined,
+    impostor: undefined,
   };
 }
 
@@ -163,7 +176,12 @@ export function resumePartyState(state: RoomState): RoomState {
     trackguess: undefined,
     spectrumcourt: undefined,
     whoamong: undefined,
+    impostor: undefined,
   };
+}
+
+export function setVenueState(state: RoomState, venue: NonNullable<RoomState["venue"]>): RoomState {
+  return { ...state, venue };
 }
 
 export function resetScoresState(state: RoomState): RoomState {
@@ -260,6 +278,9 @@ export function canSkipCurrentPhase(state: RoomState): boolean {
   }
   if (state.currentGame === "whoamong" && state.whoamong) {
     return ["voting", "reveal"].includes(state.whoamong.phase);
+  }
+  if (state.currentGame === "impostor" && state.impostor) {
+    return ["answering", "voting", "reveal"].includes(state.impostor.phase);
   }
   return false;
 }
@@ -448,6 +469,28 @@ export function skipCurrentPhaseState(state: RoomState, now = Date.now()): RoomS
     }
   }
 
+  if (state.currentGame === "impostor" && state.impostor) {
+    const imp = state.impostor;
+    if (imp.phase === "answering") {
+      return {
+        ...state,
+        impostor: { ...imp, answerEndsAt: now },
+      };
+    }
+    if (imp.phase === "voting") {
+      return {
+        ...state,
+        impostor: { ...imp, voteEndsAt: now },
+      };
+    }
+    if (imp.phase === "reveal") {
+      return {
+        ...state,
+        impostor: { ...imp, revealEndsAt: now },
+      };
+    }
+  }
+
   return state;
 }
 
@@ -464,4 +507,7 @@ export {
   SPECTRUM_COURT_REVEAL_MS,
   WHO_AMONG_VOTE_MS,
   WHO_AMONG_REVEAL_MS,
+  IMPOSTOR_ANSWER_MS,
+  IMPOSTOR_VOTE_MS,
+  IMPOSTOR_REVEAL_MS,
 };

@@ -11,7 +11,9 @@ export type PlayerAction =
   | "spectrumcourt-clue"
   | "spectrumcourt-guess"
   | "spectrumcourt-appeal"
-  | "whoamong-vote";
+  | "whoamong-vote"
+  | "impostor-answer"
+  | "impostor-vote";
 
 export type PlayerActionPayload = {
   action: PlayerAction;
@@ -24,6 +26,8 @@ export type PlayerActionPayload = {
   clue?: string;
   value?: number;
   direction?: SpectrumCourtAppeal["direction"];
+  answer?: string;
+  answerId?: string;
   playerSecretHash?: string;
 };
 
@@ -296,6 +300,53 @@ function whoAmongVoteState(state: RoomState, payload: PlayerActionPayload, now: 
   };
 }
 
+function impostorAnswerState(
+  state: RoomState,
+  payload: PlayerActionPayload,
+  now: number,
+): RoomState {
+  const player = requireAuthorizedPlayer(state, payload);
+  const impostor = state.impostor;
+  if (state.currentGame !== "impostor" || !impostor || impostor.phase !== "answering") {
+    throw statusError("impostor answering is closed", 409);
+  }
+  if (impostor.answerEndsAt && impostor.answerEndsAt < now) {
+    throw statusError("impostor answering is closed", 409);
+  }
+  return {
+    ...state,
+    impostor: {
+      ...impostor,
+      answers: {
+        ...(impostor.answers ?? {}),
+        [player.id]: cleanText(payload.answer, "answer", 140),
+      },
+    },
+  };
+}
+
+function impostorVoteState(state: RoomState, payload: PlayerActionPayload, now: number): RoomState {
+  const player = requireAuthorizedPlayer(state, payload);
+  const answerId = cleanId(payload.answerId, "answerId");
+  const impostor = state.impostor;
+  if (state.currentGame !== "impostor" || !impostor || impostor.phase !== "voting") {
+    throw statusError("impostor voting is closed", 409);
+  }
+  if (impostor.voteEndsAt && impostor.voteEndsAt < now) {
+    throw statusError("impostor voting is closed", 409);
+  }
+  const answer = impostor.shuffled?.find((candidate) => candidate.id === answerId);
+  if (!answer) throw statusError("answer not found", 409);
+  if (answer.playerId === player.id) throw statusError("cannot vote for own answer", 403);
+  return {
+    ...state,
+    impostor: {
+      ...impostor,
+      votes: { ...(impostor.votes ?? {}), [player.id]: answerId },
+    },
+  };
+}
+
 export async function applyPlayerAction(
   state: RoomState,
   payload: PlayerActionPayload,
@@ -317,5 +368,7 @@ export async function applyPlayerAction(
     return spectrumCourtAppealState(state, payload, now);
   }
   if (payload.action === "whoamong-vote") return whoAmongVoteState(state, payload, now);
+  if (payload.action === "impostor-answer") return impostorAnswerState(state, payload, now);
+  if (payload.action === "impostor-vote") return impostorVoteState(state, payload, now);
   throw statusError("unknown player action", 400);
 }
