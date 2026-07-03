@@ -196,8 +196,8 @@ describe("host controls state helpers", () => {
   });
 
   test("spectrumCourtFallbackClue prefers prompt then default text", () => {
-    expect(spectrumCourtFallbackClue({ prompt: "романтика" })).toBe("романтика");
-    expect(spectrumCourtFallbackClue({ prompt: "  " })).toBe("Без подсказки — командная интуиция!");
+    expect(spectrumCourtFallbackClue({ prompt: "romance" })).toBe("romance");
+    expect(spectrumCourtFallbackClue({ prompt: "  " })).toBe("No clue — trust the team instinct!");
   });
 
   test("skip soundscape topics picks top voted topic and starts recording", () => {
@@ -482,33 +482,33 @@ describe("host controls state helpers", () => {
     const tied = computeTeamStandings(
       roomState({
         teams: [
-          { id: "forest", name: "Лисы", color: "green", score: 10 },
-          { id: "lake", name: "Ежи", color: "blue", score: 10 },
-          { id: "fire", name: "Сова", color: "red", score: 3 },
+          { id: "forest", name: "Foxes", color: "green", score: 10 },
+          { id: "lake", name: "Hedgehogs", color: "blue", score: 10 },
+          { id: "fire", name: "Owls", color: "red", score: 3 },
         ],
       }),
     );
     expect(getWinningStandings(tied)).toHaveLength(2);
-    expect(buildWinnerAnnouncement(tied)).toBe("Ничья между Лисы и Ежи! По 10 очков у каждой!");
+    expect(buildWinnerAnnouncement(tied)).toBe("Tie between Foxes and Hedgehogs! 10 points each!");
 
     const solo = computeTeamStandings(
       roomState({
         teams: [
-          { id: "forest", name: "Лисы", color: "green", score: 12 },
-          { id: "lake", name: "Ежи", color: "blue", score: 4 },
+          { id: "forest", name: "Foxes", color: "green", score: 12 },
+          { id: "lake", name: "Hedgehogs", color: "blue", score: 4 },
         ],
       }),
     );
-    expect(buildWinnerAnnouncement(solo)).toBe("Победители вечеринки — команда Лисы! 12 очков!");
+    expect(buildWinnerAnnouncement(solo)).toBe("Party winners: team Foxes! 12 points!");
   });
 
-  test("Russian place and points formatting", () => {
-    expect(formatRussianPlace(1)).toBe("1 место");
-    expect(formatRussianPlace(2)).toBe("2 места");
-    expect(formatRussianPlace(5)).toBe("5 мест");
-    expect(formatRussianPlace(21)).toBe("21 место");
-    expect(formatRussianPoints(1)).toBe("1 очко");
-    expect(formatRussianPoints(3)).toBe("3 очка");
-    expect(formatRussianPoints(11)).toBe("11 очков");
+  test("place and points formatting", () => {
+    expect(formatRussianPlace(1)).toBe("1st");
+    expect(formatRussianPlace(2)).toBe("2nd");
+    expect(formatRussianPlace(5)).toBe("5th");
+    expect(formatRussianPlace(21)).toBe("21st");
+    expect(formatRussianPoints(1)).toBe("1 point");
+    expect(formatRussianPoints(3)).toBe("3 points");
+    expect(formatRussianPoints(11)).toBe("11 points");
   });
 });
