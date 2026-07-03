@@ -159,7 +159,11 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
     // No upload? Skip to results with score 0.
     update({
       phase: "results",
-      result: { score: 0, feedback: "Nobody filmed anything. The park spirit is disappointed.", videoUrl: "" },
+      result: {
+        score: 0,
+        feedback: "Nobody filmed anything. The park spirit is disappointed.",
+        videoUrl: "",
+      },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.paused, now, ch.phase, ch.recordingEndsAt]);
@@ -320,7 +324,9 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
       {ch.phase === "judging" && (
         <Panel>
           <div className="font-display text-2xl">AI is breaking down the scene…</div>
-          <p className="mt-3 text-white/65 text-sm">Transcribing speech and scanning frames. About 10 seconds.</p>
+          <p className="mt-3 text-white/65 text-sm">
+            Transcribing speech and scanning frames. About 10 seconds.
+          </p>
           <div className="mt-4 inline-flex gap-1.5">
             <span className="size-2 rounded-full bg-white/70 animate-pulse" />
             <span className="size-2 rounded-full bg-white/70 animate-pulse [animation-delay:150ms]" />

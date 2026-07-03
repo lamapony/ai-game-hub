@@ -147,8 +147,12 @@ export type TrackGuessPhase = "briefing" | "listening" | "guessing" | "reveal" |
 export type TrackGuessRoundResult = {
   trackId: string;
   title: string;
+  artist?: string;
   genre: string;
   isAi: boolean;
+  sourceLabel?: string;
+  sourceUrl?: string;
+  artworkUrl?: string;
   correctPlayerIds: string[];
 };
 
@@ -160,8 +164,12 @@ export type TrackGuessState = {
   usedTrackIds: string[];
   trackId?: string;
   trackTitle?: string;
+  trackArtist?: string;
   trackGenre?: string;
   trackUrl?: string;
+  trackSourceLabel?: string;
+  trackSourceUrl?: string;
+  trackArtworkUrl?: string;
   listeningEndsAt?: number;
   guessEndsAt?: number;
   revealEndsAt?: number;

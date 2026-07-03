@@ -1,4 +1,5 @@
 import type { RoomState, SpectrumCourtAppeal } from "./types";
+import { isGenericPlayerName, normalizePlayerName } from "./player-name";
 import { assertPlayerSecret, cleanId, statusError } from "./player-auth.server";
 
 export type PlayerAction =
@@ -33,9 +34,12 @@ export type PlayerActionPayload = {
 
 const CHALLENGE_RECORDING_MS = 25_000;
 
-function cleanName(value: unknown, fallback: string) {
-  const name = typeof value === "string" ? value.trim().replace(/\s+/g, " ") : "";
-  return (name || fallback).slice(0, 32);
+function cleanName(value: unknown, currentName?: string) {
+  const name = normalizePlayerName(value);
+  if (name && !isGenericPlayerName(name)) return name;
+  const existing = normalizePlayerName(currentName);
+  if (existing && !isGenericPlayerName(existing)) return existing;
+  throw statusError(name ? "player name cannot be generic" : "player name required", 400);
 }
 
 function cleanText(value: unknown, field: string, maxLength: number) {
@@ -89,7 +93,7 @@ function upsertPlayer(
   if (!payload.playerSecretHash) throw statusError("player authorization required", 401);
   const player = {
     id: playerId,
-    name: cleanName(payload.name, current?.name ?? "Player"),
+    name: cleanName(payload.name, current?.name),
     teamId,
     joinedAt: current?.joinedAt ?? now,
     secretHash: current?.secretHash ?? payload.playerSecretHash,

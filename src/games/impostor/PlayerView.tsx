@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
+import { friendlyPlayerActionError } from "@/lib/player-action-errors";
 import { postPlayerAction } from "@/lib/player-action-client";
 import { formatClock } from "@/lib/team-style";
 import { GameRulesChecklist } from "@/components/game-rules-ui";
+import { eventProfile } from "@/lib/event-profile";
+import { useLocalDraft } from "@/lib/use-local-draft";
 import type { RoomState } from "@/lib/types";
 
 export function ImpostorPlayer({
@@ -15,41 +18,52 @@ export function ImpostorPlayer({
 }) {
   const imp = state.impostor!;
   const [now, setNow] = useState(Date.now());
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft, clearDraft] = useLocalDraft(
+    `${eventProfile.storagePrefix}:draft:${roomId}:${me.id}:impostor:${imp.roundId}:answer`,
+  );
   const [sending, setSending] = useState(false);
+  const [pendingAnswerId, setPendingAnswerId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(t);
   }, []);
 
-  // clear draft when the round moves on
-  useEffect(() => {
-    setDraft("");
-  }, [imp.roundNumber]);
-
   const myAnswer = imp.answers?.[me.id];
   const myVote = imp.votes?.[me.id];
   const lastResult = imp.roundResults?.[imp.roundResults.length - 1];
+
+  useEffect(() => {
+    setSending(false);
+    setPendingAnswerId(null);
+    setActionError(null);
+  }, [imp.phase, imp.roundId]);
 
   async function submitAnswer() {
     const text = draft.trim();
     if (!text || sending) return;
     setSending(true);
+    setActionError(null);
     try {
       await postPlayerAction(roomId, {
         action: "impostor-answer",
         playerId: me.id,
         answer: text,
       });
+      clearDraft();
     } catch (e) {
       console.error(e);
+      setActionError(friendlyPlayerActionError(e, "answer"));
     } finally {
       setSending(false);
     }
   }
 
   async function vote(answerId: string) {
+    if (pendingAnswerId) return;
+    setPendingAnswerId(answerId);
+    setActionError(null);
     try {
       await postPlayerAction(roomId, {
         action: "impostor-vote",
@@ -58,6 +72,9 @@ export function ImpostorPlayer({
       });
     } catch (e) {
       console.error(e);
+      setActionError(friendlyPlayerActionError(e, "vote"));
+    } finally {
+      setPendingAnswerId(null);
     }
   }
 
@@ -67,8 +84,9 @@ export function ImpostorPlayer({
         <Pill>Get ready to write</Pill>
         <H>Who's the Bot?</H>
         <P>
-          A question will appear on screen. Write a funny answer — AI secretly adds its own. Spot the
-          machine answer: +3 if you're right; +1 per vote if people mistake your answer for the bot's.
+          A question will appear on screen. Write a funny answer — AI secretly adds its own. Spot
+          the machine answer: +3 if you're right; +1 per vote if people mistake your answer for the
+          bot's.
         </P>
         <GameRulesChecklist gameId="impostor" />
       </Card>
@@ -112,9 +130,10 @@ export function ImpostorPlayer({
             disabled={sending || !draft.trim()}
             className="rounded-2xl bg-[var(--color-park-bright)] px-4 py-3 font-medium text-[oklch(0.16_0.05_160)] disabled:opacity-50"
           >
-            {myAnswer ? "Rewrite" : "Submit"}
+            {sending ? "Sending…" : myAnswer ? "Rewrite" : "Submit"}
           </button>
         </form>
+        {actionError && <ActionError>{actionError}</ActionError>}
       </Card>
     );
   }
@@ -138,7 +157,7 @@ export function ImpostorPlayer({
               <button
                 key={answer.id}
                 type="button"
-                disabled={mine}
+                disabled={mine || !!pendingAnswerId}
                 onClick={() => void vote(answer.id)}
                 className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
                   selected
@@ -151,10 +170,14 @@ export function ImpostorPlayer({
                 <span className="text-xs text-white/50 mr-2">#{i + 1}</span>
                 <span className="text-white">{answer.text}</span>
                 {mine && <span className="ml-2 text-xs text-white/50">(yours)</span>}
+                {pendingAnswerId === answer.id && (
+                  <span className="ml-2 text-xs text-white/50">sending…</span>
+                )}
               </button>
             );
           })}
         </div>
+        {actionError && <ActionError>{actionError}</ActionError>}
       </div>
     );
   }
@@ -185,8 +208,8 @@ export function ImpostorPlayer({
         </div>
         {myFoolVotes > 0 && (
           <div className="mt-2 rounded-2xl bg-white/10 px-4 py-3 text-center text-sm text-white/80">
-            People mistook your answer for the bot {myFoolVotes} time{myFoolVotes === 1 ? "" : "s"} —
-            +{myFoolVotes} to your team. Talent.
+            People mistook your answer for the bot {myFoolVotes} time{myFoolVotes === 1 ? "" : "s"}{" "}
+            — +{myFoolVotes} to your team. Talent.
           </div>
         )}
       </Card>
@@ -206,8 +229,12 @@ export function ImpostorPlayer({
         <Pill>Final</Pill>
         <H>Your stats</H>
         <div className="mt-3 rounded-2xl bg-white/10 px-4 py-3 text-sm">
-          <div>Caught the bot: {caughtCount} time{caughtCount === 1 ? "" : "s"}</div>
-          <div className="mt-1">Passed for the bot: {fooledCount} vote{fooledCount === 1 ? "" : "s"}</div>
+          <div>
+            Caught the bot: {caughtCount} time{caughtCount === 1 ? "" : "s"}
+          </div>
+          <div className="mt-1">
+            Passed for the bot: {fooledCount} vote{fooledCount === 1 ? "" : "s"}
+          </div>
         </div>
         <P className="mt-3">Full hunter ranking — on the host screen.</P>
       </Card>
@@ -247,5 +274,13 @@ function H({ children, className }: { children: React.ReactNode; className?: str
 function P({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <p className={`text-white/65 text-sm mt-2 leading-relaxed ${className ?? ""}`}>{children}</p>
+  );
+}
+
+function ActionError({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mt-3 rounded-2xl border border-red-300/20 bg-red-500/15 px-4 py-3 text-center text-sm text-red-100">
+      {children}
+    </p>
   );
 }

@@ -25,6 +25,38 @@ const BAR_FALLBACK_TASKS = [
     task: 'Photograph your neighbor so it could be a "Success" business magazine cover.',
     intro: "Forbes is calling.",
   },
+  {
+    task: "Photograph the object on the table most likely to have a secret second life.",
+    intro: "The props are hiding lore.",
+  },
+  {
+    task: "Take a photo that looks like evidence from a very petty crime scene.",
+    intro: "Forensics, but make it stupid.",
+  },
+  {
+    task: "Shoot the most dramatic shadow near the table.",
+    intro: "The lighting has ambition.",
+  },
+  {
+    task: "Find a composition that makes one glass look like the villain of the evening.",
+    intro: "Every glass has a motive.",
+  },
+  {
+    task: "Photograph the most expensive-looking cheap thing within reach.",
+    intro: "Budget luxury, go.",
+  },
+  {
+    task: "Take a photo that could be titled 'before the apology message'.",
+    intro: "Tomorrow is already nervous.",
+  },
+  {
+    task: "Find something that looks like it just overheard gossip.",
+    intro: "Objects are listening.",
+  },
+  {
+    task: "Photograph the exact point where cozy becomes suspicious.",
+    intro: "Comfort has crossed a line.",
+  },
 ];
 
 const FALLBACK_TASKS = [
@@ -43,6 +75,38 @@ const FALLBACK_TASKS = [
   {
     task: "Take a photo where an ordinary thing looks like key historical evidence.",
     intro: "The park spirit is on the case.",
+  },
+  {
+    task: "Photograph the grill setup like it is a crime scene with excellent seasoning.",
+    intro: "The tongs left fingerprints.",
+  },
+  {
+    task: "Find the object that looks most personally betrayed by the weather.",
+    intro: "Nature files a complaint.",
+  },
+  {
+    task: "Take a photo that makes the ground look like an album cover.",
+    intro: "The floor gets a record deal.",
+  },
+  {
+    task: "Photograph something that looks like it gives terrible advice.",
+    intro: "Wisdom has standards today.",
+  },
+  {
+    task: "Find the most heroic-looking piece of trash nearby.",
+    intro: "A small legend rises.",
+  },
+  {
+    task: "Take a photo where smoke, light, or shadow looks like it is judging you.",
+    intro: "The atmosphere has notes.",
+  },
+  {
+    task: "Photograph the worst possible throne for a tiny king.",
+    intro: "Royalty got budget cuts.",
+  },
+  {
+    task: "Find something that looks like it survived a dramatic breakup.",
+    intro: "Emotional damage, outdoors.",
   },
 ];
 

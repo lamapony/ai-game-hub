@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { friendlyPlayerActionError } from "@/lib/player-action-errors";
 import { postPlayerAction } from "@/lib/player-action-client";
 import { formatClock, teamColorClasses } from "@/lib/team-style";
 import { GameRulesChecklist } from "@/components/game-rules-ui";
@@ -15,6 +16,8 @@ export function WhoAmongPlayer({
 }) {
   const wa = state.whoamong!;
   const [now, setNow] = useState(Date.now());
+  const [pendingTargetId, setPendingTargetId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 500);
@@ -24,12 +27,26 @@ export function WhoAmongPlayer({
   const myVote = wa.votes?.[me.id];
   const lastResult = wa.roundResults?.[wa.roundResults.length - 1];
 
+  useEffect(() => {
+    setPendingTargetId(null);
+    setActionError(null);
+  }, [wa.phase, wa.roundNumber]);
+
   async function vote(targetId: string) {
-    await postPlayerAction(roomId, {
-      action: "whoamong-vote",
-      playerId: me.id,
-      targetPlayerId: targetId,
-    });
+    if (pendingTargetId) return;
+    setPendingTargetId(targetId);
+    setActionError(null);
+    try {
+      await postPlayerAction(roomId, {
+        action: "whoamong-vote",
+        playerId: me.id,
+        targetPlayerId: targetId,
+      });
+    } catch (error) {
+      setActionError(friendlyPlayerActionError(error, "vote"));
+    } finally {
+      setPendingTargetId(null);
+    }
   }
 
   if (wa.phase === "briefing") {
@@ -38,8 +55,8 @@ export function WhoAmongPlayer({
         <Pill>Get ready to vote</Pill>
         <H>Who Among Us?</H>
         <P>
-          A spicy question shows on the big screen. Secretly pick the player who fits best — yourself
-          counts too. {wa.totalRounds} rounds: star +3 to team, guessed the star +2.
+          A spicy question shows on the big screen. Secretly pick the player who fits best —
+          yourself counts too. {wa.totalRounds} rounds: star +3 to team, guessed the star +2.
         </P>
         <GameRulesChecklist gameId="whoamong" />
       </Card>
@@ -56,7 +73,9 @@ export function WhoAmongPlayer({
           </Pill>
           <H className="text-left">{wa.prompt}</H>
           {myVote && (
-            <P className="text-[var(--color-park-bright)]">Vote locked in — tap to change your mind</P>
+            <P className="text-[var(--color-park-bright)]">
+              Vote locked in — tap to change your mind
+            </P>
           )}
         </Card>
         <div className="grid grid-cols-2 gap-2">
@@ -70,6 +89,7 @@ export function WhoAmongPlayer({
                 key={player.id}
                 type="button"
                 onClick={() => void vote(player.id)}
+                disabled={!!pendingTargetId}
                 className={`rounded-2xl border px-3 py-4 text-left transition ${
                   selected
                     ? `${c.chip} ring-2 ${c.ring}`
@@ -82,10 +102,14 @@ export function WhoAmongPlayer({
                   {team?.name ?? "?"}
                 </span>
                 <div className="font-display text-lg mt-2">{label}</div>
+                {pendingTargetId === player.id && (
+                  <div className="mt-1 text-xs text-white/60">Sending…</div>
+                )}
               </button>
             );
           })}
         </div>
+        {actionError && <ActionError>{actionError}</ActionError>}
       </div>
     );
   }
@@ -107,12 +131,12 @@ export function WhoAmongPlayer({
           }`}
         >
           {isStar
-            ? "You&apos;re the round star! +3 to team"
+            ? "You're the round star! +3 to team"
             : hitStar
               ? "+2 to team!"
               : myVote
                 ? "Missed the star — next time!"
-                : "You didn&apos;t vote in time"}
+                : "You didn't vote in time"}
         </div>
       </Card>
     );
@@ -169,5 +193,13 @@ function H({ children, className }: { children: React.ReactNode; className?: str
 function P({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <p className={`text-white/65 text-sm mt-2 leading-relaxed ${className ?? ""}`}>{children}</p>
+  );
+}
+
+function ActionError({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="rounded-2xl border border-red-300/20 bg-red-500/15 px-4 py-3 text-center text-sm text-red-100">
+      {children}
+    </p>
   );
 }

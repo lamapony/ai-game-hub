@@ -51,6 +51,11 @@ export function extensionForUpload(action: PlayerUploadAction, mimeType: unknown
   return { mime, extension };
 }
 
+export function assertStorageObjectExists(exists: { data?: boolean | null; error?: unknown }) {
+  if (exists.error) throw exists.error;
+  if (!exists.data) throw statusError("storage object missing", 409);
+}
+
 export function buildPlayerUploadPath(params: {
   roomId: string;
   action: PlayerUploadAction;

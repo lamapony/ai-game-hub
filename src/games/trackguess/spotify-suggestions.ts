@@ -1,7 +1,7 @@
 /**
  * Ready Spotify recommendations for TrackGuess
  * These are "уже готовые залитые" tracks.
- * 
+ *
  * Use for:
  * - Adding as Custom Real Tracks (via TrackVault in game)
  * - Inspiration for AI prompts
@@ -15,11 +15,11 @@ export type SpotifySuggestion = {
   title: string;
   artist: string;
   genre: string;
-  spotifySearch: string;           // Copy this into Spotify search
-  spotifyUrlExample?: string;      // Example full link (find the real one)
-  vibe: string;                    // Why it fits the game
-  difficulty: 'easy' | 'medium' | 'hard';
-  isAiLike?: boolean;              // Sounds somewhat AI / hyper-produced
+  spotifySearch: string; // Copy this into Spotify search
+  spotifyUrlExample?: string; // Example full link (find the real one)
+  vibe: string; // Why it fits the game
+  difficulty: "easy" | "medium" | "hard";
+  isAiLike?: boolean; // Sounds somewhat AI / hyper-produced
 };
 
 export const SPOTIFY_SUGGESTIONS: SpotifySuggestion[] = [
@@ -116,7 +116,7 @@ export const SPOTIFY_SUGGESTIONS: SpotifySuggestion[] = [
 // Helper to turn suggestion into something close to CustomRealTrack format
 export function suggestionToCustomTrack(suggestion: SpotifySuggestion) {
   return {
-    id: `spotify-${suggestion.title.toLowerCase().replace(/\s+/g, '-')}`,
+    id: `spotify-${suggestion.title.toLowerCase().replace(/\s+/g, "-")}`,
     title: suggestion.title,
     artist: suggestion.artist,
     genre: suggestion.genre,

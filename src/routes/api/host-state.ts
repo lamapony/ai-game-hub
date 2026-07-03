@@ -28,14 +28,14 @@ export const Route = createFileRoute("/api/host-state")({
             hostSecret: hostSecretFromRequest(request, body),
           });
           const nextState = body.state as RoomState;
-          await writeAuthorizedRoomState(room.id, nextState);
+          const writtenState = await writeAuthorizedRoomState(room.id, nextState, room.state);
           logInfo("api.host_state.success", {
             durationMs: Date.now() - startedAt,
             status: 200,
             roomId: room.id,
-            currentGame: nextState.currentGame ?? undefined,
+            currentGame: writtenState.currentGame ?? undefined,
           });
-          return Response.json({ state: nextState });
+          return Response.json({ state: writtenState });
         } catch (error) {
           const status =
             error && typeof error === "object" && "status" in error

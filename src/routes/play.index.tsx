@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { storedPlayerResumes } from "@/lib/room";
 
 export const Route = createFileRoute("/play/")({
   component: PlayLanding,
@@ -8,6 +9,12 @@ export const Route = createFileRoute("/play/")({
 function PlayLanding() {
   const nav = useNavigate();
   const [code, setCode] = useState("");
+  const [resume, setResume] = useState<ReturnType<typeof storedPlayerResumes>[number] | null>(null);
+
+  useEffect(() => {
+    setResume(storedPlayerResumes(1)[0] ?? null);
+  }, []);
+
   return (
     <main className="min-h-dvh park-gradient flex items-center justify-center px-5">
       <div className="w-full max-w-sm rounded-3xl bg-black/45 backdrop-blur p-6 border border-white/10">
@@ -16,6 +23,20 @@ function PlayLanding() {
         </div>
         <h1 className="font-display text-3xl text-white mt-1">Enter room code</h1>
         <p className="text-sm text-white/70 mt-2">4 letters from the host screen.</p>
+        {resume && (
+          <button
+            type="button"
+            onClick={() => nav({ to: "/play/$code", params: { code: resume.code } })}
+            className="mt-4 w-full rounded-2xl border border-[var(--color-park-bright)]/40 bg-[var(--color-park-bright)]/15 px-4 py-3 text-left text-white"
+          >
+            <span className="block text-[10px] uppercase tracking-widest text-[var(--color-park-bright)]">
+              Resume
+            </span>
+            <span className="mt-1 block font-display text-xl">
+              {resume.name} · {resume.code}
+            </span>
+          </button>
+        )}
         <input
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}

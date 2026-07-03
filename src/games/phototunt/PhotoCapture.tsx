@@ -20,6 +20,7 @@ export function PhotoCapture({
   }
 
   function onChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const input = e.currentTarget;
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -27,9 +28,11 @@ export function PhotoCapture({
       const url = String(reader.result);
       setPreview(url);
       onCapture(file, url);
+      input.value = "";
     };
     reader.onerror = () => {
       setErr(friendlyUploadError(reader.error, "photo"));
+      input.value = "";
     };
     reader.readAsDataURL(file);
   }

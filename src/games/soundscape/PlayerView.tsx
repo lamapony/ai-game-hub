@@ -1,6 +1,7 @@
 // Soundscape player view: topic vote, recording, voting.
 import { useEffect, useState } from "react";
 import { postPlayerArtifact } from "@/lib/player-artifact-client";
+import { friendlyPlayerActionError } from "@/lib/player-action-errors";
 import { postPlayerAction } from "@/lib/player-action-client";
 import { uploadPlayerMedia } from "@/lib/player-upload-client";
 import { logError } from "@/lib/structured-log";
@@ -63,12 +64,29 @@ function TopicVote({
 }) {
   const snd = state.soundscape!;
   const myVote = snd.topicVotes?.[me.id];
+  const [pendingTopic, setPendingTopic] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPendingTopic(null);
+    setActionError(null);
+  }, [snd.phase, snd.roundId]);
+
   async function vote(t: string) {
-    await postPlayerAction(roomId, {
-      action: "soundscape-topic-vote",
-      playerId: me.id,
-      topic: t,
-    });
+    if (pendingTopic) return;
+    setPendingTopic(t);
+    setActionError(null);
+    try {
+      await postPlayerAction(roomId, {
+        action: "soundscape-topic-vote",
+        playerId: me.id,
+        topic: t,
+      });
+    } catch (error) {
+      setActionError(friendlyPlayerActionError(error, "vote"));
+    } finally {
+      setPendingTopic(null);
+    }
   }
   return (
     <div className="space-y-3">
@@ -84,12 +102,15 @@ function TopicVote({
       {(snd.topics ?? []).map((t) => (
         <button
           key={t}
-          onClick={() => vote(t)}
+          onClick={() => void vote(t)}
+          disabled={!!pendingTopic}
           className={`w-full rounded-3xl border p-5 text-left transition ${myVote === t ? "bg-[var(--color-park-bright)] text-[oklch(0.18_0.05_160)] border-transparent" : "bg-black/40 border-white/10 text-white hover:bg-black/50"}`}
         >
           <div className="font-display text-xl">{t}</div>
+          {pendingTopic === t && <div className="mt-1 text-xs opacity-70">Sending…</div>}
         </button>
       ))}
+      {actionError && <ActionError>{actionError}</ActionError>}
       {!snd.topics && <PassiveCard title="Generating themes…" sub="" />}
     </div>
   );
@@ -204,6 +225,7 @@ function VotePhase({
   const snd = state.soundscape!;
   const [pending, setPending] = useState<string | null>(null);
   const [voted, setVoted] = useState<Record<string, string>>({});
+  const [actionError, setActionError] = useState<string | null>(null);
   const remaining = Math.max(0, (snd.voteOpenAt ?? now) + 30_000 - now);
   const categories = [
     { id: "atmosphere", label: "🔥 Atmosphere" },
@@ -212,17 +234,29 @@ function VotePhase({
   ];
   const otherTeams = state.teams.filter((t) => t.id !== me.teamId && snd.mixes?.[t.id]);
 
-  async function castVote(targetId: string, category: string) {
-    setPending(`${targetId}:${category}`);
-    await postPlayerArtifact(roomId, {
-      action: "soundscape-vote",
-      playerId: me.id,
-      roundId: snd.roundId,
-      targetTeamId: targetId,
-      category,
-    });
+  useEffect(() => {
     setPending(null);
-    setVoted((v) => ({ ...v, [category]: targetId }));
+    setActionError(null);
+  }, [snd.phase, snd.roundId]);
+
+  async function castVote(targetId: string, category: string) {
+    if (pending || voted[category]) return;
+    setPending(`${targetId}:${category}`);
+    setActionError(null);
+    try {
+      await postPlayerArtifact(roomId, {
+        action: "soundscape-vote",
+        playerId: me.id,
+        roundId: snd.roundId,
+        targetTeamId: targetId,
+        category,
+      });
+      setVoted((v) => ({ ...v, [category]: targetId }));
+    } catch (error) {
+      setActionError(friendlyPlayerActionError(error, "vote"));
+    } finally {
+      setPending(null);
+    }
   }
 
   return (
@@ -249,7 +283,7 @@ function VotePhase({
                 <button
                   key={t.id}
                   onClick={() => castVote(t.id, cat.id)}
-                  disabled={!!voted[cat.id]}
+                  disabled={!!voted[cat.id] || !!pending}
                   className={`rounded-2xl border p-3 text-left ${c.chip} ${mine ? "ring-2 ring-white" : ""} disabled:opacity-50`}
                 >
                   <div className="font-medium">{t.name}</div>
@@ -263,6 +297,15 @@ function VotePhase({
           </div>
         </div>
       ))}
+      {actionError && <ActionError>{actionError}</ActionError>}
     </div>
+  );
+}
+
+function ActionError({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="rounded-2xl border border-red-300/20 bg-red-500/15 px-4 py-3 text-center text-sm text-red-100">
+      {children}
+    </p>
   );
 }

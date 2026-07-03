@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   assertPlayerMayUpload,
   assertPlayerStoragePath,
+  assertStorageObjectExists,
   extensionForUpload,
 } from "./player-media.server";
 import type { Player, RoomState } from "./types";
@@ -38,6 +39,15 @@ function rejectedStatus(run: () => unknown) {
     return 0;
   } catch (error) {
     return Number((error as { status?: number }).status ?? 500);
+  }
+}
+
+function caughtError(run: () => unknown) {
+  try {
+    run();
+    return null;
+  } catch (error) {
+    return error;
   }
 }
 
@@ -112,5 +122,15 @@ describe("player media server helpers", () => {
         }),
       ),
     ).toBe(400);
+  });
+
+  test("does not mask storage exists errors as missing uploads", () => {
+    const storageError = new Error("storage temporarily unavailable");
+    expect(caughtError(() => assertStorageObjectExists({ data: false, error: storageError }))).toBe(
+      storageError,
+    );
+
+    expect(rejectedStatus(() => assertStorageObjectExists({ data: false, error: null }))).toBe(409);
+    expect(caughtError(() => assertStorageObjectExists({ data: true, error: null }))).toBeNull();
   });
 });

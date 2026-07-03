@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { postPlayerArtifact } from "@/lib/player-artifact-client";
+import { friendlyPlayerActionError } from "@/lib/player-action-errors";
 import { postPlayerAction } from "@/lib/player-action-client";
 import { uploadPlayerMedia } from "@/lib/player-upload-client";
 import { logError } from "@/lib/structured-log";
@@ -120,13 +121,21 @@ function OperatorReady({ roomId, me, task }: { roomId: string; me: { id: string 
         audio: true,
       });
       stream.getTracks().forEach((t) => t.stop());
+    } catch (e) {
+      console.error(e);
+      setErr(friendlyMediaError(e, "camera-microphone"));
+      setStarting(false);
+      return;
+    }
+
+    try {
       await postPlayerAction(roomId, {
         action: "challenge-start-recording",
         playerId: me.id,
       });
     } catch (e) {
       console.error(e);
-      setErr(friendlyMediaError(e, "camera-microphone"));
+      setErr(friendlyPlayerActionError(e, "recording start"));
       setStarting(false);
     }
   }

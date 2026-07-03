@@ -123,8 +123,11 @@ const {
   genId,
   getHostSecret,
   getOrCreatePlayer,
+  readStoredPlayer,
+  storedPlayerResumes,
   updateRoomState,
 } = await import("./room");
+const { HOST_ACTION_ERROR_EVENT } = await import("./host-action-errors");
 
 function installMemoryStorage() {
   const values = new Map<string, string>();
@@ -285,6 +288,27 @@ describe("room helpers", () => {
     expect(logEvents.some((entry) => entry.event === "room.update.failure")).toBe(true);
   });
 
+  test("updateRoomState emits a host action error event on write failure", async () => {
+    resetTestState();
+    installHostSecret();
+
+    const messages: string[] = [];
+    const listener = (event: Event) => {
+      messages.push((event as CustomEvent<{ message?: string }>).detail?.message ?? "");
+    };
+    window.addEventListener(HOST_ACTION_ERROR_EVENT, listener);
+    mockFetch.response = new Response("write rejected", { status: 500 });
+
+    try {
+      await rejectedMessage(() => updateRoomState("room_1", emptyRoomState("Host")));
+    } finally {
+      window.removeEventListener(HOST_ACTION_ERROR_EVENT, listener);
+    }
+
+    expect(messages.length).toBe(1);
+    expect(messages[0]).toContain("write rejected");
+  });
+
   test("updateRoomState writes the complete state for the target room id", async () => {
     resetTestState();
     installHostSecret();
@@ -322,5 +346,27 @@ describe("room helpers", () => {
     expect(stored.secret).toBe(second.secret);
     expect(stored.name).toBe(second.name);
     expect(stored.teamId).toBe(second.teamId);
+    expect(localStorage.getItem("dimas:last-player-room")).toBe("ABCD");
+    const resume = storedPlayerResumes(1)[0];
+    expect(resume?.code).toBe("ABCD");
+    expect(resume?.id).toBe(second.id);
+    expect(resume?.name).toBe("Mila Prime");
+    expect(resume?.teamId).toBe("lake");
+  });
+
+  test("stored player recovery ignores invalid or generic local records", () => {
+    resetTestState();
+
+    localStorage.setItem(
+      "dimas:player:ABCD",
+      JSON.stringify({ id: "p1", name: "Player 1", teamId: "forest", secret: "ps_secret" }),
+    );
+    localStorage.setItem("dimas:player:WXYZ", "{broken");
+
+    expect(readStoredPlayer("ABCD")).toBeNull();
+    expect(readStoredPlayer("WXYZ")).toBeNull();
+    expect(localStorage.getItem("dimas:player:ABCD")).not.toBeNull();
+    expect(localStorage.getItem("dimas:player:WXYZ")).toBeNull();
+    expect(storedPlayerResumes()).toEqual([]);
   });
 });

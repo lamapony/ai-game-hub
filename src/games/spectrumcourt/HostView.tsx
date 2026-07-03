@@ -233,9 +233,7 @@ export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: Ro
           )}
           {sc.clue && (
             <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-              <div className="text-xs uppercase tracking-widest text-muted-foreground">
-                Clue
-              </div>
+              <div className="text-xs uppercase tracking-widest text-muted-foreground">Clue</div>
               <div className="font-display text-2xl mt-1">{sc.clue}</div>
               <div className="text-sm text-muted-foreground mt-1">
                 {state.players.find((player) => player.id === sc.cluePlayerId)?.name ??

@@ -8,13 +8,27 @@ export function scoreTrackGuessRound(
   tg: TrackGuessState,
 ): { teams: Team[]; roundResult: TrackGuessRoundResult | null } {
   const track = getCatalogTrack(tg.trackId);
-  if (!track) return { teams: state.teams, roundResult: null };
+  const trackMeta =
+    track ??
+    (tg.trackId && typeof tg.isAi === "boolean"
+      ? {
+          id: tg.trackId,
+          title: tg.trackTitle ?? "Unknown track",
+          artist: tg.trackArtist,
+          genre: tg.trackGenre ?? "Unknown genre",
+          isAi: tg.isAi,
+          sourceLabel: tg.trackSourceLabel,
+          sourceUrl: tg.trackSourceUrl,
+          artworkUrl: tg.trackArtworkUrl,
+        }
+      : null);
+  if (!trackMeta) return { teams: state.teams, roundResult: null };
 
   const correctPlayerIds = state.players
     .filter((p) => {
       const guess = tg.guesses?.[p.id];
       if (!guess) return false;
-      return guess === (track.isAi ? "ai" : "real");
+      return guess === (trackMeta.isAi ? "ai" : "real");
     })
     .map((p) => p.id);
 
@@ -32,10 +46,14 @@ export function scoreTrackGuessRound(
   return {
     teams,
     roundResult: {
-      trackId: track.id,
-      title: track.title,
-      genre: track.genre,
-      isAi: track.isAi,
+      trackId: trackMeta.id,
+      title: trackMeta.title,
+      artist: trackMeta.artist,
+      genre: trackMeta.genre,
+      isAi: trackMeta.isAi,
+      sourceLabel: trackMeta.sourceLabel,
+      sourceUrl: trackMeta.sourceUrl,
+      artworkUrl: trackMeta.artworkUrl,
       correctPlayerIds,
     },
   };

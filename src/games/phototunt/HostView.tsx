@@ -339,10 +339,12 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
       {ph.phase === "judging" && (
         <Panel>
           <div className="font-display text-2xl">
-            AI is comparing {displayPhotos.length}{" "}
-            {displayPhotos.length === 1 ? "photo" : "photos"}…
+            AI is comparing {displayPhotos.length} {displayPhotos.length === 1 ? "photo" : "photos"}
+            …
           </div>
-          <p className="mt-3 text-white/65 text-sm">The park spirit squints and cooks up some mischief.</p>
+          <p className="mt-3 text-white/65 text-sm">
+            The park spirit squints and cooks up some mischief.
+          </p>
           <div className="mt-4 grid grid-cols-3 gap-2">
             {displayPhotos.map((p) => (
               <div

@@ -31,6 +31,7 @@ import {
   skipCurrentPhaseState,
 } from "@/lib/host-controls";
 import { speakerReadiness } from "@/lib/speaker-status";
+import { HOST_ACTION_ERROR_EVENT } from "@/lib/host-action-errors";
 import {
   addTeamToState,
   MAX_TEAMS,
@@ -126,10 +127,31 @@ function HostPage() {
 
 function HostInner({ roomId, code, state }: { roomId: string; code: string; state: RoomState }) {
   const { send } = useBroadcast(roomId);
+  const [hostActionError, setHostActionError] = useState<string | null>(null);
 
   const totalPlayers = state.players.length;
   const joinUrl = publicJoinUrl(code);
   const speakerUrlFor = (slot: number) => publicSpeakerUrl(code, slot);
+
+  useEffect(() => {
+    const handleHostActionError = (event: Event) => {
+      const detail = (event as CustomEvent<{ message?: unknown }>).detail;
+      setHostActionError(
+        typeof detail?.message === "string" && detail.message
+          ? detail.message
+          : "Could not save host action. Try again.",
+      );
+    };
+    window.addEventListener(HOST_ACTION_ERROR_EVENT, handleHostActionError);
+    return () => window.removeEventListener(HOST_ACTION_ERROR_EVENT, handleHostActionError);
+  }, []);
+
+  function runHostAction(action: () => Promise<void>) {
+    setHostActionError(null);
+    void action().catch(() => {
+      /* updateRoomState emits the visible host error */
+    });
+  }
 
   function testSpeaker(slot: number) {
     if (slot === 1) {
@@ -273,15 +295,26 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
             <HostControlBar
               state={state}
               canSkip={canSkipCurrentPhase(state)}
-              onTogglePause={togglePause}
-              onSkip={skipPhase}
-              onRestart={restartCurrentGame}
-              onBackToHub={forceBackToHub}
+              onTogglePause={() => runHostAction(togglePause)}
+              onSkip={() => runHostAction(skipPhase)}
+              onRestart={() => runHostAction(restartCurrentGame)}
+              onBackToHub={() => runHostAction(forceBackToHub)}
+            />
+          )}
+
+          {hostActionError && (
+            <HostActionErrorBanner
+              message={hostActionError}
+              onDismiss={() => setHostActionError(null)}
             />
           )}
 
           {state.status === "finished" ? (
-            <PartyFinale state={state} onResumeParty={resumeParty} onNewParty={startNewParty} />
+            <PartyFinale
+              state={state}
+              onResumeParty={() => runHostAction(resumeParty)}
+              onNewParty={() => runHostAction(startNewParty)}
+            />
           ) : state.currentGame ? (
             <Suspense fallback={<HostGameLoading />}>
               {state.currentGame === "soundscape" && state.soundscape ? (
@@ -307,15 +340,15 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
               totalPlayers={totalPlayers}
               code={code}
               joinUrl={joinUrl}
-              onLaunchSoundscape={launchSoundscape}
-              onLaunchChallenge={launchChallenge}
-              onLaunchPhotoHunt={launchPhotoHunt}
-              onLaunchTrackGuess={launchTrackGuess}
-              onLaunchSpectrumCourt={launchSpectrumCourt}
-              onLaunchWhoAmong={launchWhoAmong}
-              onLaunchImpostor={launchImpostor}
-              onSetVenue={setVenue}
-              onFinishParty={finishParty}
+              onLaunchSoundscape={() => runHostAction(launchSoundscape)}
+              onLaunchChallenge={() => runHostAction(launchChallenge)}
+              onLaunchPhotoHunt={() => runHostAction(launchPhotoHunt)}
+              onLaunchTrackGuess={() => runHostAction(launchTrackGuess)}
+              onLaunchSpectrumCourt={() => runHostAction(launchSpectrumCourt)}
+              onLaunchWhoAmong={() => runHostAction(launchWhoAmong)}
+              onLaunchImpostor={() => runHostAction(launchImpostor)}
+              onSetVenue={(venue) => runHostAction(() => setVenue(venue))}
+              onFinishParty={() => runHostAction(finishParty)}
               speakerUrlFor={speakerUrlFor}
               onTestSpeaker={testSpeaker}
               onAddTeam={addTeam}
@@ -327,10 +360,10 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
         </section>
 
         <aside className="space-y-4">
-          <Scoreboard state={state} onResetScores={resetScores} />
+          <Scoreboard state={state} onResetScores={() => runHostAction(resetScores)} />
           <PlayersList state={state} />
           <button
-            onClick={resetGame}
+            onClick={() => runHostAction(resetGame)}
             className="w-full rounded-2xl border border-white/10 bg-white/5 py-2 text-xs text-white/60 hover:text-white"
           >
             ↺ Reset to lobby
@@ -346,6 +379,28 @@ function HostGameLoading() {
     <div className="rounded-3xl border border-white/10 bg-card p-8 text-center">
       <div className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Game</div>
       <div className="font-display mt-2 text-3xl">Preparing round screen…</div>
+    </div>
+  );
+}
+
+function HostActionErrorBanner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
+  return (
+    <div className="mb-4 rounded-3xl border border-red-300/25 bg-red-500/15 px-4 py-3 text-red-50">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-red-100/70">
+            Host action failed
+          </div>
+          <p className="mt-1 text-sm leading-relaxed">{message}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="shrink-0 rounded-full bg-white/10 px-3 py-1 text-xs text-white/70 hover:text-white"
+        >
+          Dismiss
+        </button>
+      </div>
     </div>
   );
 }
@@ -752,7 +807,7 @@ function Lobby({
             emoji="🎧"
             title="Real or AI?"
             time="~5 rounds"
-            desc="Listen to a track and guess whether it is real or AI-generated."
+            desc="Add real clips or use the built-in pool, then make everyone guess human or machine."
             disabled={!canTrackGuess}
             disabledHint={!canTrackGuess ? "needs ≥ 1 player" : undefined}
             onClick={onLaunchTrackGuess}
@@ -924,6 +979,8 @@ function TeamManager({
     try {
       await onAddTeam(name.trim() || suggestTeamName(state.teams));
       setNewName("");
+    } catch {
+      /* updateRoomState emits the visible host error */
     } finally {
       setBusy(false);
     }
@@ -959,7 +1016,9 @@ function TeamManager({
                 defaultValue={t.name}
                 onBlur={(e) => {
                   const next = e.target.value.trim();
-                  if (next && next !== t.name) void onRenameTeam(t.id, next);
+                  if (next && next !== t.name) {
+                    void onRenameTeam(t.id, next).catch(() => {});
+                  }
                 }}
                 className="min-w-0 flex-1 bg-transparent font-medium outline-none"
               />
@@ -971,7 +1030,7 @@ function TeamManager({
               {canRemove && (
                 <button
                   type="button"
-                  onClick={() => void onRemoveTeam(t.id)}
+                  onClick={() => void onRemoveTeam(t.id).catch(() => {})}
                   className="shrink-0 rounded-full bg-black/10 hover:bg-black/20 size-7 text-sm"
                   aria-label={`Remove ${t.name}`}
                 >
@@ -1058,22 +1117,31 @@ function GameCard({
   onClick: () => void;
 }) {
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className="text-left rounded-2xl bg-white/10 hover:bg-white/15 active:bg-white/20 border border-white/15 p-4 disabled:opacity-40 disabled:cursor-not-allowed transition"
+    <div
+      className={`relative rounded-2xl border border-white/15 bg-white/10 transition ${
+        disabled ? "opacity-40" : "hover:bg-white/15"
+      }`}
     >
-      <div className="flex items-baseline justify-between gap-2">
-        <div className="text-3xl">{emoji}</div>
-        <div className="flex items-center gap-2 shrink-0">
-          <GameRulesDialogTrigger gameId={gameId} />
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className="block w-full rounded-2xl p-4 pr-24 text-left active:bg-white/10 disabled:cursor-not-allowed"
+      >
+        <div className="flex items-baseline justify-between gap-2">
+          <div className="text-3xl">{emoji}</div>
           <div className="text-[10px] uppercase tracking-widest text-white/60">{time}</div>
         </div>
+        <div className="font-display text-xl mt-2">{title}</div>
+        <p className="text-sm text-white/75 mt-1">{desc}</p>
+        {disabled && disabledHint && (
+          <div className="mt-2 text-xs text-white/55">{disabledHint}</div>
+        )}
+      </button>
+      <div className="absolute right-4 top-4">
+        <GameRulesDialogTrigger gameId={gameId} />
       </div>
-      <div className="font-display text-xl mt-2">{title}</div>
-      <p className="text-sm text-white/75 mt-1">{desc}</p>
-      {disabled && disabledHint && <div className="mt-2 text-xs text-white/55">{disabledHint}</div>}
-    </button>
+    </div>
   );
 }
 

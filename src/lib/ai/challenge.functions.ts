@@ -25,6 +25,38 @@ const BAR_FALLBACK_TASKS = [
     task: "Act out an orchestra where every instrument is something on the table.",
     intro: "The Philharmonic of this bodega opens tonight.",
   },
+  {
+    task: "Stage a negotiation between two bar stools fighting over who has suffered more tonight.",
+    intro: "Furniture HR is in session.",
+  },
+  {
+    task: "Perform a slow-motion documentary about the last ice cube in the glass.",
+    intro: "The ice has legal representation.",
+  },
+  {
+    task: "Act out a luxury perfume ad for the cheapest thing on the table.",
+    intro: "Elegance has hit budget mode.",
+  },
+  {
+    task: "Show a silent argument between a menu, a receipt, and a person pretending not to panic.",
+    intro: "The bill has entered the chat.",
+  },
+  {
+    task: "Perform a heroic rescue mission for a napkin that fell behind enemy lines.",
+    intro: "No napkin left behind.",
+  },
+  {
+    task: "Act out the founding ceremony of a secret society based around this table.",
+    intro: "Congratulations, you are a cult now.",
+  },
+  {
+    task: "Show the exact moment a casual toast becomes a political crisis.",
+    intro: "Raise glasses, lower expectations.",
+  },
+  {
+    task: "Perform a courtroom drama where the playlist is accused of ruining the vibe.",
+    intro: "The aux cable pleads not guilty.",
+  },
 ];
 
 const FALLBACK_TASKS = [
@@ -43,6 +75,38 @@ const FALLBACK_TASKS = [
   {
     task: "Act out the championship final of invisible frisbee. Commentator, injury, and victory pose required.",
     intro: "Invisible sport, visible embarrassment.",
+  },
+  {
+    task: "Perform a nature documentary about a sausage that believes it is the alpha predator.",
+    intro: "The food chain is confused.",
+  },
+  {
+    task: "Act out a weather forecast delivered by people who are personally offended by clouds.",
+    intro: "The sky has made enemies.",
+  },
+  {
+    task: "Show a survival team crossing three meters of grass like it is the Arctic.",
+    intro: "A tiny expedition begins.",
+  },
+  {
+    task: "Perform a council meeting where the grill tongs demand democratic elections.",
+    intro: "The tongs want power.",
+  },
+  {
+    task: "Act out a slow-motion betrayal over the last piece of bread.",
+    intro: "Carbs reveal character.",
+  },
+  {
+    task: "Show what happens when the smoke starts giving everyone life coaching.",
+    intro: "The smoke has opinions.",
+  },
+  {
+    task: "Perform a sports broadcast for the most dramatic flip on the grill.",
+    intro: "Tonight's main event is edible.",
+  },
+  {
+    task: "Act out a rescue operation for a drink placed dangerously close to the edge.",
+    intro: "Hydration is in danger.",
   },
 ];
 

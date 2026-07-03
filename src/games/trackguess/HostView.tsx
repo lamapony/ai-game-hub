@@ -7,7 +7,12 @@ import {
   TRACK_GUESS_REVEAL_MS,
 } from "@/lib/host-controls";
 import type { RoomState, TrackGuessState } from "@/lib/types";
-import { pickTrackFromPool, TRACK_CATALOG, SPOTIFY_REAL_SUGGESTIONS, type CatalogTrack } from "./catalog";
+import {
+  pickBalancedTrackFromPool,
+  TRACK_CATALOG,
+  SPOTIFY_REAL_SUGGESTIONS,
+  type CatalogTrack,
+} from "./catalog";
 import {
   customTrackToCatalogTrack,
   isSpotifyUrl,
@@ -73,12 +78,7 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
   }
 
   function pickHostTrack() {
-    const freshCustomTracks = customTrackPool.filter(
-      (track) => !tg.usedTrackIds.includes(track.id),
-    );
-    return freshCustomTracks.length > 0
-      ? pickTrackFromPool(freshCustomTracks, tg.usedTrackIds)
-      : pickTrackFromPool(trackPool, tg.usedTrackIds);
+    return pickBalancedTrackFromPool(trackPool, tg.usedTrackIds);
   }
 
   function startRound(nowMs = Date.now()) {
@@ -357,7 +357,13 @@ function TrackVault({
   // Quick Spotify suggestions (real tracks directly in the app)
   const quickSuggestions = SPOTIFY_REAL_SUGGESTIONS;
 
-  function loadSuggestion(sug: { title: string; artist: string; genre: string; search: string; why: string }) {
+  function loadSuggestion(sug: {
+    title: string;
+    artist: string;
+    genre: string;
+    search: string;
+    why: string;
+  }) {
     setTitle(sug.title);
     setArtist(sug.artist);
     setGenre(sug.genre);
@@ -417,7 +423,9 @@ function TrackVault({
       {/* Quick add Spotify tracks directly in the app */}
       {quickSuggestions.length > 0 && (
         <div className="mt-3">
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Quick Spotify suggestions (real tracks)</div>
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
+            Quick Spotify suggestions (real tracks)
+          </div>
           <div className="flex flex-wrap gap-1.5">
             {quickSuggestions.map((sug, idx) => (
               <button
@@ -432,7 +440,9 @@ function TrackVault({
               </button>
             ))}
           </div>
-          <div className="text-[10px] text-muted-foreground mt-1">Click to prefill → paste Spotify link in source + provide audio URL</div>
+          <div className="text-[10px] text-muted-foreground mt-1">
+            Click to prefill → paste Spotify link in source + provide audio URL
+          </div>
         </div>
       )}
 

@@ -32,8 +32,7 @@ export const eventProfile: EventProfile = {
   venue: "park",
   hostPersona: {
     name: "park spirit",
-    voice:
-      "witty, energetic, a little sarcastic, like a friend who is also a master of ceremonies",
+    voice: "witty, energetic, a little sarcastic, like a friend who is also a master of ceremonies",
   },
   speakerSlots: {
     1: "Main Stage",
@@ -64,6 +63,14 @@ export function speakerSlotPrompt() {
 
 export function playerStorageKey(code: string) {
   return `${eventProfile.storagePrefix}:player:${code}`;
+}
+
+export function playerStoragePrefix() {
+  return `${eventProfile.storagePrefix}:player:`;
+}
+
+export function lastPlayerRoomStorageKey() {
+  return `${eventProfile.storagePrefix}:last-player-room`;
 }
 
 export function hostStorageKey(code: string) {

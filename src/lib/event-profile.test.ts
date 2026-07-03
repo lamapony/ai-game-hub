@@ -1,11 +1,20 @@
 import { describe, expect, test } from "bun:test";
-import { eventProfile, hostStorageKey, playerStorageKey, speakerSlotPrompt } from "./event-profile";
+import {
+  eventProfile,
+  hostStorageKey,
+  lastPlayerRoomStorageKey,
+  playerStorageKey,
+  playerStoragePrefix,
+  speakerSlotPrompt,
+} from "./event-profile";
 
 describe("event profile", () => {
   test("keeps stable storage keys for existing rooms and players", () => {
     expect(eventProfile.storagePrefix).toBe("dimas");
     expect(hostStorageKey("ABCD")).toBe("dimas:host:ABCD");
     expect(playerStorageKey("ABCD")).toBe("dimas:player:ABCD");
+    expect(playerStoragePrefix()).toBe("dimas:player:");
+    expect(lastPlayerRoomStorageKey()).toBe("dimas:last-player-room");
   });
 
   test("defines the five speaker slots used by room state and AI prompts", () => {

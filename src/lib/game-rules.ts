@@ -9,7 +9,6 @@ import {
   SOUND_RECORDING_MS,
   SOUND_TOPICS_MS,
   SPECTRUM_COURT_CLUE_MS,
-  TRACK_GUESS_GUESS_MS,
   TRACK_GUESS_LISTEN_MS,
   WHO_AMONG_VOTE_MS,
 } from "./host-controls";
@@ -37,7 +36,6 @@ const soundRecordingMin = Math.round(SOUND_RECORDING_MS / 60_000);
 const topicsSec = Math.round(SOUND_TOPICS_MS / 1000);
 const challengeBriefingSec = Math.round(CHALLENGE_BRIEFING_MS / 1000);
 const listenSec = Math.round(TRACK_GUESS_LISTEN_MS / 1000);
-const guessSec = Math.round(TRACK_GUESS_GUESS_MS / 1000);
 const clueSec = Math.round(SPECTRUM_COURT_CLUE_MS / 1000);
 const voteSec = Math.round(WHO_AMONG_VOTE_MS / 1000);
 
@@ -84,11 +82,11 @@ export const GAME_RULES: Record<GameId, GameRules> = {
   trackguess: {
     title: "Guess the Track",
     emoji: "🎧",
-    tagline: "Real track or AI — trust your ears",
+    tagline: "Real music or AI — trust your ears",
     steps: [
-      `${TRACK_GUESS_TOTAL_ROUNDS} rounds — listen to a ~${listenSec}s clip`,
+      `${TRACK_GUESS_TOTAL_ROUNDS} rounds — host can add real audio clips before launch`,
+      `Listen to a ~${listenSec}s mystery clip`,
       "Choose: real track or AI",
-      `You get ~${guessSec}s to vote`,
       "The host reveals the truth and awards points",
     ],
     scoring: "+2 points to the team for each correct guess",

@@ -9,6 +9,7 @@ import {
 import {
   assertPlayerMayUpload,
   assertPlayerStoragePath,
+  assertStorageObjectExists,
   cleanRoundId,
   mediaKindForAction,
   RECORDINGS_BUCKET,
@@ -46,8 +47,7 @@ function cleanNumber(value: unknown, field: string, min: number, max: number, fa
 
 async function signedRecordingUrl(storagePath: string, expiresIn: number) {
   const exists = await supabaseAdmin.storage.from(RECORDINGS_BUCKET).exists(storagePath);
-  if (exists.error && exists.data) throw exists.error;
-  if (!exists.data) throw statusError("storage object missing", 409);
+  assertStorageObjectExists(exists);
 
   const signed = await supabaseAdmin.storage
     .from(RECORDINGS_BUCKET)

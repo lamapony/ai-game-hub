@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { useRoom, getOrCreatePlayer } from "@/lib/room";
-import { playerStorageKey } from "@/lib/event-profile";
+import { useRoom, getOrCreatePlayer, readStoredPlayer } from "@/lib/room";
+import { normalizePlayerName, playerNameValidationMessage } from "@/lib/player-name";
+import { friendlyPlayerActionError } from "@/lib/player-action-errors";
 import { postPlayerAction, type StoredPlayer } from "@/lib/player-action-client";
 import {
   computeTeamStandings,
@@ -61,11 +62,8 @@ function PlayPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const stored = localStorage.getItem(playerStorageKey(code));
-    if (stored) {
-      const parsed = JSON.parse(stored) as StoredPlayer;
-      setMe(getOrCreatePlayer(code, parsed.name, parsed.teamId));
-    }
+    const stored = readStoredPlayer(code);
+    if (stored) setMe(getOrCreatePlayer(code, stored.name, stored.teamId));
   }, [code]);
 
   if (loading)
@@ -128,14 +126,23 @@ function JoinForm({
 }) {
   const state = room.state;
   const [name, setName] = useState("");
+  const [nameTouched, setNameTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [joiningTeamId, setJoiningTeamId] = useState<string | null>(null);
+  const [joinError, setJoinError] = useState<string | null>(null);
 
   async function joinTeam(teamId: string) {
     if (submitting || !teamId) return;
+    const validation = playerNameValidationMessage(name);
+    if (validation) {
+      setNameTouched(true);
+      setJoinError(validation);
+      return;
+    }
     setJoiningTeamId(teamId);
     setSubmitting(true);
-    const finalName = name.trim() || `Player ${state.players.length + 1}`;
+    setJoinError(null);
+    const finalName = normalizePlayerName(name);
     const player = getOrCreatePlayer(code, finalName, teamId);
     try {
       const result = await postPlayerAction(room.id, {
@@ -147,6 +154,7 @@ function JoinForm({
       onJoined({ ...player, ...result.player, secret: player.secret }, result.state);
     } catch (e) {
       console.error(e);
+      setJoinError(e instanceof Error ? e.message : "Could not join. Try again.");
     } finally {
       setSubmitting(false);
       setJoiningTeamId(null);
@@ -159,6 +167,8 @@ function JoinForm({
       : state.teams.length <= 4
         ? "grid-cols-2"
         : "grid-cols-1";
+  const nameError = playerNameValidationMessage(name);
+  const visibleNameError = nameTouched ? nameError : null;
 
   return (
     <PlayShell>
@@ -169,10 +179,29 @@ function JoinForm({
         <h1 className="font-display text-3xl text-white mt-2">Join the game</h1>
         <input
           value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Your name (optional)"
-          className="mt-4 w-full bg-white/10 text-white placeholder-white/40 rounded-2xl px-4 py-3 outline-none focus:bg-white/15"
+          onChange={(e) => {
+            setName(e.target.value);
+            setJoinError(null);
+          }}
+          onBlur={() => setNameTouched(true)}
+          placeholder="Your name"
+          maxLength={32}
+          autoComplete="name"
+          required
+          aria-invalid={!!visibleNameError}
+          className={`mt-4 w-full bg-white/10 text-white placeholder-white/40 rounded-2xl px-4 py-3 outline-none focus:bg-white/15 ${
+            visibleNameError
+              ? "ring-2 ring-red-300/70"
+              : "focus:ring-2 focus:ring-[var(--color-park-bright)]/50"
+          }`}
         />
+        <p
+          className={`mt-2 text-xs ${
+            joinError || visibleNameError ? "text-red-200" : "text-white/55"
+          }`}
+        >
+          {joinError ?? visibleNameError ?? "Required. Use the name your friends will recognize."}
+        </p>
         <div className="mt-5">
           <div className="text-xs uppercase tracking-widest text-white/60 mb-2">
             Choose your team
@@ -344,11 +373,13 @@ function WaitingPanel({
   onRoomState: (state: import("@/lib/types").RoomState) => void;
 }) {
   const [switching, setSwitching] = useState(false);
+  const [switchError, setSwitchError] = useState<string | null>(null);
   const state = room.state;
 
   async function switchTeam(teamId: string) {
     if (switching || teamId === me.teamId) return;
     setSwitching(true);
+    setSwitchError(null);
     const player = getOrCreatePlayer(code, me.name, teamId);
     try {
       const result = await postPlayerAction(room.id, {
@@ -361,6 +392,7 @@ function WaitingPanel({
       onTeamChange({ ...me, ...result.player, teamId, secret: me.secret });
     } catch (e) {
       console.error(e);
+      setSwitchError(friendlyPlayerActionError(e, "team switch"));
     } finally {
       setSwitching(false);
     }
@@ -403,6 +435,11 @@ function WaitingPanel({
             );
           })}
         </div>
+        {switchError && (
+          <p className="mt-3 rounded-2xl border border-red-300/20 bg-red-500/15 px-4 py-3 text-center text-sm text-red-100">
+            {switchError}
+          </p>
+        )}
       </div>
     </div>
   );

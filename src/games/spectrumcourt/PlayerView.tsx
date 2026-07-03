@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
+import { friendlyPlayerActionError } from "@/lib/player-action-errors";
 import { postPlayerAction } from "@/lib/player-action-client";
 import { formatClock } from "@/lib/team-style";
 import { GameRulesChecklist } from "@/components/game-rules-ui";
+import { eventProfile } from "@/lib/event-profile";
+import { useLocalDraft } from "@/lib/use-local-draft";
 import type { RoomState, SpectrumCourtAppeal } from "@/lib/types";
 
 export function SpectrumCourtPlayer({
@@ -15,7 +18,11 @@ export function SpectrumCourtPlayer({
 }) {
   const sc = state.spectrumcourt!;
   const [now, setNow] = useState(Date.now());
-  const [clue, setClue] = useState("");
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [clue, setClue, clearClueDraft] = useLocalDraft(
+    `${eventProfile.storagePrefix}:draft:${roomId}:${me.id}:spectrumcourt:${sc.roundId}:clue`,
+  );
   const [guess, setGuess] = useState(50);
 
   useEffect(() => {
@@ -28,33 +35,65 @@ export function SpectrumCourtPlayer({
   const myAppeal = sc.appeals?.[me.id];
 
   useEffect(() => {
+    setPendingAction(null);
+    setActionError(null);
+  }, [sc.phase, sc.roundNumber, sc.spectrumId]);
+
+  useEffect(() => {
     setGuess(typeof myGuess === "number" ? myGuess : 50);
   }, [myGuess, sc.roundNumber, sc.spectrumId]);
 
   async function submitClue() {
     const trimmed = clue.trim();
-    if (!trimmed) return;
-    await postPlayerAction(roomId, {
-      action: "spectrumcourt-clue",
-      playerId: me.id,
-      clue: trimmed,
-    });
+    if (!trimmed || pendingAction) return;
+    setPendingAction("clue");
+    setActionError(null);
+    try {
+      await postPlayerAction(roomId, {
+        action: "spectrumcourt-clue",
+        playerId: me.id,
+        clue: trimmed,
+      });
+      clearClueDraft();
+    } catch (error) {
+      setActionError(friendlyPlayerActionError(error, "clue"));
+    } finally {
+      setPendingAction(null);
+    }
   }
 
   async function submitGuess(value: number) {
-    await postPlayerAction(roomId, {
-      action: "spectrumcourt-guess",
-      playerId: me.id,
-      value,
-    });
+    if (pendingAction) return;
+    setPendingAction("guess");
+    setActionError(null);
+    try {
+      await postPlayerAction(roomId, {
+        action: "spectrumcourt-guess",
+        playerId: me.id,
+        value,
+      });
+    } catch (error) {
+      setActionError(friendlyPlayerActionError(error, "marker"));
+    } finally {
+      setPendingAction(null);
+    }
   }
 
   async function submitAppeal(direction: SpectrumCourtAppeal["direction"]) {
-    await postPlayerAction(roomId, {
-      action: "spectrumcourt-appeal",
-      playerId: me.id,
-      direction,
-    });
+    if (pendingAction) return;
+    setPendingAction(`appeal-${direction}`);
+    setActionError(null);
+    try {
+      await postPlayerAction(roomId, {
+        action: "spectrumcourt-appeal",
+        playerId: me.id,
+        direction,
+      });
+    } catch (error) {
+      setActionError(friendlyPlayerActionError(error, "appeal"));
+    } finally {
+      setPendingAction(null);
+    }
   }
 
   if (sc.phase === "briefing") {
@@ -63,8 +102,8 @@ export function SpectrumCourtPlayer({
         <Pill>Spectrum Court</Pill>
         <H>A spectrum is coming</H>
         <P>
-          One team gets a clue to a hidden point. Everyone else argues, places a marker, and can file
-          an appeal.
+          One team gets a clue to a hidden point. Everyone else argues, places a marker, and can
+          file an appeal.
         </P>
         <GameRulesChecklist gameId="spectrumcourt" />
       </Card>
@@ -111,11 +150,12 @@ export function SpectrumCourtPlayer({
         <button
           type="button"
           onClick={() => void submitClue()}
-          disabled={!clue.trim()}
+          disabled={!!pendingAction || !clue.trim()}
           className="mt-3 w-full rounded-2xl bg-[var(--color-park-bright)] px-4 py-3 font-medium text-[oklch(0.16_0.05_160)] disabled:opacity-40"
         >
-          Submit clue
+          {pendingAction === "clue" ? "Sending…" : "Submit clue"}
         </button>
+        {actionError && <ActionError>{actionError}</ActionError>}
       </Card>
     );
   }
@@ -157,10 +197,16 @@ export function SpectrumCourtPlayer({
         <button
           type="button"
           onClick={() => void submitGuess(guess)}
+          disabled={!!pendingAction}
           className="mt-4 w-full rounded-2xl bg-white/10 px-4 py-3 font-medium text-white hover:bg-white/15"
         >
-          {typeof myGuess === "number" ? "Update marker" : "Place marker"}
+          {pendingAction === "guess"
+            ? "Sending…"
+            : typeof myGuess === "number"
+              ? "Update marker"
+              : "Place marker"}
         </button>
+        {actionError && <ActionError>{actionError}</ActionError>}
       </Card>
     );
   }
@@ -185,18 +231,21 @@ export function SpectrumCourtPlayer({
           <button
             type="button"
             onClick={() => void submitAppeal("lower")}
+            disabled={!!pendingAction}
             className={`rounded-2xl border px-4 py-5 ${myAppeal?.direction === "lower" ? "border-[var(--color-park-bright)] bg-[var(--color-park-bright)]/20" : "border-white/10 bg-white/10"}`}
           >
-            ← Left
+            {pendingAction === "appeal-lower" ? "Sending…" : "← Left"}
           </button>
           <button
             type="button"
             onClick={() => void submitAppeal("higher")}
+            disabled={!!pendingAction}
             className={`rounded-2xl border px-4 py-5 ${myAppeal?.direction === "higher" ? "border-[var(--color-park-bright)] bg-[var(--color-park-bright)]/20" : "border-white/10 bg-white/10"}`}
           >
-            Right →
+            {pendingAction === "appeal-higher" ? "Sending…" : "Right →"}
           </button>
         </div>
+        {actionError && <ActionError>{actionError}</ActionError>}
       </Card>
     );
   }
@@ -264,4 +313,12 @@ function H({ children }: { children: React.ReactNode }) {
 
 function P({ children }: { children: React.ReactNode }) {
   return <p className="text-white/65 text-sm mt-2 leading-relaxed">{children}</p>;
+}
+
+function ActionError({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mt-3 rounded-2xl border border-red-300/20 bg-red-500/15 px-4 py-3 text-center text-sm text-red-100">
+      {children}
+    </p>
+  );
 }

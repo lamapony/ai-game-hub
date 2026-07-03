@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { eventProfile } from "@/lib/event-profile";
-import { createRoom } from "@/lib/room";
+import { createRoom, storedPlayerResumes } from "@/lib/room";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -26,6 +26,11 @@ function Landing() {
   const [joinCode, setJoinCode] = useState("");
   const [creating, setCreating] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [resume, setResume] = useState<ReturnType<typeof storedPlayerResumes>[number] | null>(null);
+
+  useEffect(() => {
+    setResume(storedPlayerResumes(1)[0] ?? null);
+  }, []);
 
   async function onCreate() {
     setErr(null);
@@ -49,13 +54,6 @@ function Landing() {
 
   return (
     <main className="min-h-dvh park-gradient relative overflow-hidden">
-      <div
-        className="absolute inset-0 opacity-30 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(800px 400px at 20% 0%, oklch(0.9 0.18 145 / 0.45), transparent 60%), radial-gradient(600px 400px at 80% 100%, oklch(0.45 0.15 165 / 0.6), transparent 60%)",
-        }}
-      />
       <div className="relative mx-auto max-w-3xl px-5 pt-8 pb-14 sm:py-16">
         <header className="mb-8 sm:mb-10">
           <div className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur px-3 py-1 text-[11px] tracking-wide uppercase text-white/80">
@@ -72,7 +70,33 @@ function Landing() {
           <p className="mt-4 max-w-lg text-white/80 text-base sm:text-lg">
             {eventProfile.landing.description}
           </p>
+          <PartyScene />
         </header>
+
+        {resume && (
+          <section className="mb-4 rounded-3xl bg-[var(--color-park-bright)]/18 backdrop-blur p-5 border border-[var(--color-park-bright)]/35">
+            <div className="text-xs uppercase tracking-widest text-[var(--color-park-bright)]">
+              Still playing
+            </div>
+            <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="font-display text-2xl text-white">
+                  {resume.name} · room {resume.code}
+                </h2>
+                <p className="text-sm text-white/65 mt-1">
+                  Reopen your player screen without joining again.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate({ to: "/play/$code", params: { code: resume.code } })}
+                className="rounded-2xl bg-[var(--color-park-bright)] px-5 py-3 text-[oklch(0.16_0.05_160)] font-medium"
+              >
+                Resume →
+              </button>
+            </div>
+          </section>
+        )}
 
         {/* Primary action: create the party from the phone. */}
         <section className="rounded-3xl bg-black/45 backdrop-blur p-6 border border-white/10">
@@ -130,5 +154,45 @@ function Landing() {
         </section>
       </div>
     </main>
+  );
+}
+
+function PartyScene() {
+  return (
+    <div aria-hidden="true" className="relative mt-7 h-24 overflow-hidden sm:h-28">
+      <div className="absolute inset-x-0 bottom-3 h-px bg-white/25" />
+      <div className="absolute bottom-5 left-0 flex items-end gap-1.5">
+        {[18, 34, 24, 52, 30, 44, 20].map((height, index) => (
+          <span
+            key={index}
+            className="block w-2 rounded-full bg-[var(--color-park-bright)]/80"
+            style={{ height }}
+          />
+        ))}
+      </div>
+      <div className="absolute bottom-3 left-[34%] h-16 w-24 rounded-[1.25rem] border border-white/20 bg-black/20 p-3 shadow-2xl shadow-black/20">
+        <div className="h-2 w-10 rounded-full bg-white/20" />
+        <div className="mt-4 h-1.5 rounded-full bg-white/20">
+          <div className="h-full w-2/3 rounded-full bg-[var(--color-team-amber)]" />
+        </div>
+        <div className="mt-2 h-1.5 rounded-full bg-white/15">
+          <div className="h-full w-1/3 rounded-full bg-[var(--color-team-blue)]" />
+        </div>
+      </div>
+      <div className="absolute bottom-1 right-20 h-20 w-12 rounded-[1.3rem] border border-white/25 bg-black/35 p-1.5 shadow-2xl shadow-black/25">
+        <div className="mx-auto h-1 w-4 rounded-full bg-white/25" />
+        <div className="mt-2 grid grid-cols-2 gap-1">
+          <span className="aspect-square rounded bg-[var(--color-park-bright)]" />
+          <span className="aspect-square rounded bg-white/20" />
+          <span className="aspect-square rounded bg-[var(--color-team-red)]" />
+          <span className="aspect-square rounded bg-[var(--color-team-blue)]" />
+        </div>
+      </div>
+      <div className="absolute bottom-5 right-0 grid size-14 grid-cols-3 gap-1 rounded-xl border border-white/20 bg-white/10 p-2">
+        {[0, 1, 2, 3, 5, 6, 7, 8].map((cell) => (
+          <span key={cell} className="rounded-sm bg-white/80" />
+        ))}
+      </div>
+    </div>
   );
 }

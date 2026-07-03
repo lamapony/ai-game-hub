@@ -1,7 +1,15 @@
 // Client-side room helpers. All anonymous; host control gated by host_secret in localStorage.
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { eventProfile, hostStorageKey, playerStorageKey } from "./event-profile";
+import {
+  eventProfile,
+  hostStorageKey,
+  lastPlayerRoomStorageKey,
+  playerStorageKey,
+  playerStoragePrefix,
+} from "./event-profile";
+import { emitHostActionError } from "./host-action-errors";
+import { isValidPlayerName, normalizePlayerName } from "./player-name";
 import { logError, logInfo, logWarn } from "./structured-log";
 import { type RoomRow, type RoomState, emptyRoomState } from "./types";
 
@@ -22,6 +30,11 @@ function hostRoomCodeStorageKey(roomId: string) {
 function rememberRoomCode(roomId: string, code: string) {
   if (typeof window === "undefined") return;
   localStorage.setItem(hostRoomCodeStorageKey(roomId), code.toUpperCase());
+}
+
+function rememberPlayerRoom(code: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(lastPlayerRoomStorageKey(), code.toUpperCase());
 }
 
 export function hostSecretCandidates(roomId: string) {
@@ -110,19 +123,26 @@ export async function updateRoomState(id: string, state: RoomState): Promise<voi
       status: state.status,
       currentGame: state.currentGame ?? undefined,
     });
+    emitHostActionError(error);
     throw error;
   }
 
   let lastError: Error | null = null;
   for (const secret of secrets) {
-    const response = await fetch("/api/host-state", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-host-secret": secret,
-      },
-      body: JSON.stringify({ roomId: id, state }),
-    });
+    let response: Response;
+    try {
+      response = await fetch("/api/host-state", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-host-secret": secret,
+        },
+        body: JSON.stringify({ roomId: id, state }),
+      });
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      break;
+    }
     if (response.ok) {
       logInfo("room.update.success", {
         roomId: id,
@@ -142,11 +162,77 @@ export async function updateRoomState(id: string, state: RoomState): Promise<voi
     status: state.status,
     currentGame: state.currentGame ?? undefined,
   });
+  emitHostActionError(error);
   throw error;
 }
 
 export function getHostSecret(code: string): string | null {
   return typeof window === "undefined" ? null : localStorage.getItem(hostStorageKey(code));
+}
+
+export type LocalStoredPlayer = {
+  id: string;
+  name: string;
+  teamId: string;
+  secret?: string;
+  updatedAt?: number;
+};
+
+function parseStoredPlayer(raw: string | null): LocalStoredPlayer | null {
+  if (!raw) return null;
+  const parsed = JSON.parse(raw) as {
+    id?: unknown;
+    name?: unknown;
+    teamId?: unknown;
+    secret?: unknown;
+    updatedAt?: unknown;
+  };
+  const id = typeof parsed.id === "string" ? parsed.id : "";
+  const name = normalizePlayerName(parsed.name);
+  const teamId = typeof parsed.teamId === "string" ? parsed.teamId : "";
+  if (!id || !teamId || !isValidPlayerName(name)) return null;
+  return {
+    id,
+    name,
+    teamId,
+    secret: typeof parsed.secret === "string" ? parsed.secret : undefined,
+    updatedAt: typeof parsed.updatedAt === "number" ? parsed.updatedAt : undefined,
+  };
+}
+
+export function readStoredPlayer(code: string): LocalStoredPlayer | null {
+  if (typeof window === "undefined") return null;
+  const key = playerStorageKey(code);
+  const raw = localStorage.getItem(key);
+  try {
+    return parseStoredPlayer(raw);
+  } catch {
+    localStorage.removeItem(key);
+    return null;
+  }
+}
+
+export function storedPlayerResumes(limit = 3): Array<LocalStoredPlayer & { code: string }> {
+  if (typeof window === "undefined") return [];
+  const prefix = playerStoragePrefix();
+  const latestCode = localStorage.getItem(lastPlayerRoomStorageKey())?.toUpperCase();
+  const byCode = new Map<string, LocalStoredPlayer & { code: string }>();
+
+  const keys = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index));
+  for (const key of keys) {
+    if (!key?.startsWith(prefix)) continue;
+    const code = key.slice(prefix.length).toUpperCase();
+    const player = readStoredPlayer(code);
+    if (player) byCode.set(code, { ...player, code });
+  }
+
+  return [...byCode.values()]
+    .sort((a, b) => {
+      if (latestCode && a.code === latestCode) return -1;
+      if (latestCode && b.code === latestCode) return 1;
+      return (b.updatedAt ?? 0) - (a.updatedAt ?? 0);
+    })
+    .slice(0, limit);
 }
 
 export function getOrCreatePlayer(
@@ -160,20 +246,39 @@ export function getOrCreatePlayer(
   }
   const raw = localStorage.getItem(key);
   if (raw) {
-    const p = JSON.parse(raw) as { id: string; name: string; teamId: string; secret?: string };
-    if (name && p.name !== name) p.name = name;
-    if (teamId && p.teamId !== teamId) p.teamId = teamId;
-    if (!p.secret) p.secret = genPlayerSecret();
-    localStorage.setItem(key, JSON.stringify(p));
-    return { id: p.id, name: p.name, teamId: p.teamId, secret: p.secret };
+    try {
+      const p = JSON.parse(raw) as {
+        id: string;
+        name: string;
+        teamId: string;
+        secret?: string;
+        updatedAt?: number;
+      };
+      const normalizedName = normalizePlayerName(name);
+      if (typeof p.id !== "string" || !p.id || typeof p.teamId !== "string" || !p.teamId) {
+        throw new Error("invalid local player record");
+      }
+      if (normalizedName && p.name !== normalizedName) p.name = normalizedName;
+      if (teamId && p.teamId !== teamId) p.teamId = teamId;
+      if (!p.secret) p.secret = genPlayerSecret();
+      p.updatedAt = Date.now();
+      localStorage.setItem(key, JSON.stringify(p));
+      rememberPlayerRoom(code);
+      return { id: p.id, name: p.name, teamId: p.teamId, secret: p.secret };
+    } catch {
+      localStorage.removeItem(key);
+    }
   }
+  const normalizedName = normalizePlayerName(name);
   const p = {
     id: genId("p"),
-    name: name ?? "Player",
+    name: normalizedName,
     teamId: teamId ?? "forest",
     secret: genPlayerSecret(),
+    updatedAt: Date.now(),
   };
   localStorage.setItem(key, JSON.stringify(p));
+  rememberPlayerRoom(code);
   return p;
 }
 

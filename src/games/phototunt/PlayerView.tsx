@@ -68,9 +68,7 @@ export function PhotoHuntPlayer({
           <>
             <H>Task:</H>
             <p className="text-white text-xl mt-2 leading-snug">«{ph.task}»</p>
-            <P>
-              When the host hits start — you&apos;ve got 60 seconds to find and snap ONE shot.
-            </P>
+            <P>When the host hits start — you&apos;ve got 60 seconds to find and snap ONE shot.</P>
             <GameRulesChecklist gameId="phototunt" />
           </>
         ) : (
@@ -90,9 +88,7 @@ export function PhotoHuntPlayer({
         <Card>
           <Pill>Shot sent</Pill>
           <H>Waiting on everyone else…</H>
-          <div className="text-right text-xs text-white/60 mt-1">
-            {formatClock(remaining)} left
-          </div>
+          <div className="text-right text-xs text-white/60 mt-1">{formatClock(remaining)} left</div>
           {myPhotoUrl && (
             <div className="mt-3 rounded-2xl overflow-hidden bg-black/30 border border-white/10">
               <img

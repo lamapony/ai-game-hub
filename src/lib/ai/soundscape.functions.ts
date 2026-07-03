@@ -13,6 +13,16 @@ const FALLBACK_TOPICS = [
   "Squirrels arguing at dawn",
   "Mushroom disco",
   "The forest at the end of time",
+  "Tongs declaring independence",
+  "Smoke with a secret agenda",
+  "A bar stool remembers everything",
+  "The last ice cube's revenge",
+  "Grill opera in three acts",
+  "Napkins forming a union",
+  "A receipt becomes sentient",
+  "Tiny thunder under the table",
+  "The playlist goes to court",
+  "Chairs gossip after midnight",
 ];
 
 export const generateTopics = createServerFn({ method: "POST" })

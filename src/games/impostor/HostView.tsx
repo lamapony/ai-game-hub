@@ -239,8 +239,8 @@ export function ImpostorHost({ roomId, state }: { roomId: string; state: RoomSta
       {imp.phase === "briefing" && (
         <Panel title="Getting ready">
           <p className="text-muted-foreground">
-            Everyone writes a witty answer on their phone. AI secretly adds its own. Then we hunt for
-            the machine answer.
+            Everyone writes a witty answer on their phone. AI secretly adds its own. Then we hunt
+            for the machine answer.
           </p>
         </Panel>
       )}

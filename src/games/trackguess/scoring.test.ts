@@ -47,4 +47,35 @@ describe("track guess scoring", () => {
     expect(teams.find((t) => t.id === "forest")?.score).toBe(2);
     expect(teams.find((t) => t.id === "lake")?.score).toBe(0);
   });
+
+  test("scores host-added real tracks from round state metadata", () => {
+    const state = roomState({
+      trackguess: {
+        phase: "reveal",
+        roundId: "tg_1",
+        roundNumber: 1,
+        totalRounds: 5,
+        usedTrackIds: ["custom-real-1"],
+        trackId: "custom-real-1",
+        trackTitle: "Guestlist Anthem",
+        trackArtist: "Actual Human",
+        trackGenre: "Pop",
+        trackUrl: "https://example.com/anthem.mp3",
+        trackSourceLabel: "Spotify",
+        trackSourceUrl: "https://open.spotify.com/track/example",
+        isAi: false,
+        guesses: { p1: "ai", p2: "real" },
+      },
+    });
+
+    const { teams, roundResult } = scoreTrackGuessRound(state, state.trackguess!);
+
+    expect(roundResult?.title).toBe("Guestlist Anthem");
+    expect(roundResult?.artist).toBe("Actual Human");
+    expect(roundResult?.sourceLabel).toBe("Spotify");
+    expect(roundResult?.sourceUrl).toBe("https://open.spotify.com/track/example");
+    expect(roundResult?.correctPlayerIds).toEqual(["p2"]);
+    expect(teams.find((t) => t.id === "forest")?.score).toBe(0);
+    expect(teams.find((t) => t.id === "lake")?.score).toBe(2);
+  });
 });

@@ -90,6 +90,51 @@ const REAL_TRACKS: CatalogTrack[] = [
     sourceLabel: "SoundHelix",
   },
   {
+    id: "real-soundhelix-3",
+    title: "SoundHelix Song 3",
+    artist: "SoundHelix",
+    genre: "Guitar / Instrumental",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+    isAi: false,
+    sourceLabel: "SoundHelix",
+  },
+  {
+    id: "real-soundhelix-4",
+    title: "SoundHelix Song 4",
+    artist: "SoundHelix",
+    genre: "Live-feel Instrumental",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+    isAi: false,
+    sourceLabel: "SoundHelix",
+  },
+  {
+    id: "real-soundhelix-5",
+    title: "SoundHelix Song 5",
+    artist: "SoundHelix",
+    genre: "Acoustic / Jam",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
+    isAi: false,
+    sourceLabel: "SoundHelix",
+  },
+  {
+    id: "real-soundhelix-6",
+    title: "SoundHelix Song 6",
+    artist: "SoundHelix",
+    genre: "Folk Rock / Instrumental",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
+    isAi: false,
+    sourceLabel: "SoundHelix",
+  },
+  {
+    id: "real-soundhelix-7",
+    title: "SoundHelix Song 7",
+    artist: "SoundHelix",
+    genre: "Guitar / Groove",
+    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3",
+    isAi: false,
+    sourceLabel: "SoundHelix",
+  },
+  {
     id: "real-soundhelix-16",
     title: "SoundHelix Song 16",
     artist: "SoundHelix",
@@ -144,10 +189,7 @@ const AI_TRACKS: CatalogTrack[] = [
   },
 ];
 
-export const TRACK_CATALOG: CatalogTrack[] = [
-  ...REAL_TRACKS,
-  ...AI_TRACKS,
-];
+export const TRACK_CATALOG: CatalogTrack[] = [...REAL_TRACKS, ...AI_TRACKS];
 
 // Spotify suggestions (for reference and quick adding via UI)
 export const SPOTIFY_REAL_SUGGESTIONS = [
@@ -186,6 +228,41 @@ export const SPOTIFY_REAL_SUGGESTIONS = [
     search: "Billie Eilish Tiny Desk",
     why: "Natural intimate live take",
   },
+  {
+    title: "Fast Car (live)",
+    artist: "Tracy Chapman",
+    genre: "Folk / Live Vocal",
+    search: "Tracy Chapman Fast Car live",
+    why: "Plain human timing, phrasing and breath - useful as a real reference",
+  },
+  {
+    title: "Cranes in the Sky",
+    artist: "Solange",
+    genre: "Soul / Art Pop",
+    search: "Solange Cranes in the Sky",
+    why: "Minimal, polished and human - a good edge case",
+  },
+  {
+    title: "NPR Tiny Desk",
+    artist: "Anderson .Paak",
+    genre: "Live Funk / Rap",
+    search: "Anderson Paak Tiny Desk",
+    why: "Live drums, crowd feel and vocal timing make it hard to fake",
+  },
+  {
+    title: "Hide and Seek",
+    artist: "Imogen Heap",
+    genre: "Vocoder / Human Vocal",
+    search: "Imogen Heap Hide and Seek",
+    why: "Human performance through heavy processing, perfect for confusion",
+  },
+  {
+    title: "Get Lucky (live)",
+    artist: "Daft Punk / Pharrell",
+    genre: "Disco / Produced Pop",
+    search: "Daft Punk Pharrell Get Lucky live",
+    why: "Real musicianship inside extremely clean production",
+  },
 ];
 
 export function getCatalogTrack(trackId: string | undefined): CatalogTrack | null {
@@ -205,8 +282,53 @@ export function pickTrackFromPool(
   return candidates[index]!;
 }
 
+function normalizeRandom(random: number) {
+  if (!Number.isFinite(random)) return Math.random();
+  return Math.max(0, Math.min(0.999999, random));
+}
+
+function pickFromCandidates(candidates: CatalogTrack[], random: number): CatalogTrack {
+  const index = Math.min(
+    candidates.length - 1,
+    Math.floor(normalizeRandom(random) * candidates.length),
+  );
+  return candidates[index]!;
+}
+
+export function pickBalancedTrackFromPool(
+  pool: CatalogTrack[],
+  usedTrackIds: string[],
+  random = Math.random(),
+): CatalogTrack {
+  if (pool.length === 0) return TRACK_CATALOG[0]!;
+
+  const available = pool.filter((track) => !usedTrackIds.includes(track.id));
+  const candidates = available.length > 0 ? available : pool;
+  const usedFromPool = pool.filter((track) => usedTrackIds.includes(track.id));
+  const usedAi = usedFromPool.filter((track) => track.isAi).length;
+  const usedReal = usedFromPool.length - usedAi;
+  const freshAi = candidates.filter((track) => track.isAi);
+  const freshReal = candidates.filter((track) => !track.isAi);
+
+  let targetIsAi: boolean;
+  if (usedAi < usedReal && freshAi.length > 0) {
+    targetIsAi = true;
+  } else if (usedReal < usedAi && freshReal.length > 0) {
+    targetIsAi = false;
+  } else {
+    targetIsAi = normalizeRandom(random) >= 0.5;
+  }
+
+  const preferred = targetIsAi ? freshAi : freshReal;
+  const fallback = targetIsAi ? freshReal : freshAi;
+  return pickFromCandidates(
+    preferred.length > 0 ? preferred : fallback.length > 0 ? fallback : candidates,
+    random,
+  );
+}
+
 export function pickCatalogTrack(usedTrackIds: string[], random = Math.random()): CatalogTrack {
-  return pickTrackFromPool(TRACK_CATALOG, usedTrackIds, random);
+  return pickBalancedTrackFromPool(TRACK_CATALOG, usedTrackIds, random);
 }
 
 export function getAllRealTracks(): CatalogTrack[] {

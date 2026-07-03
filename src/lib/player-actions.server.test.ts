@@ -33,6 +33,31 @@ async function rejectedStatus(run: () => Promise<unknown>) {
 }
 
 describe("player server actions", () => {
+  test("requires a non-generic player name when joining", async () => {
+    expect(
+      await rejectedStatus(() =>
+        applyPlayerAction(roomState(), {
+          action: "join",
+          playerId: "p1",
+          name: "",
+          teamId: "forest",
+          playerSecretHash: "hash-p1",
+        }),
+      ),
+    ).toBe(400);
+    expect(
+      await rejectedStatus(() =>
+        applyPlayerAction(roomState(), {
+          action: "join",
+          playerId: "p1",
+          name: "Player 1",
+          teamId: "forest",
+          playerSecretHash: "hash-p1",
+        }),
+      ),
+    ).toBe(400);
+  });
+
   test("joins and updates a player without replacing full room state", async () => {
     const joined = await applyPlayerAction(
       roomState(),
