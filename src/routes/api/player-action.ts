@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { playerSecretHashFromRequest } from "@/lib/player-auth.server";
 import { updateRoomStateWithOptimisticRetry } from "@/lib/room-state-retry.server";
+import { migrateRoomState } from "@/lib/room-state-migration";
 import { logError, logInfo, logWarn } from "@/lib/structured-log";
 import type { Player, RoomState } from "@/lib/types";
 
@@ -44,7 +45,7 @@ export const Route = createFileRoute("/api/player-action")({
               return {
                 id: data.id,
                 code: data.code,
-                state: data.state as unknown as RoomState,
+                state: migrateRoomState(data.state as unknown as RoomState),
                 updatedAt: data.updated_at,
               };
             },

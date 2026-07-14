@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { ROOM_STATE_SCHEMA_VERSION } from "./party-context";
 import type { RoomState } from "./types";
 import { emptyRoomState } from "./types";
 
@@ -268,6 +269,24 @@ describe("room helpers", () => {
     mockRooms.maybeSingleResult = { data: null, error: null };
     expect(await fetchRoomByCode("missing")).toBeNull();
     expect(logEvents.some((entry) => entry.event === "room.fetch.not_found")).toBe(true);
+  });
+
+  test("fetchRoomByCode normalizes legacy room metadata at the read boundary", async () => {
+    resetTestState();
+
+    const current = emptyRoomState("Legacy Host");
+    const { schemaVersion: _schemaVersion, party: _party, ...legacy } = current;
+    mockRooms.maybeSingleResult = {
+      data: { id: "room_legacy", code: "BAR1", state: { ...legacy, venue: "bar" } },
+      error: null,
+    };
+
+    const room = await fetchRoomByCode("bar1");
+
+    expect(room?.state.schemaVersion).toBe(ROOM_STATE_SCHEMA_VERSION);
+    expect(room?.state.party?.actId).toBe("bar");
+    expect(room?.state.party?.venue).toBe("bar");
+    expect(room?.state.hostName).toBe("Legacy Host");
   });
 
   test("fetchRoomByCode and updateRoomState surface Supabase errors", async () => {

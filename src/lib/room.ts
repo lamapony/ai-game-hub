@@ -10,6 +10,7 @@ import {
 } from "./event-profile";
 import { emitHostActionError } from "./host-action-errors";
 import { isValidPlayerName, normalizePlayerName } from "./player-name";
+import { migrateRoomState } from "./room-state-migration";
 import { logError, logInfo, logWarn } from "./structured-log";
 import { type RoomRow, type RoomState, emptyRoomState } from "./types";
 
@@ -111,7 +112,11 @@ export async function fetchRoomByCode(code: string): Promise<RoomRow | null> {
   }
   logInfo("room.fetch.success", { roomId: data.id, code: data.code });
   rememberRoomCode(data.id, data.code);
-  return { id: data.id, code: data.code, state: data.state as unknown as RoomState };
+  return {
+    id: data.id,
+    code: data.code,
+    state: migrateRoomState(data.state as unknown as RoomState),
+  };
 }
 
 export async function updateRoomState(id: string, state: RoomState): Promise<void> {
@@ -317,7 +322,7 @@ export function useRoom(code: string | undefined) {
         { event: "UPDATE", schema: "public", table: "rooms", filter: `id=eq.${room.id}` },
         (payload) => {
           const next = payload.new as { id: string; code: string; state: RoomState };
-          setRoom({ id: next.id, code: next.code, state: next.state });
+          setRoom({ id: next.id, code: next.code, state: migrateRoomState(next.state) });
         },
       )
       .subscribe();

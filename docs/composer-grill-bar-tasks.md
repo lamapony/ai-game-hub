@@ -1,5 +1,10 @@
 # Composer Tasks — Grill + Bar Party Upgrade
 
+> **Historical task list.** For the current repository state and implementation order, use
+> `docs/conceptual-development-plan.md`. This file was written before the seventh game, finale,
+> venue mode and server hardening landed; do not extend the current RoomState/route switch pattern
+> eight more times.
+
 Master spec: `docs/grill-bar-party-upgrade.md`
 
 **Important adaptation notes for this codebase:**

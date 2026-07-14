@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { logError, logInfo, logWarn } from "@/lib/structured-log";
+import { migrateRoomState } from "@/lib/room-state-migration";
 import type { RoomState } from "@/lib/types";
 
 export const Route = createFileRoute("/api/host-state")({
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/api/host-state")({
             code: typeof body.code === "string" ? body.code : undefined,
             hostSecret: hostSecretFromRequest(request, body),
           });
-          const nextState = body.state as RoomState;
+          const nextState = migrateRoomState(body.state as RoomState);
           const writtenState = await writeAuthorizedRoomState(room.id, nextState, room.state);
           logInfo("api.host_state.success", {
             durationMs: Date.now() - startedAt,

@@ -1,5 +1,7 @@
 // Shared game/room types for DIMAS fest.
 import { eventProfile } from "./event-profile";
+import { ROOM_STATE_SCHEMA_VERSION, legacyPartyContext, type PartyContext } from "./party-context";
+import type { LegacyGameId } from "@/games/ids";
 
 export type Team = {
   id: string;
@@ -81,14 +83,7 @@ export type ChallengeState = {
   pastOperatorIds?: string[];
 };
 
-export type GameId =
-  | "soundscape"
-  | "challenge"
-  | "phototunt"
-  | "trackguess"
-  | "spectrumcourt"
-  | "whoamong"
-  | "impostor";
+export type GameId = LegacyGameId;
 
 /** Where the party is happening right now — affects AI prompts and available games. */
 export type Venue = "park" | "bar";
@@ -267,6 +262,8 @@ export type ImpostorState = {
 };
 
 export type RoomState = {
+  schemaVersion?: typeof ROOM_STATE_SCHEMA_VERSION;
+  party?: PartyContext;
   hostName: string;
   status: "lobby" | "playing" | "finished";
   teams: Team[];
@@ -303,6 +300,8 @@ export const SPEAKER_NAMES: Record<number, string> = eventProfile.speakerSlots;
 
 export function emptyRoomState(hostName = eventProfile.defaultHostName): RoomState {
   return {
+    schemaVersion: ROOM_STATE_SCHEMA_VERSION,
+    party: legacyPartyContext("park"),
     hostName,
     status: "lobby",
     teams: DEFAULT_TEAMS.map((t) => ({ ...t })),

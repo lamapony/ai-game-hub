@@ -1,3 +1,4 @@
+import { normalizePartyContext } from "./party-context";
 import type { RoomState, SpectrumCourtState, Team } from "./types";
 
 const SOUND_RECORDING_MS = 180_000;
@@ -181,7 +182,17 @@ export function resumePartyState(state: RoomState): RoomState {
 }
 
 export function setVenueState(state: RoomState, venue: NonNullable<RoomState["venue"]>): RoomState {
-  return { ...state, venue };
+  const party = normalizePartyContext(state.party, state.venue);
+  return {
+    ...state,
+    venue,
+    party: {
+      ...party,
+      actId: venue === "bar" ? "bar" : "classic",
+      venue,
+      contingency: venue === "bar" ? "bar-only" : "normal",
+    },
+  };
 }
 
 export function resetScoresState(state: RoomState): RoomState {

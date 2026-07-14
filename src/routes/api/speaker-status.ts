@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { logError, logInfo, logWarn } from "@/lib/structured-log";
+import { migrateRoomState } from "@/lib/room-state-migration";
 import { SPEAKER_NAMES, type RoomState } from "@/lib/types";
 
 export const Route = createFileRoute("/api/speaker-status")({
@@ -35,7 +36,7 @@ export const Route = createFileRoute("/api/speaker-status")({
           if (error) throw error;
           if (!data) return new Response("room not found", { status: 404 });
 
-          const state = data.state as unknown as RoomState;
+          const state = migrateRoomState(data.state as unknown as RoomState);
           const slots = { ...(state.speakerSlots ?? {}) };
           const existing = slots[slot] ?? { connected: false, name: SPEAKER_NAMES[slot] };
           slots[slot] = {

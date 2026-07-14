@@ -1,18 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { useRoom, useBroadcast, updateRoomState, getHostSecret, genId } from "@/lib/room";
 import { supabase } from "@/integrations/supabase/client";
 import { eventProfile } from "@/lib/event-profile";
 import {
-  launchChallengeState,
-  launchImpostorState,
-  launchPhotoHuntState,
-  launchSoundscapeState,
-  launchSpectrumCourtState,
-  launchTrackGuessState,
-  launchWhoAmongState,
-} from "@/lib/game-state";
+  activeLegacyGame,
+  activeLegacyGamePhase,
+  getLegacyGame,
+  launchLegacyGame,
+} from "@/games/registry";
 import { teamColorClasses } from "@/lib/team-style";
 import {
   buildWinnerAnnouncement,
@@ -27,9 +24,22 @@ import {
   resetScoresState,
   resumePartyState,
   resumeRoomState,
-  setVenueState,
   skipCurrentPhaseState,
 } from "@/lib/host-controls";
+import { selectExperienceState, selectPartyActState } from "@/lib/party-controls";
+import {
+  contextForExperience,
+  getExperienceAct,
+  getExperiencePack,
+  getExperienceRoute,
+  type RunOfShowStep,
+} from "@/experiences/catalog";
+import {
+  buildRouteTimeline,
+  getConductorLabels,
+  getNextRecommendedRouteStep,
+} from "@/experiences/conductor";
+import type { ContingencyPlan, ExperienceId, PartyActId } from "@/lib/party-context";
 import { speakerReadiness } from "@/lib/speaker-status";
 import { HOST_ACTION_ERROR_EVENT } from "@/lib/host-action-errors";
 import {
@@ -43,42 +53,8 @@ import {
 import type { GameId, RoomState } from "@/lib/types";
 import { GameRulesDialogTrigger } from "@/components/game-rules-ui";
 import { publicJoinUrl, publicSpeakerUrl } from "@/lib/public-site";
-
-const SoundscapeHost = lazy(() =>
-  import("@/games/soundscape/HostView").then((module) => ({
-    default: module.SoundscapeHost,
-  })),
-);
-const ChallengeHost = lazy(() =>
-  import("@/games/challenge/HostView").then((module) => ({
-    default: module.ChallengeHost,
-  })),
-);
-const PhotoHuntHost = lazy(() =>
-  import("@/games/phototunt/HostView").then((module) => ({
-    default: module.PhotoHuntHost,
-  })),
-);
-const TrackGuessHost = lazy(() =>
-  import("@/games/trackguess/HostView").then((module) => ({
-    default: module.TrackGuessHost,
-  })),
-);
-const SpectrumCourtHost = lazy(() =>
-  import("@/games/spectrumcourt/HostView").then((module) => ({
-    default: module.SpectrumCourtHost,
-  })),
-);
-const WhoAmongHost = lazy(() =>
-  import("@/games/whoamong/HostView").then((module) => ({
-    default: module.WhoAmongHost,
-  })),
-);
-const ImpostorHost = lazy(() =>
-  import("@/games/impostor/HostView").then((module) => ({
-    default: module.ImpostorHost,
-  })),
-);
+import { ActiveHostGameView } from "@/games/host-view-registry";
+import { LEGACY_GAME_IDS } from "@/games/ids";
 
 export const Route = createFileRoute("/host/$code")({
   component: HostPage,
@@ -163,49 +139,27 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
     }
   }
 
-  async function launchSoundscape() {
-    await updateRoomState(roomId, launchSoundscapeState(state, genId("snd")));
-  }
-
-  async function launchChallenge() {
-    const next = launchChallengeState(state, genId("ch"));
+  async function launchGame(gameId: GameId) {
+    const game = getLegacyGame(gameId);
+    const next = launchLegacyGame(state, gameId, { roundId: genId(game.roundIdPrefix) });
     if (!next) return;
     await updateRoomState(roomId, next);
   }
 
-  async function launchPhotoHunt() {
-    const next = launchPhotoHuntState(state, genId("ph"));
-    if (!next) return;
-    await updateRoomState(roomId, next);
+  async function selectExperience(experienceId: ExperienceId, contingency: ContingencyPlan) {
+    if (state.party?.experienceId === experienceId && state.party.contingency === contingency)
+      return;
+    await updateRoomState(
+      roomId,
+      selectExperienceState(state, experienceId, contingency, Date.now()),
+    );
   }
 
-  async function launchTrackGuess() {
-    const next = launchTrackGuessState(state, genId("tg"));
+  async function selectAct(actId: PartyActId) {
+    if (state.party?.actId === actId) return;
+    const next = selectPartyActState(state, actId, Date.now());
     if (!next) return;
     await updateRoomState(roomId, next);
-  }
-
-  async function launchSpectrumCourt() {
-    const next = launchSpectrumCourtState(state, genId("sc"));
-    if (!next) return;
-    await updateRoomState(roomId, next);
-  }
-
-  async function launchWhoAmong() {
-    const next = launchWhoAmongState(state, genId("wa"));
-    if (!next) return;
-    await updateRoomState(roomId, next);
-  }
-
-  async function launchImpostor() {
-    const next = launchImpostorState(state, genId("imp"));
-    if (!next) return;
-    await updateRoomState(roomId, next);
-  }
-
-  async function setVenue(venue: "park" | "bar") {
-    if (state.venue === venue || (!state.venue && venue === "park")) return;
-    await updateRoomState(roomId, setVenueState(state, venue));
   }
 
   async function resetGame() {
@@ -224,13 +178,7 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
   }
 
   async function restartCurrentGame() {
-    if (state.currentGame === "soundscape") await launchSoundscape();
-    if (state.currentGame === "challenge") await launchChallenge();
-    if (state.currentGame === "phototunt") await launchPhotoHunt();
-    if (state.currentGame === "trackguess") await launchTrackGuess();
-    if (state.currentGame === "spectrumcourt") await launchSpectrumCourt();
-    if (state.currentGame === "whoamong") await launchWhoAmong();
-    if (state.currentGame === "impostor") await launchImpostor();
+    if (state.currentGame) await launchGame(state.currentGame);
   }
 
   async function forceBackToHub() {
@@ -317,37 +265,23 @@ function HostInner({ roomId, code, state }: { roomId: string; code: string; stat
             />
           ) : state.currentGame ? (
             <Suspense fallback={<HostGameLoading />}>
-              {state.currentGame === "soundscape" && state.soundscape ? (
-                <SoundscapeHost roomId={roomId} code={code} state={state} />
-              ) : state.currentGame === "challenge" && state.challenge ? (
-                <ChallengeHost roomId={roomId} state={state} />
-              ) : state.currentGame === "phototunt" && state.phototunt ? (
-                <PhotoHuntHost roomId={roomId} state={state} />
-              ) : state.currentGame === "trackguess" && state.trackguess ? (
-                <TrackGuessHost roomId={roomId} state={state} />
-              ) : state.currentGame === "spectrumcourt" && state.spectrumcourt ? (
-                <SpectrumCourtHost roomId={roomId} state={state} />
-              ) : state.currentGame === "whoamong" && state.whoamong ? (
-                <WhoAmongHost roomId={roomId} state={state} />
-              ) : state.currentGame === "impostor" && state.impostor ? (
-                <ImpostorHost roomId={roomId} state={state} />
-              ) : (
-                <HostGameLoading />
-              )}
+              <ActiveHostGameView
+                roomId={roomId}
+                code={code}
+                state={state}
+                fallback={<HostGameLoading />}
+              />
             </Suspense>
           ) : (
             <Lobby
               totalPlayers={totalPlayers}
               code={code}
               joinUrl={joinUrl}
-              onLaunchSoundscape={() => runHostAction(launchSoundscape)}
-              onLaunchChallenge={() => runHostAction(launchChallenge)}
-              onLaunchPhotoHunt={() => runHostAction(launchPhotoHunt)}
-              onLaunchTrackGuess={() => runHostAction(launchTrackGuess)}
-              onLaunchSpectrumCourt={() => runHostAction(launchSpectrumCourt)}
-              onLaunchWhoAmong={() => runHostAction(launchWhoAmong)}
-              onLaunchImpostor={() => runHostAction(launchImpostor)}
-              onSetVenue={(venue) => runHostAction(() => setVenue(venue))}
+              onLaunchGame={(gameId) => runHostAction(() => launchGame(gameId))}
+              onSelectExperience={(experienceId, contingency) =>
+                runHostAction(() => selectExperience(experienceId, contingency))
+              }
+              onSelectAct={(actId) => runHostAction(() => selectAct(actId))}
               onFinishParty={() => runHostAction(finishParty)}
               speakerUrlFor={speakerUrlFor}
               onTestSpeaker={testSpeaker}
@@ -476,31 +410,8 @@ function HostControlBar({
   onRestart: () => void;
   onBackToHub: () => void;
 }) {
-  const gameLabel = {
-    soundscape: "Soundscape Battle",
-    challenge: "Challenge",
-    phototunt: "Photo Hunt",
-    trackguess: "Real or AI?",
-    spectrumcourt: "Spectrum Court",
-    whoamong: "Who Among Us",
-    impostor: "Who's the Bot?",
-  }[state.currentGame ?? "soundscape"];
-  const phase =
-    state.currentGame === "soundscape"
-      ? state.soundscape?.phase
-      : state.currentGame === "challenge"
-        ? state.challenge?.phase
-        : state.currentGame === "phototunt"
-          ? state.phototunt?.phase
-          : state.currentGame === "trackguess"
-            ? state.trackguess?.phase
-            : state.currentGame === "spectrumcourt"
-              ? state.spectrumcourt?.phase
-              : state.currentGame === "whoamong"
-                ? state.whoamong?.phase
-                : state.currentGame === "impostor"
-                  ? state.impostor?.phase
-                  : null;
+  const gameLabel = activeLegacyGame(state)?.title ?? "Game";
+  const phase = activeLegacyGamePhase(state);
   const phaseLabel = formatRoundPhaseLabel(state.currentGame, phase);
 
   return (
@@ -561,18 +472,21 @@ function speak(text: string) {
   a.play().catch(() => {});
 }
 
+function humanizeRunStep(value: string): string {
+  return value.replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function isImplementedRunStep(step: RunOfShowStep): boolean {
+  return !("gameId" in step) || (LEGACY_GAME_IDS as readonly string[]).includes(step.gameId);
+}
+
 function Lobby({
   totalPlayers,
   code,
   joinUrl,
-  onLaunchSoundscape,
-  onLaunchChallenge,
-  onLaunchPhotoHunt,
-  onLaunchTrackGuess,
-  onLaunchSpectrumCourt,
-  onLaunchWhoAmong,
-  onLaunchImpostor,
-  onSetVenue,
+  onLaunchGame,
+  onSelectExperience,
+  onSelectAct,
   onFinishParty,
   speakerUrlFor,
   onTestSpeaker,
@@ -584,14 +498,9 @@ function Lobby({
   totalPlayers: number;
   code: string;
   joinUrl: string;
-  onLaunchSoundscape: () => void;
-  onLaunchChallenge: () => void;
-  onLaunchPhotoHunt: () => void;
-  onLaunchTrackGuess: () => void;
-  onLaunchSpectrumCourt: () => void;
-  onLaunchWhoAmong: () => void;
-  onLaunchImpostor: () => void;
-  onSetVenue: (venue: "park" | "bar") => void;
+  onLaunchGame: (gameId: GameId) => void;
+  onSelectExperience: (experienceId: ExperienceId, contingency: ContingencyPlan) => void;
+  onSelectAct: (actId: PartyActId) => void;
   onFinishParty: () => void;
   speakerUrlFor: (n: number) => string;
   onTestSpeaker: (n: number) => void;
@@ -619,6 +528,13 @@ function Lobby({
   const canImpostor = totalPlayers >= 3;
   const hasScores = state.teams.some((team) => team.score > 0);
   const venue = state.venue ?? "park";
+  const party =
+    state.party ?? contextForExperience("classic-park", venue === "bar" ? "bar-only" : "normal");
+  const experience = getExperiencePack(party.experienceId);
+  const route = getExperienceRoute(party.experienceId, party.contingency);
+  const conductorLabels = getConductorLabels(party);
+  const timeline = buildRouteTimeline(party);
+  const nextRecommended = getNextRecommendedRouteStep(party);
 
   function copyLink() {
     navigator.clipboard?.writeText(joinUrl).then(() => {
@@ -722,34 +638,161 @@ function Lobby({
       <div className={`rounded-3xl park-gradient p-6 text-white ${hasPlayers ? "" : "opacity-70"}`}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="text-xs uppercase tracking-[0.25em] text-white/80">Start</div>
-            <h3 className="font-display text-2xl mt-0.5">What are we playing first?</h3>
-            <div className="mt-3 inline-flex rounded-2xl border border-white/20 bg-white/10 p-1">
+            <div className="text-xs uppercase tracking-[0.25em] text-white/80">Party conductor</div>
+            <h3 className="font-display text-2xl mt-0.5">{experience.title[party.uiLocale]}</h3>
+            <div className="mt-3 flex flex-wrap gap-2">
               {(
                 [
-                  { id: "park", label: "🌳 Park" },
-                  { id: "bar", label: "🍸 Bar" },
+                  { id: "classic-park", label: "🌳 Classic" },
+                  { id: "smoke-neon-norrebro", label: "🔥 Smoke & Neon" },
                 ] as const
               ).map((option) => (
                 <button
                   key={option.id}
                   type="button"
-                  onClick={() => onSetVenue(option.id)}
+                  onClick={() =>
+                    onSelectExperience(
+                      option.id,
+                      option.id === party.experienceId
+                        ? party.contingency
+                        : option.id === "classic-park"
+                          ? "normal"
+                          : party.contingency,
+                    )
+                  }
                   className={`rounded-xl px-4 py-1.5 text-sm font-medium transition ${
-                    venue === option.id
+                    party.experienceId === option.id
                       ? "bg-white text-[oklch(0.2_0.05_160)]"
-                      : "text-white/70 hover:text-white"
+                      : "border border-white/20 text-white/70 hover:text-white"
                   }`}
                 >
                   {option.label}
                 </button>
               ))}
             </div>
-            <p className="mt-2 text-xs text-white/70">
-              {venue === "bar"
-                ? "Bar mode: AI prompts fit tables, drinks and indoor chaos."
-                : "Park mode: AI prompts assume open space and running around."}
+            {party.experienceId === "smoke-neon-norrebro" && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(
+                  [
+                    { id: "normal", label: "Full evening" },
+                    { id: "bar-only", label: "Bar only" },
+                    { id: "compact", label: "Compact" },
+                  ] as const
+                ).map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => onSelectExperience(party.experienceId, option.id)}
+                    className={`rounded-full border px-3 py-1 text-xs transition ${
+                      party.contingency === option.id
+                        ? "border-white bg-white/20 text-white"
+                        : "border-white/20 text-white/60 hover:text-white"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {party.experienceId === "classic-park" && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(
+                  [
+                    { id: "normal", label: "🌳 Park" },
+                    { id: "bar-only", label: "🍸 Bar" },
+                  ] as const
+                ).map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => onSelectExperience(party.experienceId, option.id)}
+                    className={`rounded-full border px-3 py-1 text-xs transition ${
+                      party.contingency === option.id
+                        ? "border-white bg-white/20 text-white"
+                        : "border-white/20 text-white/60 hover:text-white"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {route.actOrder.map((actId) => {
+                const act = getExperienceAct(party.experienceId, actId);
+                if (!act) return null;
+                return (
+                  <button
+                    key={act.id}
+                    type="button"
+                    onClick={() => onSelectAct(act.id)}
+                    className={`rounded-full px-3 py-1.5 text-xs transition ${
+                      party.actId === act.id
+                        ? "bg-black/30 text-white ring-1 ring-white/40"
+                        : "bg-white/10 text-white/65 hover:text-white"
+                    }`}
+                  >
+                    {act.emoji} {act.label[party.uiLocale]}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 max-w-xl text-xs text-white/70">
+              {getExperienceAct(party.experienceId, party.actId)?.environmentContext[
+                party.uiLocale
+              ] ?? "Choose an act, then launch a game from the library below."}
             </p>
+            {nextRecommended && isImplementedRunStep(nextRecommended) && (
+              <div className="mt-4 rounded-2xl border border-white/20 bg-black/20 p-4">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-white/60">
+                  Next recommended · {conductorLabels.contingencyLabel}
+                </div>
+                <div className="mt-1 font-display text-xl text-white">
+                  {humanizeRunStep(nextRecommended.id)}
+                </div>
+                <div className="mt-1 text-xs text-white/65">
+                  {nextRecommended.durationMinutes} min · {humanizeRunStep(nextRecommended.kind)}
+                  {nextRecommended.optional ? " · optional" : ""}
+                </div>
+              </div>
+            )}
+            {nextRecommended && !isImplementedRunStep(nextRecommended) && (
+              <div className="mt-4 rounded-2xl border border-amber-200/25 bg-amber-950/20 p-4">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-amber-100/70">
+                  Program draft · not playable yet
+                </div>
+                <div className="mt-1 text-sm text-white/80">
+                  {humanizeRunStep(nextRecommended.id)} is part of the upcoming signature-game
+                  rollout. Launch one of the available games below for this act.
+                </div>
+              </div>
+            )}
+            {timeline.length > 0 && (
+              <details className="mt-3 rounded-2xl border border-white/15 bg-white/5 p-3">
+                <summary className="cursor-pointer text-xs text-white/75">
+                  Run of show · {timeline.filter((item) => item.status === "past").length}/
+                  {timeline.length} moments behind us
+                </summary>
+                <ol className="mt-3 space-y-1.5 text-xs">
+                  {timeline.map(({ step, status }) => (
+                    <li
+                      key={step.id}
+                      className={
+                        status === "current"
+                          ? "text-white"
+                          : status === "past"
+                            ? "text-white/35 line-through"
+                            : "text-white/55"
+                      }
+                    >
+                      {status === "past" ? "✓" : status === "current" ? "→" : "·"}{" "}
+                      {humanizeRunStep(step.id)}
+                      {!isImplementedRunStep(step) ? " · planned" : ""}
+                    </li>
+                  ))}
+                </ol>
+              </details>
+            )}
           </div>
           <button
             type="button"
@@ -780,7 +823,7 @@ function Lobby({
                   ? "works without extra speakers"
                   : undefined
             }
-            onClick={onLaunchSoundscape}
+            onClick={() => onLaunchGame("soundscape")}
           />
           <GameCard
             gameId="challenge"
@@ -790,7 +833,7 @@ function Lobby({
             desc="One player films while others act out a scene. AI scores it 1–10."
             disabled={!canChallenge}
             disabledHint={!canChallenge ? "needs ≥ 2 players" : undefined}
-            onClick={onLaunchChallenge}
+            onClick={() => onLaunchGame("challenge")}
           />
           <GameCard
             gameId="phototunt"
@@ -800,7 +843,7 @@ function Lobby({
             desc="AI gives an absurd prompt. Everyone gets 60 seconds for one shot."
             disabled={!canPhoto}
             disabledHint={!canPhoto ? "needs ≥ 1 player" : undefined}
-            onClick={onLaunchPhotoHunt}
+            onClick={() => onLaunchGame("phototunt")}
           />
           <GameCard
             gameId="trackguess"
@@ -810,7 +853,7 @@ function Lobby({
             desc="Play Spotify tracks from the host side, then make everyone guess human or machine."
             disabled={!canTrackGuess}
             disabledHint={!canTrackGuess ? "needs ≥ 1 player" : undefined}
-            onClick={onLaunchTrackGuess}
+            onClick={() => onLaunchGame("trackguess")}
           />
           <GameCard
             gameId="spectrumcourt"
@@ -820,7 +863,7 @@ function Lobby({
             desc="One team gives a clue for a hidden point on a scale; others debate and place a marker."
             disabled={!canSpectrumCourt}
             disabledHint={!canSpectrumCourt ? "needs ≥ 2 active teams" : undefined}
-            onClick={onLaunchSpectrumCourt}
+            onClick={() => onLaunchGame("spectrumcourt")}
           />
           <GameCard
             gameId="whoamong"
@@ -830,7 +873,7 @@ function Lobby({
             desc="A pointed question appears — secretly vote for the player who fits best."
             disabled={!canWhoAmong}
             disabledHint={!canWhoAmong ? "needs ≥ 3 players" : undefined}
-            onClick={onLaunchWhoAmong}
+            onClick={() => onLaunchGame("whoamong")}
           />
           <GameCard
             gameId="impostor"
@@ -840,7 +883,7 @@ function Lobby({
             desc="Everyone writes a witty answer — one is secretly AI. Find the machine."
             disabled={!canImpostor}
             disabledHint={!canImpostor ? "needs ≥ 3 players" : undefined}
-            onClick={onLaunchImpostor}
+            onClick={() => onLaunchGame("impostor")}
           />
         </div>
       </div>

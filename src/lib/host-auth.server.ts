@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { migrateRoomState } from "./room-state-migration";
 import type { RoomState } from "./types";
 
 export type AuthorizedHostRoom = {
@@ -191,7 +192,7 @@ export async function authorizeHostRoom(params: {
   return {
     id: data.id,
     code: data.code,
-    state: data.state as unknown as RoomState,
+    state: migrateRoomState(data.state as unknown as RoomState),
   };
 }
 

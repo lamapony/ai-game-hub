@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useRoom, getOrCreatePlayer, readStoredPlayer } from "@/lib/room";
 import { normalizePlayerName, playerNameValidationMessage } from "@/lib/player-name";
@@ -14,42 +14,7 @@ import {
 import { teamColorClasses } from "@/lib/team-style";
 import { playersOnTeam } from "@/lib/teams";
 import { GameRulesBrowser } from "@/components/game-rules-ui";
-
-const SoundscapePlayer = lazy(() =>
-  import("@/games/soundscape/PlayerView").then((module) => ({
-    default: module.SoundscapePlayer,
-  })),
-);
-const ChallengePlayer = lazy(() =>
-  import("@/games/challenge/PlayerView").then((module) => ({
-    default: module.ChallengePlayer,
-  })),
-);
-const PhotoHuntPlayer = lazy(() =>
-  import("@/games/phototunt/PlayerView").then((module) => ({
-    default: module.PhotoHuntPlayer,
-  })),
-);
-const TrackGuessPlayer = lazy(() =>
-  import("@/games/trackguess/PlayerView").then((module) => ({
-    default: module.TrackGuessPlayer,
-  })),
-);
-const SpectrumCourtPlayer = lazy(() =>
-  import("@/games/spectrumcourt/PlayerView").then((module) => ({
-    default: module.SpectrumCourtPlayer,
-  })),
-);
-const WhoAmongPlayer = lazy(() =>
-  import("@/games/whoamong/PlayerView").then((module) => ({
-    default: module.WhoAmongPlayer,
-  })),
-);
-const ImpostorPlayer = lazy(() =>
-  import("@/games/impostor/PlayerView").then((module) => ({
-    default: module.ImpostorPlayer,
-  })),
-);
+import { ActivePlayerGameView } from "@/games/player-view-registry";
 
 export const Route = createFileRoute("/play/$code")({
   component: PlayPage,
@@ -307,27 +272,20 @@ function PlayerScreen({
             <PlayerFinale state={state} me={me} />
           ) : state.paused ? (
             <PausedPanel />
-          ) : state.currentGame === "soundscape" && state.soundscape ? (
-            <SoundscapePlayer roomId={room.id} state={state} me={me} />
-          ) : state.currentGame === "challenge" && state.challenge ? (
-            <ChallengePlayer roomId={room.id} state={state} me={me} />
-          ) : state.currentGame === "phototunt" && state.phototunt ? (
-            <PhotoHuntPlayer roomId={room.id} state={state} me={me} />
-          ) : state.currentGame === "trackguess" && state.trackguess ? (
-            <TrackGuessPlayer roomId={room.id} state={state} me={me} />
-          ) : state.currentGame === "spectrumcourt" && state.spectrumcourt ? (
-            <SpectrumCourtPlayer roomId={room.id} state={state} me={me} />
-          ) : state.currentGame === "whoamong" && state.whoamong ? (
-            <WhoAmongPlayer roomId={room.id} state={state} me={me} />
-          ) : state.currentGame === "impostor" && state.impostor ? (
-            <ImpostorPlayer roomId={room.id} state={state} me={me} />
           ) : (
-            <WaitingPanel
-              room={room}
+            <ActivePlayerGameView
+              roomId={room.id}
+              state={state}
               me={me}
-              code={code}
-              onTeamChange={onTeamChange}
-              onRoomState={onRoomState}
+              fallback={
+                <WaitingPanel
+                  room={room}
+                  me={me}
+                  code={code}
+                  onTeamChange={onTeamChange}
+                  onRoomState={onRoomState}
+                />
+              }
             />
           )}
         </Suspense>

@@ -13,6 +13,7 @@ import {
   resetScoresState,
   resumePartyState,
   resumeRoomState,
+  setVenueState,
   SOUNDSCAPE_FALLBACK_TOPIC,
   skipCurrentPhaseState,
   spectrumCourtFallbackClue,
@@ -452,6 +453,20 @@ describe("host controls state helpers", () => {
 
     expect(result.teams.every((team) => team.score === 0)).toBe(true);
     expect(result.players).toHaveLength(2);
+  });
+
+  test("setVenueState keeps legacy venue and V2 party context synchronized", () => {
+    const bar = setVenueState(roomState(), "bar");
+    expect(bar.venue).toBe("bar");
+    expect(bar.party?.actId).toBe("bar");
+    expect(bar.party?.venue).toBe("bar");
+    expect(bar.party?.contingency).toBe("bar-only");
+
+    const park = setVenueState(bar, "park");
+    expect(park.venue).toBe("park");
+    expect(park.party?.actId).toBe("classic");
+    expect(park.party?.venue).toBe("park");
+    expect(park.party?.contingency).toBe("normal");
   });
 
   test("computeTeamStandings handles ties with shared places", () => {

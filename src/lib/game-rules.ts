@@ -1,3 +1,4 @@
+import { LEGACY_GAME_IDS } from "@/games/ids";
 import type { GameId } from "./types";
 import {
   SPECTRUM_COURT_TOTAL_ROUNDS,
@@ -22,15 +23,7 @@ export type GameRules = {
   minPlayers: string;
 };
 
-export const GAME_IDS: GameId[] = [
-  "soundscape",
-  "challenge",
-  "phototunt",
-  "trackguess",
-  "spectrumcourt",
-  "whoamong",
-  "impostor",
-];
+export const GAME_IDS: readonly GameId[] = LEGACY_GAME_IDS;
 
 const soundRecordingMin = Math.round(SOUND_RECORDING_MS / 60_000);
 const topicsSec = Math.round(SOUND_TOPICS_MS / 1000);

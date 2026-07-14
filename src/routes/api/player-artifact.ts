@@ -15,6 +15,7 @@ import {
   RECORDINGS_BUCKET,
 } from "@/lib/player-media.server";
 import { logError, logInfo, logWarn } from "@/lib/structured-log";
+import { migrateRoomState } from "@/lib/room-state-migration";
 import type { RoomState } from "@/lib/types";
 
 const SOUND_VOTING_MS = 30_000;
@@ -64,7 +65,7 @@ async function fetchRoom(roomId: string) {
     .maybeSingle();
   if (error) throw error;
   if (!data) throw statusError("room not found", 404);
-  return { id: data.id, state: data.state as unknown as RoomState };
+  return { id: data.id, state: migrateRoomState(data.state as unknown as RoomState) };
 }
 
 async function submitSoundscapeClip(state: RoomState, roomId: string, body: ArtifactBody) {

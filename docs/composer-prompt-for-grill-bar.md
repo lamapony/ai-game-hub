@@ -1,5 +1,9 @@
 # Ready-to-paste prompt for Composer 2.5 / Cursor Composer
 
+> **Historical prompt.** Do not run this prompt against the current repository. Use
+> `docs/conceptual-development-plan.md` and delegate only bounded work such as
+> `docs/hermes-toast-catalog-task.md`.
+
 Copy everything below this line and paste into your Composer agent.
 
 ---

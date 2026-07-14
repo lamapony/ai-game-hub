@@ -10,6 +10,7 @@ import {
   type PlayerUploadAction,
 } from "@/lib/player-media.server";
 import { logError, logInfo, logWarn } from "@/lib/structured-log";
+import { migrateRoomState } from "@/lib/room-state-migration";
 import type { RoomState } from "@/lib/types";
 
 type UploadTargetBody = {
@@ -54,7 +55,7 @@ export const Route = createFileRoute("/api/player-upload-target")({
           if (error) throw error;
           if (!data) return new Response("room not found", { status: 404 });
 
-          const state = data.state as unknown as RoomState;
+          const state = migrateRoomState(data.state as unknown as RoomState);
           const player = requireAuthorizedPlayer(
             state,
             body.playerId,
