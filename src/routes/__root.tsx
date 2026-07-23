@@ -250,14 +250,14 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
+        <HeadContent />
+      </head>
+      <body>
         <style
           id="agh-critical-fallback"
           dangerouslySetInnerHTML={{ __html: criticalLandingCss }}
         />
-        <HeadContent />
         <script dangerouslySetInnerHTML={{ __html: criticalLandingCssGuard }} />
-      </head>
-      <body>
         {children}
         <Scripts />
       </body>
