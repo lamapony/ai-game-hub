@@ -126,6 +126,20 @@ const criticalLandingCss = `
   }
 `;
 
+const criticalLandingCssGuard = `
+  (() => {
+    const removeFallbackWhenReady = () => {
+      const stylesheet = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+        .find((link) => link.href.includes('/assets/styles-'))?.sheet;
+      let hasRules = false;
+      try { hasRules = Boolean(stylesheet && stylesheet.cssRules.length); } catch (_) {}
+      if (hasRules) document.getElementById('agh-critical-fallback')?.remove();
+    };
+    removeFallbackWhenReady();
+    window.addEventListener('load', removeFallbackWhenReady, { once: true });
+  })();
+`;
+
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -236,8 +250,12 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
-        <style dangerouslySetInnerHTML={{ __html: criticalLandingCss }} />
+        <style
+          id="agh-critical-fallback"
+          dangerouslySetInnerHTML={{ __html: criticalLandingCss }}
+        />
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: criticalLandingCssGuard }} />
       </head>
       <body>
         {children}
