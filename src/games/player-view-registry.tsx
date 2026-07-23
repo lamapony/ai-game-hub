@@ -35,6 +35,31 @@ const WhoAmongPlayer = lazy(() =>
 const ImpostorPlayer = lazy(() =>
   import("@/games/impostor/PlayerView").then((module) => ({ default: module.ImpostorPlayer })),
 );
+const GrillOraclePlayer = lazy(() =>
+  import("@/games/grilloracle/PlayerView").then((module) => ({
+    default: module.GrillOraclePlayer,
+  })),
+);
+const ToastSyndicatePlayer = lazy(() =>
+  import("@/games/toastsyndicate/PlayerView").then((module) => ({
+    default: module.ToastSyndicatePlayer,
+  })),
+);
+const StillLifePlayer = lazy(() =>
+  import("@/games/stilllife/PlayerView").then((module) => ({
+    default: module.StillLifePlayer,
+  })),
+);
+const SommelierPlayer = lazy(() =>
+  import("@/games/sommelier/PlayerView").then((module) => ({
+    default: module.SommelierPlayer,
+  })),
+);
+const CrossExaminationPlayer = lazy(() =>
+  import("@/games/crossexamination/PlayerView").then((module) => ({
+    default: module.CrossExaminationPlayer,
+  })),
+);
 
 export const PLAYER_GAME_VIEW_REGISTRY = {
   soundscape: {
@@ -65,6 +90,40 @@ export const PLAYER_GAME_VIEW_REGISTRY = {
     isReady: (state) => Boolean(state.impostor),
     View: ({ roomId, state, me }) => <ImpostorPlayer roomId={roomId} state={state} me={me} />,
   },
+  grilloracle: {
+    isReady: (state) => Boolean(state.grilloracle),
+    View: ({ roomId, state, me }) => <GrillOraclePlayer roomId={roomId} state={state} me={me} />,
+  },
+  smokescreen: {
+    isReady: () => false,
+    View: () => null,
+  },
+  contraband: {
+    isReady: () => false,
+    View: () => null,
+  },
+  tongsoftruth: {
+    isReady: () => false,
+    View: () => null,
+  },
+  crossexamination: {
+    isReady: (state) => Boolean(state.crossexamination),
+    View: ({ roomId, state, me }) => (
+      <CrossExaminationPlayer roomId={roomId} state={state} me={me} />
+    ),
+  },
+  toastsyndicate: {
+    isReady: (state) => Boolean(state.toastsyndicate),
+    View: ({ roomId, state, me }) => <ToastSyndicatePlayer roomId={roomId} state={state} me={me} />,
+  },
+  stilllife: {
+    isReady: (state) => Boolean(state.stilllife),
+    View: ({ roomId, state, me }) => <StillLifePlayer roomId={roomId} state={state} me={me} />,
+  },
+  sommelier: {
+    isReady: (state) => Boolean(state.sommelier),
+    View: ({ roomId, state, me }) => <SommelierPlayer roomId={roomId} state={state} me={me} />,
+  },
 } satisfies Record<GameId, PlayerGameViewDefinition>;
 
 export function ActivePlayerGameView({
@@ -76,5 +135,9 @@ export function ActivePlayerGameView({
   const definition = PLAYER_GAME_VIEW_REGISTRY[gameId];
   if (!definition.isReady(props.state)) return fallback;
   const View = definition.View;
-  return <View {...props} />;
+  return (
+    <div data-testid="active-player-game" data-game-id={gameId}>
+      <View {...props} />
+    </div>
+  );
 }

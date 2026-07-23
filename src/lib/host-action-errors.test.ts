@@ -9,6 +9,12 @@ describe("friendlyHostActionError", () => {
     expect(message).toContain("network dropped");
   });
 
+  test("uses the requested host-facing recovery verb", () => {
+    const message = friendlyHostActionError(new Error("Failed to fetch"), "AI game", "prepare");
+
+    expect(message).toContain("Could not prepare AI game");
+  });
+
   test("explains lost host access", () => {
     const message = friendlyHostActionError(new Error("host authorization required"));
 
@@ -16,10 +22,22 @@ describe("friendlyHostActionError", () => {
     expect(message).toContain("original host device");
   });
 
-  test("keeps unknown server messages visible", () => {
-    const message = friendlyHostActionError(new Error("write rejected"), "team edit");
+  test("turns a phase conflict into current-panel guidance", () => {
+    const message = friendlyHostActionError(new Error("round mismatch: private-run-sentinel"));
+
+    expect(message).toContain("party step changed");
+    expect(message).toContain("current game panel");
+    expect(message.includes("private-run-sentinel")).toBe(false);
+  });
+
+  test("keeps unknown server messages private", () => {
+    const message = friendlyHostActionError(
+      new Error("write rejected at private-relation-sentinel"),
+      "team edit",
+    );
 
     expect(message).toContain("team edit");
-    expect(message).toContain("write rejected");
+    expect(message).toContain("pause the party");
+    expect(message.includes("private-relation-sentinel")).toBe(false);
   });
 });

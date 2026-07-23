@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { publicApiErrorResponse, publicApiErrorStatus } from "@/lib/api-error-response.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { authorizeHostRoom, hostSecretFromRequest } from "@/lib/host-auth.server";
 import { cleanId, statusError } from "@/lib/player-auth.server";
@@ -103,18 +104,13 @@ export const Route = createFileRoute("/api/host-artifact")({
           });
           return Response.json(result);
         } catch (error) {
-          const status =
-            error && typeof error === "object" && "status" in error
-              ? Number((error as { status?: unknown }).status) || 500
-              : 500;
+          const status = publicApiErrorStatus(error);
           logError("api.host_artifact.failure", error, {
             durationMs: Date.now() - startedAt,
             status,
             action: body.action,
           });
-          return new Response(error instanceof Error ? error.message : "host artifact failed", {
-            status,
-          });
+          return publicApiErrorResponse(error, { fallbackMessage: "host artifact failed", status });
         }
       },
     },

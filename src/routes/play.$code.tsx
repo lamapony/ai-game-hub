@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Suspense, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useRoom, getOrCreatePlayer, readStoredPlayer } from "@/lib/room";
@@ -11,56 +11,65 @@ import {
   formatRussianPoints,
   getWinningStandings,
 } from "@/lib/host-controls";
-import { teamColorClasses } from "@/lib/team-style";
 import { playersOnTeam } from "@/lib/teams";
 import { GameRulesBrowser } from "@/components/game-rules-ui";
+import { PlayerDevicePreflight } from "@/components/player-device-preflight";
+import { PartyFinaleNarrative } from "@/components/party-finale-narrative";
+import { TapeReel } from "@/components/tape-reel";
 import { ActivePlayerGameView } from "@/games/player-view-registry";
+import { GrillOracleLifecyclePlayer } from "@/games/grilloracle/LifecyclePlayer";
+import { SmokeScreenBackgroundPlayer } from "@/games/smokescreen/BackgroundPlayer";
+import { ContrabandBackgroundPlayer } from "@/games/contraband/BackgroundPlayer";
+import { TongsOfTruthBackgroundPlayer } from "@/games/tongsoftruth/BackgroundPlayer";
+import type { RoomConnectionStatus } from "@/lib/room";
+import { isValidRoomCode, normalizeRoomCodeInput } from "@/lib/room-code";
+import { guestRoomFailureKind, type GuestRoomFailureKind } from "@/lib/guest-room-recovery";
+import { MAX_ROOM_PLAYERS, roomHasPlayerCapacity } from "@/lib/room-capacity";
 
 export const Route = createFileRoute("/play/$code")({
   component: PlayPage,
 });
 
 function PlayPage() {
-  const { code } = Route.useParams();
-  const { room, loading, error, setRoom } = useRoom(code);
+  const { code: routeCode } = Route.useParams();
+  const code = normalizeRoomCodeInput(routeCode);
+  const codeValid = isValidRoomCode(routeCode);
+  const { room, loading, error, setRoom, connectionStatus, refreshRoom } = useRoom(
+    codeValid ? code : undefined,
+  );
   const [me, setMe] = useState<StoredPlayer | null>(null);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    setMe(null);
+    if (typeof window === "undefined" || !codeValid) return;
     const stored = readStoredPlayer(code);
     if (stored) setMe(getOrCreatePlayer(code, stored.name, stored.teamId));
-  }, [code]);
+  }, [code, codeValid]);
 
-  if (loading)
+  if (codeValid && loading)
     return (
-      <PlayShell>
-        <div className="text-white/70">Loading…</div>
-      </PlayShell>
-    );
-  if (error || !room)
-    return (
-      <PlayShell>
-        <div className="w-full max-w-sm rounded-3xl bg-black/45 backdrop-blur p-6 border border-white/10 text-center">
-          <div className="text-4xl">🤷</div>
-          <h2 className="font-display text-2xl text-white mt-2">
-            Room <span className="font-mono">{code}</span> not found
-          </h2>
-          <p className="text-sm text-white/70 mt-2">Check the 4-letter code on the host screen.</p>
-          <Link
-            to="/"
-            className="inline-block mt-5 rounded-2xl bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] font-medium py-3 px-5"
-          >
-            ← Home
-          </Link>
+      <PlayShell connectionStatus={connectionStatus}>
+        <div className="agh-player-loading">
+          <span>Room signal</span>
+          <strong>Finding the party…</strong>
         </div>
       </PlayShell>
     );
+  if (!room) {
+    const failureKind = guestRoomFailureKind(routeCode, error);
+    return (
+      <PlayShell>
+        <GuestRoomRecovery code={code} failureKind={failureKind} onRetry={refreshRoom} />
+      </PlayShell>
+    );
+  }
 
   if (!me) {
     return (
       <JoinForm
         code={code}
         room={room}
+        connectionStatus={connectionStatus}
         onJoined={(player, state) => {
           setRoom({ ...room, state });
           setMe(player);
@@ -74,19 +83,128 @@ function PlayPage() {
       code={code}
       room={room}
       me={me}
+      connectionStatus={connectionStatus}
       onTeamChange={setMe}
       onRoomState={(state) => setRoom({ ...room, state })}
     />
   );
 }
 
+function GuestRoomRecovery({
+  code,
+  failureKind,
+  onRetry,
+}: {
+  code: string;
+  failureKind: GuestRoomFailureKind;
+  onRetry: () => Promise<unknown>;
+}) {
+  const navigate = useNavigate();
+  const [draftCode, setDraftCode] = useState(code);
+  const [retrying, setRetrying] = useState(false);
+  const draftReady = isValidRoomCode(draftCode);
+
+  useEffect(() => setDraftCode(code), [code]);
+
+  const copy =
+    failureKind === "invalid-code"
+      ? {
+          title: "Check the room code",
+          body: "Use the 4 characters on the host screen. Codes skip I, O, 0 and 1.",
+        }
+      : failureKind === "not-found"
+        ? {
+            title: `Room ${code} is not live`,
+            body: "Check the host screen, fix the code below, or ask the host to keep the room open.",
+          }
+        : {
+            title: `Couldn’t check room ${code}`,
+            body: "Your code may be fine. Check your signal and try again. You do not need to start over.",
+          };
+
+  async function submitRecovery() {
+    const normalizedCode = normalizeRoomCodeInput(draftCode);
+    if (!isValidRoomCode(normalizedCode) || retrying) return;
+    if (normalizedCode !== code || failureKind === "invalid-code") {
+      await navigate({ to: "/play/$code", params: { code: normalizedCode }, replace: true });
+      return;
+    }
+    setRetrying(true);
+    try {
+      await onRetry();
+    } catch {
+      // useRoom owns the user-facing failure state.
+    } finally {
+      setRetrying(false);
+    }
+  }
+
+  return (
+    <div
+      data-testid="guest-room-recovery"
+      data-failure-kind={failureKind}
+      className="agh-player-recovery"
+    >
+      <div className="agh-player-room-mark">
+        <span>Room signal</span>
+        <strong>{code || "????"}</strong>
+      </div>
+      <div className="agh-player-recovery-copy">
+        <h2>{copy.title}</h2>
+        <p>{copy.body}</p>
+      </div>
+      <form
+        className="agh-player-recovery-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submitRecovery();
+        }}
+      >
+        <label htmlFor="guest-room-recovery-code">Enter the four characters</label>
+        <input
+          id="guest-room-recovery-code"
+          data-testid="guest-room-recovery-code"
+          aria-describedby="guest-room-recovery-help"
+          aria-invalid={draftCode.length > 0 && !draftReady}
+          value={draftCode}
+          onChange={(event) => setDraftCode(normalizeRoomCodeInput(event.target.value))}
+          placeholder="ABCD"
+          inputMode="text"
+          enterKeyHint="go"
+          autoCapitalize="characters"
+          autoFocus
+          spellCheck={false}
+        />
+        <p id="guest-room-recovery-help" className={draftReady ? "is-ready" : ""}>
+          {draftReady ? "Code ready." : "Codes skip I, O, 0 and 1."}
+        </p>
+        <button
+          data-testid="guest-room-recovery-submit"
+          type="submit"
+          disabled={!draftReady || retrying}
+        >
+          <span>
+            {retrying ? "Checking…" : draftCode === code ? "Check again" : `Try ${draftCode}`}
+          </span>
+          <b aria-hidden>↗</b>
+        </button>
+      </form>
+      <Link to="/" className="agh-player-home-link">
+        Back to AI Game Hub
+      </Link>
+    </div>
+  );
+}
+
 function JoinForm({
   code,
   room,
+  connectionStatus,
   onJoined,
 }: {
   code: string;
   room: { id: string; code: string; state: import("@/lib/types").RoomState };
+  connectionStatus: RoomConnectionStatus;
   onJoined: (player: StoredPlayer, state: import("@/lib/types").RoomState) => void;
 }) {
   const state = room.state;
@@ -119,90 +237,114 @@ function JoinForm({
       onJoined({ ...player, ...result.player, secret: player.secret }, result.state);
     } catch (e) {
       console.error(e);
-      setJoinError(e instanceof Error ? e.message : "Could not join. Try again.");
+      setJoinError(friendlyPlayerActionError(e, "join"));
     } finally {
       setSubmitting(false);
       setJoiningTeamId(null);
     }
   }
 
-  const teamGridClass =
-    state.teams.length <= 2
-      ? "grid-cols-1"
-      : state.teams.length <= 4
-        ? "grid-cols-2"
-        : "grid-cols-1";
   const nameError = playerNameValidationMessage(name);
   const visibleNameError = nameTouched ? nameError : null;
 
-  return (
-    <PlayShell>
-      <div className="w-full max-w-md rounded-3xl bg-black/40 backdrop-blur p-6 border border-white/10">
-        <div className="text-xs uppercase tracking-widest text-[var(--color-park-bright)]">
-          Room {code}
-        </div>
-        <h1 className="font-display text-3xl text-white mt-2">Join the game</h1>
-        <input
-          value={name}
-          onChange={(e) => {
-            setName(e.target.value);
-            setJoinError(null);
-          }}
-          onBlur={() => setNameTouched(true)}
-          placeholder="Your name"
-          maxLength={32}
-          autoComplete="name"
-          required
-          aria-invalid={!!visibleNameError}
-          className={`mt-4 w-full bg-white/10 text-white placeholder-white/40 rounded-2xl px-4 py-3 outline-none focus:bg-white/15 ${
-            visibleNameError
-              ? "ring-2 ring-red-300/70"
-              : "focus:ring-2 focus:ring-[var(--color-park-bright)]/50"
-          }`}
-        />
-        <p
-          className={`mt-2 text-xs ${
-            joinError || visibleNameError ? "text-red-200" : "text-white/55"
-          }`}
+  if (!roomHasPlayerCapacity(state.players.length)) {
+    return (
+      <PlayShell connectionStatus={connectionStatus}>
+        <div
+          data-testid="room-capacity-full"
+          data-player-count={state.players.length}
+          data-player-limit={MAX_ROOM_PLAYERS}
+          className="agh-player-capacity"
         >
-          {joinError ?? visibleNameError ?? "Required. Use the name your friends will recognize."}
-        </p>
-        <div className="mt-5">
-          <div className="text-xs uppercase tracking-widest text-white/60 mb-2">
-            Choose your team
+          <div className="agh-player-capacity-count">
+            <strong>{state.players.length}</strong>
+            <span>of {MAX_ROOM_PLAYERS} players</span>
+          </div>
+          <h1>Room is full.</h1>
+          <p>
+            Ask the host to remove a duplicate or inactive phone. This screen unlocks as soon as a
+            place opens.
+          </p>
+          <Link to="/" className="agh-player-home-link">
+            Back to AI Game Hub
+          </Link>
+        </div>
+      </PlayShell>
+    );
+  }
+
+  return (
+    <PlayShell connectionStatus={connectionStatus}>
+      <section className="agh-player-ticket">
+        <div className="agh-player-ticket-code">
+          <span>Room code</span>
+          <strong>{code}</strong>
+        </div>
+        <header className="agh-player-ticket-intro">
+          <h1>ENTER THE STORY.</h1>
+          <p>Your name is how the room remembers what happens next.</p>
+        </header>
+        <div className="agh-player-name-field">
+          <label htmlFor="player-name">What should your friends call you?</label>
+          <input
+            id="player-name"
+            data-testid="player-name"
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              setJoinError(null);
+            }}
+            onBlur={() => setNameTouched(true)}
+            placeholder="Your name"
+            maxLength={32}
+            autoComplete="name"
+            required
+            aria-invalid={!!visibleNameError}
+          />
+          <p className={joinError || visibleNameError ? "is-error" : ""}>
+            {joinError ?? visibleNameError ?? "Required. Use the name your friends will recognize."}
+          </p>
+        </div>
+        <div className="agh-player-team-choice">
+          <div className="agh-player-team-heading">
+            <strong>Choose your side.</strong>
+            <span>One tap joins the room</span>
           </div>
           {state.teams.length === 0 ? (
-            <p className="text-sm text-white/60">
-              The host has not created teams yet — ask them to add one.
+            <p className="agh-player-team-empty">
+              The host has not created teams yet. Ask them to add one.
             </p>
           ) : (
-            <div className={`grid ${teamGridClass} gap-2`}>
-              {state.teams.map((t) => {
-                const c = teamColorClasses(t.color);
+            <div className="agh-player-team-list">
+              {state.teams.map((t, index) => {
                 const members = playersOnTeam(state, t.id);
                 const joining = joiningTeamId === t.id;
                 return (
                   <button
                     key={t.id}
+                    data-testid={`join-team-${t.id}`}
                     type="button"
                     onClick={() => void joinTeam(t.id)}
                     disabled={submitting}
-                    className={`rounded-2xl border p-4 text-left min-h-[5.5rem] transition ${c.chip} ${joining ? "ring-2 ring-white/90 scale-[0.98]" : "hover:ring-2 hover:ring-white/40 active:scale-[0.98]"} disabled:opacity-60`}
+                    className={joining ? "is-joining" : ""}
                   >
-                    <div className="font-display text-xl">{t.name}</div>
-                    <div className="text-xs mt-2 leading-relaxed opacity-80">
-                      {members.length === 0
-                        ? "Empty — be first to join"
-                        : `${members.length} on team · ${members.map((m) => m.name).join(", ")}`}
+                    <span>{String(index + 1).padStart(2, "0")}</span>
+                    <div>
+                      <strong>{t.name}</strong>
+                      <small>
+                        {members.length === 0
+                          ? "Empty. Be first to join."
+                          : `${members.length} on team · ${members.map((m) => m.name).join(", ")}`}
+                      </small>
                     </div>
-                    {joining && <div className="text-xs mt-2 font-medium opacity-90">Joining…</div>}
+                    <b aria-hidden>{joining ? "…" : "↗"}</b>
                   </button>
                 );
               })}
             </div>
           )}
         </div>
-      </div>
+      </section>
     </PlayShell>
   );
 }
@@ -211,18 +353,19 @@ function PlayerScreen({
   code,
   room,
   me,
+  connectionStatus,
   onTeamChange,
   onRoomState,
 }: {
   code: string;
   room: { id: string; code: string; state: import("@/lib/types").RoomState };
   me: StoredPlayer;
+  connectionStatus: RoomConnectionStatus;
   onTeamChange: (p: StoredPlayer) => void;
   onRoomState: (state: import("@/lib/types").RoomState) => void;
 }) {
   const state = room.state;
   const team = state.teams.find((t) => t.id === me.teamId);
-  const c = team ? teamColorClasses(team.color) : null;
   const isWinner =
     state.status === "finished" &&
     getWinningStandings(computeTeamStandings(state)).some(
@@ -245,50 +388,82 @@ function PlayerScreen({
   }, [room.id, me.id]);
 
   return (
-    <PlayShell celebratory={isWinner}>
-      <div className="w-full max-w-md">
-        <div
-          className={`rounded-3xl border ${c?.chip ?? ""} p-4 mb-4 flex items-center justify-between`}
+    <PlayShell
+      celebratory={isWinner}
+      connectionStatus={connectionStatus}
+      playerId={me.id}
+      teamId={me.teamId}
+      gameId={state.currentGame}
+      paused={Boolean(state.paused)}
+    >
+      <div className="agh-player-runtime">
+        <section
+          data-testid="player-session"
+          data-player-id={me.id}
+          data-team-id={me.teamId}
+          data-game-id={state.currentGame ?? ""}
+          data-paused={state.paused ? "true" : "false"}
+          className="agh-player-session"
         >
-          <div>
-            <div className="text-xs uppercase tracking-widest opacity-70">
-              {team?.name ?? "Team"}
+          <div className="agh-player-session-meta">
+            <span>Player ticket</span>
+            <strong>{state.paused ? "Hold" : "Live"}</strong>
+          </div>
+          <div className="agh-player-session-identity">
+            <div>
+              <span>{team?.name ?? "Team"}</span>
+              <strong>{me.name}</strong>
             </div>
-            <div className="font-display text-2xl">{me.name}</div>
-            {state.currentGame && team && (
-              <div className="text-xs mt-1 opacity-80">
-                Your team: {formatRussianPoints(team.score)}
-              </div>
-            )}
+            <div className="agh-player-session-room">
+              <span>Room</span>
+              <strong>{code}</strong>
+            </div>
           </div>
-          <div className="text-right">
-            <div className="text-[10px] uppercase tracking-widest opacity-70">Room</div>
-            <div className="font-mono">{code}</div>
-          </div>
-        </div>
-
-        <Suspense fallback={<PlayerGameLoading />}>
-          {state.status === "finished" ? (
-            <PlayerFinale state={state} me={me} />
-          ) : state.paused ? (
-            <PausedPanel />
-          ) : (
-            <ActivePlayerGameView
-              roomId={room.id}
-              state={state}
-              me={me}
-              fallback={
-                <WaitingPanel
-                  room={room}
-                  me={me}
-                  code={code}
-                  onTeamChange={onTeamChange}
-                  onRoomState={onRoomState}
-                />
-              }
-            />
+          {state.currentGame && team && (
+            <div className="agh-player-session-score">
+              <span>Team score</span>
+              <strong>{formatRussianPoints(team.score)}</strong>
+            </div>
           )}
-        </Suspense>
+        </section>
+
+        <div className="agh-player-live-stage">
+          <Suspense fallback={<PlayerGameLoading />}>
+            {state.status !== "finished" && state.smokescreen?.participantIds.includes(me.id) && (
+              <SmokeScreenBackgroundPlayer roomId={room.id} state={state} me={me} />
+            )}
+            {state.status !== "finished" && state.contraband?.participantIds.includes(me.id) && (
+              <ContrabandBackgroundPlayer roomId={room.id} state={state} me={me} />
+            )}
+            {state.status !== "finished" && state.tongsoftruth?.participantIds.includes(me.id) && (
+              <TongsOfTruthBackgroundPlayer roomId={room.id} state={state} me={me} />
+            )}
+            {state.status === "finished" ? (
+              <PlayerFinale state={state} me={me} />
+            ) : state.paused ? (
+              <PausedPanel />
+            ) : (
+              <ActivePlayerGameView
+                roomId={room.id}
+                state={state}
+                me={me}
+                fallback={
+                  state.oracleMemory?.participantIds.includes(me.id) ? (
+                    <GrillOracleLifecyclePlayer roomId={room.id} state={state} me={me} />
+                  ) : (
+                    <WaitingPanel
+                      room={room}
+                      me={me}
+                      code={code}
+                      onTeamChange={onTeamChange}
+                      onRoomState={onRoomState}
+                    />
+                  )
+                }
+              />
+            )}
+          </Suspense>
+        </div>
       </div>
     </PlayShell>
   );
@@ -296,23 +471,20 @@ function PlayerScreen({
 
 function PlayerGameLoading() {
   return (
-    <div className="rounded-3xl bg-black/40 backdrop-blur p-8 border border-white/10 text-center text-white">
-      <div className="font-display text-2xl">Preparing round…</div>
-      <p className="text-white/60 text-sm mt-2">The screen will appear in a few seconds.</p>
+    <div className="agh-player-state-panel">
+      <span>Next cue</span>
+      <strong>Preparing round…</strong>
+      <p>The screen will appear in a few seconds.</p>
     </div>
   );
 }
 
 function PausedPanel() {
   return (
-    <div className="rounded-3xl bg-black/45 backdrop-blur p-8 border border-white/10 text-center text-white">
-      <div className="text-xs uppercase tracking-[0.25em] text-[var(--color-park-bright)]">
-        Paused
-      </div>
-      <div className="font-display text-3xl mt-2">Waiting for the host</div>
-      <p className="text-white/60 text-sm mt-2">
-        The round is paused. When the host resumes, this screen will update.
-      </p>
+    <div data-testid="player-paused" className="agh-player-state-panel is-paused">
+      <span>Paused by host</span>
+      <strong>Hold the scene.</strong>
+      <p>The round is paused. Keep this screen open; the next cue will arrive here.</p>
     </div>
   );
 }
@@ -357,47 +529,61 @@ function WaitingPanel({
   }
 
   return (
-    <div className="rounded-3xl bg-black/40 backdrop-blur p-6 border border-white/10 text-center text-white">
-      <div className="font-display text-2xl">Waiting for the host…</div>
+    <div
+      data-testid="player-joined"
+      data-player-id={me.id}
+      data-team-id={me.teamId}
+      className="agh-player-waiting"
+    >
+      <div className="agh-player-waiting-head">
+        <span>Room lobby</span>
+        <strong>Waiting for the host.</strong>
+        <p>Your name is on the list. The first cue will take over this screen.</p>
+      </div>
       <GameRulesBrowser />
-      <div className="mt-6 inline-flex gap-1.5">
-        <span className="size-2 rounded-full bg-white/70 animate-pulse" />
-        <span className="size-2 rounded-full bg-white/70 animate-pulse [animation-delay:150ms]" />
-        <span className="size-2 rounded-full bg-white/70 animate-pulse [animation-delay:300ms]" />
+      <div className="agh-player-waiting-signal" aria-label="Waiting for the live cue">
+        <span />
+        <span />
+        <span />
       </div>
 
-      <div className="mt-6 text-left">
-        <TeamStandingsList state={state} highlightTeamId={me.teamId} compact />
-      </div>
+      <PlayerDevicePreflight
+        roomId={room.id}
+        player={me}
+        current={state.players.find((player) => player.id === me.id)?.deviceCheck}
+        onRoomState={onRoomState}
+      />
 
-      <div className="mt-6 text-left">
-        <div className="text-xs uppercase tracking-widest text-white/50 mb-2">Switch team</div>
-        <div className="grid grid-cols-2 gap-2">
+      {state.teams.some((team) => team.score > 0) && (
+        <div className="agh-player-waiting-scores">
+          <TeamStandingsList state={state} highlightTeamId={me.teamId} compact />
+        </div>
+      )}
+
+      <div className="agh-player-switcher">
+        <div className="agh-player-switcher-heading">Switch team</div>
+        <div className="agh-player-switcher-list">
           {state.teams.map((t) => {
-            const c = teamColorClasses(t.color);
             const active = me.teamId === t.id;
             const members = playersOnTeam(state, t.id);
             return (
               <button
                 key={t.id}
+                data-testid={`switch-team-${t.id}`}
+                data-active={active ? "true" : "false"}
                 type="button"
                 disabled={switching || active}
                 onClick={() => void switchTeam(t.id)}
-                className={`rounded-2xl border p-3 text-left text-sm ${c.chip} ${active ? "ring-2 ring-white/80" : "opacity-80 hover:opacity-100"} disabled:cursor-default`}
+                className={active ? "is-active" : ""}
               >
-                <div className="font-medium">{t.name}</div>
-                <div className="text-[10px] mt-1 opacity-70">
-                  {members.length === 0 ? "empty" : `${members.length} players`}
-                </div>
+                <strong>{t.name}</strong>
+                <span>{members.length === 0 ? "empty" : `${members.length} players`}</span>
+                <b aria-hidden>{active ? "Yours" : "↗"}</b>
               </button>
             );
           })}
         </div>
-        {switchError && (
-          <p className="mt-3 rounded-2xl border border-red-300/20 bg-red-500/15 px-4 py-3 text-center text-sm text-red-100">
-            {switchError}
-          </p>
-        )}
+        {switchError && <p className="agh-player-switcher-error">{switchError}</p>}
       </div>
     </div>
   );
@@ -417,24 +603,19 @@ function TeamStandingsList({
   if (!hasScores) return null;
 
   return (
-    <div>
-      <div className="text-xs uppercase tracking-widest text-white/50 mb-2">Team scores</div>
-      <div className="space-y-1.5">
+    <div className="agh-player-standings">
+      <div>Team scores</div>
+      <div>
         {standings.map((standing) => {
-          const c = teamColorClasses(standing.team.color);
           const active = highlightTeamId === standing.team.id;
           return (
             <div
               key={standing.team.id}
-              className={`flex items-center justify-between rounded-xl border px-3 py-2 text-sm ${c.chip} ${active ? "ring-2 ring-white/70" : compact ? "opacity-90" : ""}`}
+              className={`${active ? "is-active" : ""} ${compact ? "is-compact" : ""}`}
             >
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-xs tabular-nums opacity-70 w-4">{standing.place}</span>
-                <span className="font-medium truncate">{standing.team.name}</span>
-              </div>
-              <span className="font-display text-lg tabular-nums shrink-0">
-                {standing.team.score}
-              </span>
+              <span>{String(standing.place).padStart(2, "0")}</span>
+              <strong>{standing.team.name}</strong>
+              <b>{standing.team.score}</b>
             </div>
           );
         })}
@@ -458,49 +639,90 @@ function PlayerFinale({
 
   return (
     <div
-      className={`rounded-3xl backdrop-blur p-6 border text-center text-white ${
-        isWinner
-          ? "bg-gradient-to-b from-[var(--color-park-bright)]/25 to-black/40 border-[var(--color-park-bright)]/40"
-          : "bg-black/40 border-white/10"
-      }`}
+      data-testid="player-party-finale"
+      data-total-score={state.teams.reduce((total, team) => total + team.score, 0)}
+      className="agh-player-finale"
+      data-winner={isWinner}
     >
-      <div className="text-4xl">{isWinner ? "🏆" : "🎉"}</div>
-      <div className="text-xs uppercase tracking-[0.25em] text-[var(--color-park-bright)] mt-3">
-        Party finale
+      <div className="agh-player-finale-head">
+        <TapeReel label="LAST REEL" />
+        <div>
+          <span>PARTY FINALE</span>
+          <h2>{isWinner ? "YOUR SIGNAL WON." : "THE NIGHT IS ON RECORD."}</h2>
+        </div>
       </div>
       {myStanding && (
-        <div className="font-display text-2xl mt-3">
+        <div className="agh-player-finale-place">
           You placed {formatRussianPlace(myStanding.place)}
         </div>
       )}
-      <p className="text-white/70 text-sm mt-2">
+      <p className="agh-player-finale-winner">
         {winners.length === 1 ? `Team ${winnerNames} won!` : `Tie: ${winnerNames}!`}
       </p>
       {isWinner && (
-        <p className="text-[var(--color-park-bright)] text-sm mt-2 font-medium">
-          You are on the winning team — legend status. 🎊
+        <p className="agh-player-finale-note">
+          You are on the winning team. The archive will be unbearable about it.
         </p>
       )}
 
-      <div className="mt-6 text-left">
+      {state.finale?.narrative && <PartyFinaleNarrative state={state} />}
+
+      <div className="agh-player-finale-standings">
         <TeamStandingsList state={state} highlightTeamId={me.teamId} />
       </div>
 
-      <p className="text-white/50 text-xs mt-6">Waiting for the host's next move…</p>
+      <p className="agh-player-finale-wait">Waiting for the host's next move…</p>
     </div>
   );
 }
 
-function PlayShell({ children, celebratory }: { children: ReactNode; celebratory?: boolean }) {
+function PlayShell({
+  children,
+  celebratory,
+  connectionStatus,
+  playerId,
+  teamId,
+  gameId,
+  paused,
+}: {
+  children: ReactNode;
+  celebratory?: boolean;
+  connectionStatus?: RoomConnectionStatus;
+  playerId?: string;
+  teamId?: string;
+  gameId?: string | null;
+  paused?: boolean;
+}) {
   return (
     <main
-      className={`min-h-dvh flex items-start sm:items-center justify-center px-4 py-6 park-gradient ${
-        celebratory
-          ? "[background-image:linear-gradient(160deg,oklch(0.35_0.12_145),oklch(0.22_0.08_160))]"
-          : ""
-      }`}
+      data-testid="player-shell"
+      data-connection-status={connectionStatus ?? "unknown"}
+      data-player-id={playerId ?? ""}
+      data-team-id={teamId ?? ""}
+      data-game-id={gameId ?? ""}
+      data-paused={paused ? "true" : "false"}
+      className={`agh-player-shell ${celebratory ? "is-celebratory" : ""}`}
     >
-      {children}
+      <header className="agh-player-masthead">
+        <Link to="/" className="agh-player-brand" aria-label="AI Game Hub home">
+          <strong>AI GAME HUB</strong>
+          <span>Live party operating system</span>
+        </Link>
+        <div className="agh-player-signal">
+          <span>Player signal</span>
+          <strong>{connectionStatus === "live" ? "Live" : "Stand by"}</strong>
+        </div>
+      </header>
+      {connectionStatus && connectionStatus !== "live" && (
+        <div className="agh-player-connection">
+          {connectionStatus === "offline"
+            ? "You are offline. Keep this tab open. The room will resync when the network returns."
+            : connectionStatus === "error"
+              ? "Room sync failed. Check the network; retry happens when this tab becomes active."
+              : "Reconnecting to the room…"}
+        </div>
+      )}
+      <div className="agh-player-shell-content">{children}</div>
     </main>
   );
 }

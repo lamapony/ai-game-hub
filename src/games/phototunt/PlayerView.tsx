@@ -85,21 +85,25 @@ export function PhotoHuntPlayer({
     const remaining = Math.max(0, (ph.huntEndsAt ?? now) - now);
     if (submitted) {
       return (
-        <Card>
-          <Pill>Shot sent</Pill>
-          <H>Waiting on everyone else…</H>
-          <div className="text-right text-xs text-white/60 mt-1">{formatClock(remaining)} left</div>
-          {myPhotoUrl && (
-            <div className="mt-3 rounded-2xl overflow-hidden bg-black/30 border border-white/10">
-              <img
-                src={myPhotoUrl}
-                alt="Your shot"
-                className="w-full max-h-[40vh] object-contain"
-              />
+        <div data-testid="phototunt-submitted">
+          <Card>
+            <Pill>Shot sent</Pill>
+            <H>Waiting on everyone else…</H>
+            <div className="text-right text-xs text-white/60 mt-1">
+              {formatClock(remaining)} left
             </div>
-          )}
-          <P>No take-backs — what you shot is what you got.</P>
-        </Card>
+            {myPhotoUrl && (
+              <div className="mt-3 rounded-2xl overflow-hidden bg-black/30 border border-white/10">
+                <img
+                  src={myPhotoUrl}
+                  alt="Your shot"
+                  className="w-full max-h-[40vh] object-contain"
+                />
+              </div>
+            )}
+            <P>No take-backs — what you shot is what you got.</P>
+          </Card>
+        </div>
       );
     }
     return (
@@ -163,8 +167,16 @@ export function PhotoHuntPlayer({
             }
           }}
         />
-        {uploading && <p className="text-center text-white/70 text-sm">Uploading shot…</p>}
-        {err && <p className="text-center text-red-300 text-sm">{err}</p>}
+        {uploading && (
+          <p data-testid="phototunt-uploading" className="text-center text-white/70 text-sm">
+            Uploading shot…
+          </p>
+        )}
+        {err && (
+          <p data-testid="phototunt-upload-error" className="text-center text-red-300 text-sm">
+            {err}
+          </p>
+        )}
       </div>
     );
   }

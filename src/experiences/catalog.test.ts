@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { EXPERIENCE_IDS, PARTY_LOCALES } from "@/lib/party-context";
+import { GAME_IDS } from "@/games/ids";
 import {
   EXPERIENCE_PACKS,
   contextForExperience,
@@ -75,15 +76,7 @@ describe("experience catalog", () => {
   test("planned game ids are unique and every normal game step is known", () => {
     expect(new Set(PLANNED_GAME_IDS).size).toBe(PLANNED_GAME_IDS.length);
     const planned = new Set<string>(PLANNED_GAME_IDS);
-    const existing = new Set([
-      "soundscape",
-      "challenge",
-      "phototunt",
-      "trackguess",
-      "spectrumcourt",
-      "whoamong",
-      "impostor",
-    ]);
+    const existing = new Set<string>(GAME_IDS);
 
     for (const step of getExperienceRoute("smoke-neon-norrebro", "normal").steps) {
       if (!("gameId" in step)) continue;
@@ -123,5 +116,14 @@ describe("experience catalog", () => {
     expect(bar.venue).toBe("bar");
     expect(environmentPromptContext(park)).toContain("city park");
     expect(environmentPromptContext(bar)).toContain("cozy bar");
+  });
+
+  test("quick-start packs make each venue the prompt environment", () => {
+    expect(environmentPromptContext(contextForExperience("park-story"))).toContain("benches");
+    expect(environmentPromptContext(contextForExperience("bar-night"))).toContain("coasters");
+    expect(environmentPromptContext(contextForExperience("house-party"))).toContain("fridge");
+    expect(environmentPromptContext(contextForExperience("festival-field"))).toContain(
+      "wristbands",
+    );
   });
 });

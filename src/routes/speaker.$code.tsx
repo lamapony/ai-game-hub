@@ -1,10 +1,12 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useRoom, useBroadcast } from "@/lib/room";
 import { Orchestra } from "@/games/soundscape/Orchestra";
 import { SPEAKER_NAMES } from "@/lib/types";
 import { SPEAKER_HEARTBEAT_MS } from "@/lib/speaker-status";
 import { postSpeakerStatus } from "@/lib/speaker-status-client";
+import { speechUrl } from "@/lib/speech-client";
+import { RoomLoadRecovery } from "@/components/room-load-recovery";
 
 export const Route = createFileRoute("/speaker/$code")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -16,7 +18,7 @@ export const Route = createFileRoute("/speaker/$code")({
 function SpeakerPage() {
   const { code } = Route.useParams();
   const { slot } = Route.useSearch();
-  const { room, loading, error } = useRoom(code);
+  const { room, loading, error, refreshRoom } = useRoom(code);
   const [armed, setArmed] = useState(false); // mobile audio needs user gesture
   const roomRef = useRef(room);
 
@@ -45,14 +47,16 @@ function SpeakerPage() {
   }, [room?.id, armed, slot]);
 
   const { send } = useBroadcast(room?.id, (e) => {
+    const currentRoomId = roomRef.current?.id;
+    if (!currentRoomId) return;
     if (e.type === "test-tone" && e.slot === slot) {
       const a = new Audio(
-        `/api/speak?text=${encodeURIComponent(`Speaker ${slot}, ${SPEAKER_NAMES[slot]}, online.`)}`,
+        speechUrl(`Speaker ${slot}, ${SPEAKER_NAMES[slot]}, online.`, currentRoomId),
       );
       a.play().catch(() => {});
     }
     if (e.type === "speak" && e.slot === slot) {
-      const a = new Audio(`/api/speak?text=${encodeURIComponent(e.text)}`);
+      const a = new Audio(speechUrl(e.text, currentRoomId));
       a.play().catch(() => {});
     }
   });
@@ -64,17 +68,10 @@ function SpeakerPage() {
         <div className="text-white/70">Loading…</div>
       </Shell>
     );
-  if (error || !room)
+  if (!room)
     return (
       <Shell>
-        <div className="text-white/80 text-center">
-          Room not found.
-          <div>
-            <Link to="/" className="underline">
-              to home
-            </Link>
-          </div>
-        </div>
+        <RoomLoadRecovery code={code} error={error} onRetry={refreshRoom} />
       </Shell>
     );
 
@@ -88,6 +85,7 @@ function SpeakerPage() {
     <Shell>
       {armed && !room.state.paused && (
         <Orchestra
+          roomId={room.id}
           slot={slot}
           mix={activeMix}
           startAt={snd?.playback?.startAt ?? null}

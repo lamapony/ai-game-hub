@@ -42,16 +42,16 @@ export const eventProfile: EventProfile = {
     5: "Forest Echo",
   },
   seo: {
-    title: "DIMAS fest — AI park party games",
+    title: "DIMAS fest — live AI party director",
     description:
-      "DIMAS fest: Jackbox-style AI party games for the park. One host screen, every phone joins, five speakers turn the park into a stage.",
+      "Build a complete 2–4 hour live AI party for 8–30 people in a park, bar, home or festival. One host screen, every phone joins.",
     ogDescription:
-      "AI park party games. One screen, every phone joins, the park becomes the stage.",
+      "A complete live AI party in two minutes: one host, every phone joins, the real venue becomes the story.",
   },
   landing: {
-    badge: "AI park games",
+    badge: "Live AI party director",
     description:
-      "Jackbox-style party games right in the park. One host phone, everyone else scans the QR. AI creates the prompts, speakers talk, no laptop needed.",
+      "Build a connected 2–4 hour story for 8–30 people. Pick park, bar, home or festival; AI turns the real crowd, objects and incidents into the games and finale.",
   },
 };
 

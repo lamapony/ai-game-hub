@@ -1,4 +1,5 @@
 import type { RoomState } from "./types";
+import { statusError } from "./player-auth.server";
 
 export type RoomStateSnapshot = {
   id: string;
@@ -13,7 +14,7 @@ export type OptimisticRoomUpdate<T> = {
 };
 
 export function roomStateConflictError() {
-  return Object.assign(new Error("room state changed, try again"), { status: 409 });
+  return statusError("room state changed, try again", 409);
 }
 
 export async function updateRoomStateWithOptimisticRetry<T>(params: {
@@ -21,7 +22,7 @@ export async function updateRoomStateWithOptimisticRetry<T>(params: {
   applyUpdate: (snapshot: RoomStateSnapshot) => Promise<OptimisticRoomUpdate<T>>;
   writeSnapshot: (snapshot: RoomStateSnapshot, state: RoomState) => Promise<boolean>;
   maxAttempts?: number;
-  onConflict?: (attempt: number) => void;
+  onConflict?: (attempt: number) => void | Promise<void>;
 }) {
   const maxAttempts = params.maxAttempts ?? 3;
 
@@ -30,7 +31,7 @@ export async function updateRoomStateWithOptimisticRetry<T>(params: {
     const update = await params.applyUpdate(snapshot);
     const written = await params.writeSnapshot(snapshot, update.state);
     if (written) return { ...update, attempts: attempt, snapshot };
-    params.onConflict?.(attempt);
+    await params.onConflict?.(attempt);
   }
 
   throw roomStateConflictError();

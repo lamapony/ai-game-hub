@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { postHostArtifact } from "@/lib/host-artifact-client";
-import { updateRoomState, genId } from "@/lib/room";
+import { updateRoomState, genId, hostPromptAuth } from "@/lib/room";
 import { generatePhotoTask, judgePhotos } from "@/lib/ai/phototunt.functions";
 import { teamColorClasses, formatClock } from "@/lib/team-style";
+import { speechUrl } from "@/lib/speech-client";
 import type { PhotoHuntState, RoomState, Team, PhotoHuntResultEntry } from "@/lib/types";
 
 const HUNT_MS = 60_000;
@@ -24,7 +25,17 @@ type PhotoRow = {
   points: number | null;
 };
 
-export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomState }) {
+export function PhotoHuntHost({
+  roomId,
+  code,
+  state,
+  onBackToHub,
+}: {
+  roomId: string;
+  code: string;
+  state: RoomState;
+  onBackToHub: () => void | Promise<void>;
+}) {
   const ph = state.phototunt!;
   const [photos, setPhotos] = useState<PhotoRow[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
@@ -32,6 +43,7 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const judgedRef = useRef<string | null>(null);
   const taskSpokenRef = useRef<string | null>(null);
+  const generatingRoundRef = useRef<string | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 250);
@@ -66,7 +78,11 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
   }, [roomId, ph.roundId]);
 
   const update = (patch: Partial<PhotoHuntState>) =>
-    updateRoomState(roomId, { ...state, phototunt: { ...ph, ...patch } });
+    updateRoomState(
+      roomId,
+      { ...state, phototunt: { ...ph, ...patch } },
+      { gameId: "phototunt", roundId: ph.roundId },
+    );
 
   // Briefing → auto-generate task
   useEffect(() => {
@@ -78,20 +94,26 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
   }, [state.paused, ph.phase, ph.task]);
 
   async function generate() {
+    const roundId = ph.roundId;
+    if (generatingRoundRef.current === roundId) return;
+    generatingRoundRef.current = roundId;
     setBusy("The park spirit is cooking up a hunt…");
     try {
       const r = await generatePhotoTask({
-        data: { pastTasks: ph.pastTasks ?? [], venue: state.venue },
+        data: { ...hostPromptAuth(roomId, code), pastTasks: ph.pastTasks ?? [] },
       });
-      // speak intro + task once
-      if (taskSpokenRef.current !== ph.roundId) {
-        taskSpokenRef.current = ph.roundId;
+      const written = await update({ task: r.task, intro: r.intro, aiFallback: r.fallback });
+      if (!written) return;
+      // speak intro + task once, and only while this round is still active
+      if (taskSpokenRef.current !== roundId) {
+        taskSpokenRef.current = roundId;
         speak(`${r.intro} ${r.task}`);
       }
-      await update({ task: r.task, intro: r.intro, aiFallback: r.fallback });
     } catch (e) {
+      if (e instanceof Error && e.message === "phototunt is not the active game") return;
       console.error(e);
     } finally {
+      if (generatingRoundRef.current === roundId) generatingRoundRef.current = null;
       setBusy(null);
     }
   }
@@ -150,6 +172,7 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
       await update({ phase: "judging" });
       const r = await judgePhotos({
         data: {
+          ...hostPromptAuth(roomId, code),
           task: ph.task ?? "",
           photos: judgingPhotos.map((p) => ({
             playerId: p.player_id,
@@ -200,17 +223,22 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
         teamDelta.has(t.id) ? { ...t, score: t.score + (teamDelta.get(t.id) ?? 0) } : t,
       );
 
-      await updateRoomState(roomId, {
-        ...state,
-        teams,
-        phototunt: {
-          ...ph,
-          phase: "results",
-          results,
-          aiFallback: ph.aiFallback || r.fallback,
-          pastTasks: [...(ph.pastTasks ?? []), ph.task ?? ""].filter(Boolean),
+      const written = await updateRoomState(
+        roomId,
+        {
+          ...state,
+          teams,
+          phototunt: {
+            ...ph,
+            phase: "results",
+            results,
+            aiFallback: ph.aiFallback || r.fallback,
+            pastTasks: [...(ph.pastTasks ?? []), ph.task ?? ""].filter(Boolean),
+          },
         },
-      });
+        { gameId: "phototunt", roundId: ph.roundId },
+      );
+      if (!written) return;
       speak(r.verdict);
     } catch (e) {
       console.error(e);
@@ -222,7 +250,7 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
   function speak(text: string) {
     try {
       if (!audioRef.current) audioRef.current = new Audio();
-      audioRef.current.src = `/api/speak?text=${encodeURIComponent(text)}`;
+      audioRef.current.src = speechUrl(text, roomId);
       audioRef.current.play().catch(() => {});
     } catch {
       /* */
@@ -230,19 +258,23 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
   }
 
   function nextRound() {
-    updateRoomState(roomId, {
-      ...state,
-      phototunt: {
-        phase: "briefing",
-        roundId: genId("ph"),
-        aiFallback: undefined,
-        pastTasks: [...(ph.pastTasks ?? []), ph.task ?? ""].filter(Boolean),
+    updateRoomState(
+      roomId,
+      {
+        ...state,
+        phototunt: {
+          phase: "briefing",
+          roundId: genId("ph"),
+          aiFallback: undefined,
+          pastTasks: [...(ph.pastTasks ?? []), ph.task ?? ""].filter(Boolean),
+        },
       },
-    });
+      { gameId: "phototunt", roundId: ph.roundId },
+    );
   }
 
   function backToHub() {
-    updateRoomState(roomId, { ...state, currentGame: null, phototunt: undefined, status: "lobby" });
+    void onBackToHub();
   }
 
   const remaining = ph.phase === "hunting" ? Math.max(0, (ph.huntEndsAt ?? now) - now) : 0;
@@ -280,14 +312,17 @@ export function PhotoHuntHost({ roomId, state }: { roomId: string; state: RoomSt
                 they&apos;ll have {Math.round(HUNT_MS / 1000)} seconds.
               </p>
               <button
+                data-testid="phototunt-start-hunt"
                 onClick={startHunt}
-                className="mt-5 w-full rounded-2xl bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] font-display text-xl py-4"
+                disabled={!!busy}
+                className="mt-5 w-full rounded-2xl bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] font-display text-xl py-4 disabled:opacity-50"
               >
                 🏃 Let&apos;s go! ({Math.round(HUNT_MS / 1000)} sec)
               </button>
               <button
                 onClick={generate}
-                className="mt-2 w-full rounded-2xl bg-white/5 text-white/70 text-sm py-2"
+                disabled={!!busy}
+                className="mt-2 w-full rounded-2xl bg-white/5 text-white/70 text-sm py-2 disabled:opacity-50"
               >
                 ↻ Another task
               </button>

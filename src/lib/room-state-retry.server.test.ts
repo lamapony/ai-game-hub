@@ -82,4 +82,30 @@ describe("updateRoomStateWithOptimisticRetry", () => {
     expect(status).toBe(409);
     expect((roomStateConflictError() as { status?: number }).status).toBe(409);
   });
+
+  test("awaits conflict backoff before loading the next snapshot", async () => {
+    const events: string[] = [];
+    let writes = 0;
+
+    const result = await updateRoomStateWithOptimisticRetry({
+      loadSnapshot: async () => {
+        events.push("load");
+        return { id: "room_1", updatedAt: `t${writes}`, state: stateWithVotes() };
+      },
+      applyUpdate: async (snapshot) => ({ state: snapshot.state, value: "ok" }),
+      writeSnapshot: async () => {
+        writes += 1;
+        events.push("write");
+        return writes === 2;
+      },
+      onConflict: async () => {
+        events.push("backoff-start");
+        await Promise.resolve();
+        events.push("backoff-end");
+      },
+    });
+
+    expect(result.attempts).toBe(2);
+    expect(events).toEqual(["load", "write", "backoff-start", "backoff-end", "load", "write"]);
+  });
 });

@@ -15,14 +15,32 @@ import { Route as SpeakerCodeRouteImport } from './routes/speaker.$code'
 import { Route as PlayCodeRouteImport } from './routes/play.$code'
 import { Route as HostCodeRouteImport } from './routes/host.$code'
 import { Route as ApiTranscribeRouteImport } from './routes/api/transcribe'
+import { Route as ApiTongsoftruthRouteImport } from './routes/api/tongsoftruth'
+import { Route as ApiToastsyndicateRouteImport } from './routes/api/toastsyndicate'
+import { Route as ApiStilllifeRouteImport } from './routes/api/stilllife'
 import { Route as ApiSpeakerStatusRouteImport } from './routes/api/speaker-status'
 import { Route as ApiSpeakRouteImport } from './routes/api/speak'
+import { Route as ApiSommelierRouteImport } from './routes/api/sommelier'
+import { Route as ApiSmokescreenRouteImport } from './routes/api/smokescreen'
 import { Route as ApiPlayerUploadTargetRouteImport } from './routes/api/player-upload-target'
+import { Route as ApiPlayerPartyRecordsRouteImport } from './routes/api/player-party-records'
 import { Route as ApiPlayerArtifactRouteImport } from './routes/api/player-artifact'
 import { Route as ApiPlayerActionRouteImport } from './routes/api/player-action'
+import { Route as ApiOracleReadingRouteImport } from './routes/api/oracle-reading'
+import { Route as ApiOracleLifecycleRouteImport } from './routes/api/oracle-lifecycle'
 import { Route as ApiHostStateRouteImport } from './routes/api/host-state'
+import { Route as ApiHostScoreEventsRouteImport } from './routes/api/host-score-events'
+import { Route as ApiHostReleaseHealthRouteImport } from './routes/api/host-release-health'
+import { Route as ApiHostPartyRecordsRouteImport } from './routes/api/host-party-records'
+import { Route as ApiHostFieldReportDraftRouteImport } from './routes/api/host-field-report-draft'
+import { Route as ApiHostCommandRouteImport } from './routes/api/host-command'
 import { Route as ApiHostArtifactRouteImport } from './routes/api/host-artifact'
+import { Route as ApiHostAccessRouteImport } from './routes/api/host-access'
+import { Route as ApiFinaleNarrativeRouteImport } from './routes/api/finale-narrative'
+import { Route as ApiCrossexaminationRouteImport } from './routes/api/crossexamination'
+import { Route as ApiContrabandRouteImport } from './routes/api/contraband'
 import { Route as ApiCleanupRouteImport } from './routes/api/cleanup'
+import { Route as ApiAiPrewarmRouteImport } from './routes/api/ai-prewarm'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -54,6 +72,21 @@ const ApiTranscribeRoute = ApiTranscribeRouteImport.update({
   path: '/api/transcribe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTongsoftruthRoute = ApiTongsoftruthRouteImport.update({
+  id: '/api/tongsoftruth',
+  path: '/api/tongsoftruth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiToastsyndicateRoute = ApiToastsyndicateRouteImport.update({
+  id: '/api/toastsyndicate',
+  path: '/api/toastsyndicate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStilllifeRoute = ApiStilllifeRouteImport.update({
+  id: '/api/stilllife',
+  path: '/api/stilllife',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSpeakerStatusRoute = ApiSpeakerStatusRouteImport.update({
   id: '/api/speaker-status',
   path: '/api/speaker-status',
@@ -64,9 +97,24 @@ const ApiSpeakRoute = ApiSpeakRouteImport.update({
   path: '/api/speak',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSommelierRoute = ApiSommelierRouteImport.update({
+  id: '/api/sommelier',
+  path: '/api/sommelier',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSmokescreenRoute = ApiSmokescreenRouteImport.update({
+  id: '/api/smokescreen',
+  path: '/api/smokescreen',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPlayerUploadTargetRoute = ApiPlayerUploadTargetRouteImport.update({
   id: '/api/player-upload-target',
   path: '/api/player-upload-target',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPlayerPartyRecordsRoute = ApiPlayerPartyRecordsRouteImport.update({
+  id: '/api/player-party-records',
+  path: '/api/player-party-records',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPlayerArtifactRoute = ApiPlayerArtifactRouteImport.update({
@@ -79,9 +127,44 @@ const ApiPlayerActionRoute = ApiPlayerActionRouteImport.update({
   path: '/api/player-action',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOracleReadingRoute = ApiOracleReadingRouteImport.update({
+  id: '/api/oracle-reading',
+  path: '/api/oracle-reading',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOracleLifecycleRoute = ApiOracleLifecycleRouteImport.update({
+  id: '/api/oracle-lifecycle',
+  path: '/api/oracle-lifecycle',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiHostStateRoute = ApiHostStateRouteImport.update({
   id: '/api/host-state',
   path: '/api/host-state',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHostScoreEventsRoute = ApiHostScoreEventsRouteImport.update({
+  id: '/api/host-score-events',
+  path: '/api/host-score-events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHostReleaseHealthRoute = ApiHostReleaseHealthRouteImport.update({
+  id: '/api/host-release-health',
+  path: '/api/host-release-health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHostPartyRecordsRoute = ApiHostPartyRecordsRouteImport.update({
+  id: '/api/host-party-records',
+  path: '/api/host-party-records',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHostFieldReportDraftRoute = ApiHostFieldReportDraftRouteImport.update({
+  id: '/api/host-field-report-draft',
+  path: '/api/host-field-report-draft',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHostCommandRoute = ApiHostCommandRouteImport.update({
+  id: '/api/host-command',
+  path: '/api/host-command',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHostArtifactRoute = ApiHostArtifactRouteImport.update({
@@ -89,22 +172,65 @@ const ApiHostArtifactRoute = ApiHostArtifactRouteImport.update({
   path: '/api/host-artifact',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHostAccessRoute = ApiHostAccessRouteImport.update({
+  id: '/api/host-access',
+  path: '/api/host-access',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFinaleNarrativeRoute = ApiFinaleNarrativeRouteImport.update({
+  id: '/api/finale-narrative',
+  path: '/api/finale-narrative',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCrossexaminationRoute = ApiCrossexaminationRouteImport.update({
+  id: '/api/crossexamination',
+  path: '/api/crossexamination',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiContrabandRoute = ApiContrabandRouteImport.update({
+  id: '/api/contraband',
+  path: '/api/contraband',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCleanupRoute = ApiCleanupRouteImport.update({
   id: '/api/cleanup',
   path: '/api/cleanup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAiPrewarmRoute = ApiAiPrewarmRouteImport.update({
+  id: '/api/ai-prewarm',
+  path: '/api/ai-prewarm',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/ai-prewarm': typeof ApiAiPrewarmRoute
   '/api/cleanup': typeof ApiCleanupRoute
+  '/api/contraband': typeof ApiContrabandRoute
+  '/api/crossexamination': typeof ApiCrossexaminationRoute
+  '/api/finale-narrative': typeof ApiFinaleNarrativeRoute
+  '/api/host-access': typeof ApiHostAccessRoute
   '/api/host-artifact': typeof ApiHostArtifactRoute
+  '/api/host-command': typeof ApiHostCommandRoute
+  '/api/host-field-report-draft': typeof ApiHostFieldReportDraftRoute
+  '/api/host-party-records': typeof ApiHostPartyRecordsRoute
+  '/api/host-release-health': typeof ApiHostReleaseHealthRoute
+  '/api/host-score-events': typeof ApiHostScoreEventsRoute
   '/api/host-state': typeof ApiHostStateRoute
+  '/api/oracle-lifecycle': typeof ApiOracleLifecycleRoute
+  '/api/oracle-reading': typeof ApiOracleReadingRoute
   '/api/player-action': typeof ApiPlayerActionRoute
   '/api/player-artifact': typeof ApiPlayerArtifactRoute
+  '/api/player-party-records': typeof ApiPlayerPartyRecordsRoute
   '/api/player-upload-target': typeof ApiPlayerUploadTargetRoute
+  '/api/smokescreen': typeof ApiSmokescreenRoute
+  '/api/sommelier': typeof ApiSommelierRoute
   '/api/speak': typeof ApiSpeakRoute
   '/api/speaker-status': typeof ApiSpeakerStatusRoute
+  '/api/stilllife': typeof ApiStilllifeRoute
+  '/api/toastsyndicate': typeof ApiToastsyndicateRoute
+  '/api/tongsoftruth': typeof ApiTongsoftruthRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/host/$code': typeof HostCodeRoute
   '/play/$code': typeof PlayCodeRoute
@@ -113,14 +239,32 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/ai-prewarm': typeof ApiAiPrewarmRoute
   '/api/cleanup': typeof ApiCleanupRoute
+  '/api/contraband': typeof ApiContrabandRoute
+  '/api/crossexamination': typeof ApiCrossexaminationRoute
+  '/api/finale-narrative': typeof ApiFinaleNarrativeRoute
+  '/api/host-access': typeof ApiHostAccessRoute
   '/api/host-artifact': typeof ApiHostArtifactRoute
+  '/api/host-command': typeof ApiHostCommandRoute
+  '/api/host-field-report-draft': typeof ApiHostFieldReportDraftRoute
+  '/api/host-party-records': typeof ApiHostPartyRecordsRoute
+  '/api/host-release-health': typeof ApiHostReleaseHealthRoute
+  '/api/host-score-events': typeof ApiHostScoreEventsRoute
   '/api/host-state': typeof ApiHostStateRoute
+  '/api/oracle-lifecycle': typeof ApiOracleLifecycleRoute
+  '/api/oracle-reading': typeof ApiOracleReadingRoute
   '/api/player-action': typeof ApiPlayerActionRoute
   '/api/player-artifact': typeof ApiPlayerArtifactRoute
+  '/api/player-party-records': typeof ApiPlayerPartyRecordsRoute
   '/api/player-upload-target': typeof ApiPlayerUploadTargetRoute
+  '/api/smokescreen': typeof ApiSmokescreenRoute
+  '/api/sommelier': typeof ApiSommelierRoute
   '/api/speak': typeof ApiSpeakRoute
   '/api/speaker-status': typeof ApiSpeakerStatusRoute
+  '/api/stilllife': typeof ApiStilllifeRoute
+  '/api/toastsyndicate': typeof ApiToastsyndicateRoute
+  '/api/tongsoftruth': typeof ApiTongsoftruthRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/host/$code': typeof HostCodeRoute
   '/play/$code': typeof PlayCodeRoute
@@ -130,14 +274,32 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/ai-prewarm': typeof ApiAiPrewarmRoute
   '/api/cleanup': typeof ApiCleanupRoute
+  '/api/contraband': typeof ApiContrabandRoute
+  '/api/crossexamination': typeof ApiCrossexaminationRoute
+  '/api/finale-narrative': typeof ApiFinaleNarrativeRoute
+  '/api/host-access': typeof ApiHostAccessRoute
   '/api/host-artifact': typeof ApiHostArtifactRoute
+  '/api/host-command': typeof ApiHostCommandRoute
+  '/api/host-field-report-draft': typeof ApiHostFieldReportDraftRoute
+  '/api/host-party-records': typeof ApiHostPartyRecordsRoute
+  '/api/host-release-health': typeof ApiHostReleaseHealthRoute
+  '/api/host-score-events': typeof ApiHostScoreEventsRoute
   '/api/host-state': typeof ApiHostStateRoute
+  '/api/oracle-lifecycle': typeof ApiOracleLifecycleRoute
+  '/api/oracle-reading': typeof ApiOracleReadingRoute
   '/api/player-action': typeof ApiPlayerActionRoute
   '/api/player-artifact': typeof ApiPlayerArtifactRoute
+  '/api/player-party-records': typeof ApiPlayerPartyRecordsRoute
   '/api/player-upload-target': typeof ApiPlayerUploadTargetRoute
+  '/api/smokescreen': typeof ApiSmokescreenRoute
+  '/api/sommelier': typeof ApiSommelierRoute
   '/api/speak': typeof ApiSpeakRoute
   '/api/speaker-status': typeof ApiSpeakerStatusRoute
+  '/api/stilllife': typeof ApiStilllifeRoute
+  '/api/toastsyndicate': typeof ApiToastsyndicateRoute
+  '/api/tongsoftruth': typeof ApiTongsoftruthRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/host/$code': typeof HostCodeRoute
   '/play/$code': typeof PlayCodeRoute
@@ -148,14 +310,32 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/api/ai-prewarm'
     | '/api/cleanup'
+    | '/api/contraband'
+    | '/api/crossexamination'
+    | '/api/finale-narrative'
+    | '/api/host-access'
     | '/api/host-artifact'
+    | '/api/host-command'
+    | '/api/host-field-report-draft'
+    | '/api/host-party-records'
+    | '/api/host-release-health'
+    | '/api/host-score-events'
     | '/api/host-state'
+    | '/api/oracle-lifecycle'
+    | '/api/oracle-reading'
     | '/api/player-action'
     | '/api/player-artifact'
+    | '/api/player-party-records'
     | '/api/player-upload-target'
+    | '/api/smokescreen'
+    | '/api/sommelier'
     | '/api/speak'
     | '/api/speaker-status'
+    | '/api/stilllife'
+    | '/api/toastsyndicate'
+    | '/api/tongsoftruth'
     | '/api/transcribe'
     | '/host/$code'
     | '/play/$code'
@@ -164,14 +344,32 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/api/ai-prewarm'
     | '/api/cleanup'
+    | '/api/contraband'
+    | '/api/crossexamination'
+    | '/api/finale-narrative'
+    | '/api/host-access'
     | '/api/host-artifact'
+    | '/api/host-command'
+    | '/api/host-field-report-draft'
+    | '/api/host-party-records'
+    | '/api/host-release-health'
+    | '/api/host-score-events'
     | '/api/host-state'
+    | '/api/oracle-lifecycle'
+    | '/api/oracle-reading'
     | '/api/player-action'
     | '/api/player-artifact'
+    | '/api/player-party-records'
     | '/api/player-upload-target'
+    | '/api/smokescreen'
+    | '/api/sommelier'
     | '/api/speak'
     | '/api/speaker-status'
+    | '/api/stilllife'
+    | '/api/toastsyndicate'
+    | '/api/tongsoftruth'
     | '/api/transcribe'
     | '/host/$code'
     | '/play/$code'
@@ -180,14 +378,32 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/api/ai-prewarm'
     | '/api/cleanup'
+    | '/api/contraband'
+    | '/api/crossexamination'
+    | '/api/finale-narrative'
+    | '/api/host-access'
     | '/api/host-artifact'
+    | '/api/host-command'
+    | '/api/host-field-report-draft'
+    | '/api/host-party-records'
+    | '/api/host-release-health'
+    | '/api/host-score-events'
     | '/api/host-state'
+    | '/api/oracle-lifecycle'
+    | '/api/oracle-reading'
     | '/api/player-action'
     | '/api/player-artifact'
+    | '/api/player-party-records'
     | '/api/player-upload-target'
+    | '/api/smokescreen'
+    | '/api/sommelier'
     | '/api/speak'
     | '/api/speaker-status'
+    | '/api/stilllife'
+    | '/api/toastsyndicate'
+    | '/api/tongsoftruth'
     | '/api/transcribe'
     | '/host/$code'
     | '/play/$code'
@@ -197,14 +413,32 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiAiPrewarmRoute: typeof ApiAiPrewarmRoute
   ApiCleanupRoute: typeof ApiCleanupRoute
+  ApiContrabandRoute: typeof ApiContrabandRoute
+  ApiCrossexaminationRoute: typeof ApiCrossexaminationRoute
+  ApiFinaleNarrativeRoute: typeof ApiFinaleNarrativeRoute
+  ApiHostAccessRoute: typeof ApiHostAccessRoute
   ApiHostArtifactRoute: typeof ApiHostArtifactRoute
+  ApiHostCommandRoute: typeof ApiHostCommandRoute
+  ApiHostFieldReportDraftRoute: typeof ApiHostFieldReportDraftRoute
+  ApiHostPartyRecordsRoute: typeof ApiHostPartyRecordsRoute
+  ApiHostReleaseHealthRoute: typeof ApiHostReleaseHealthRoute
+  ApiHostScoreEventsRoute: typeof ApiHostScoreEventsRoute
   ApiHostStateRoute: typeof ApiHostStateRoute
+  ApiOracleLifecycleRoute: typeof ApiOracleLifecycleRoute
+  ApiOracleReadingRoute: typeof ApiOracleReadingRoute
   ApiPlayerActionRoute: typeof ApiPlayerActionRoute
   ApiPlayerArtifactRoute: typeof ApiPlayerArtifactRoute
+  ApiPlayerPartyRecordsRoute: typeof ApiPlayerPartyRecordsRoute
   ApiPlayerUploadTargetRoute: typeof ApiPlayerUploadTargetRoute
+  ApiSmokescreenRoute: typeof ApiSmokescreenRoute
+  ApiSommelierRoute: typeof ApiSommelierRoute
   ApiSpeakRoute: typeof ApiSpeakRoute
   ApiSpeakerStatusRoute: typeof ApiSpeakerStatusRoute
+  ApiStilllifeRoute: typeof ApiStilllifeRoute
+  ApiToastsyndicateRoute: typeof ApiToastsyndicateRoute
+  ApiTongsoftruthRoute: typeof ApiTongsoftruthRoute
   ApiTranscribeRoute: typeof ApiTranscribeRoute
   HostCodeRoute: typeof HostCodeRoute
   PlayCodeRoute: typeof PlayCodeRoute
@@ -256,6 +490,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTranscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/tongsoftruth': {
+      id: '/api/tongsoftruth'
+      path: '/api/tongsoftruth'
+      fullPath: '/api/tongsoftruth'
+      preLoaderRoute: typeof ApiTongsoftruthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/toastsyndicate': {
+      id: '/api/toastsyndicate'
+      path: '/api/toastsyndicate'
+      fullPath: '/api/toastsyndicate'
+      preLoaderRoute: typeof ApiToastsyndicateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stilllife': {
+      id: '/api/stilllife'
+      path: '/api/stilllife'
+      fullPath: '/api/stilllife'
+      preLoaderRoute: typeof ApiStilllifeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/speaker-status': {
       id: '/api/speaker-status'
       path: '/api/speaker-status'
@@ -270,11 +525,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSpeakRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/sommelier': {
+      id: '/api/sommelier'
+      path: '/api/sommelier'
+      fullPath: '/api/sommelier'
+      preLoaderRoute: typeof ApiSommelierRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/smokescreen': {
+      id: '/api/smokescreen'
+      path: '/api/smokescreen'
+      fullPath: '/api/smokescreen'
+      preLoaderRoute: typeof ApiSmokescreenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/player-upload-target': {
       id: '/api/player-upload-target'
       path: '/api/player-upload-target'
       fullPath: '/api/player-upload-target'
       preLoaderRoute: typeof ApiPlayerUploadTargetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/player-party-records': {
+      id: '/api/player-party-records'
+      path: '/api/player-party-records'
+      fullPath: '/api/player-party-records'
+      preLoaderRoute: typeof ApiPlayerPartyRecordsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/player-artifact': {
@@ -291,11 +567,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPlayerActionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/oracle-reading': {
+      id: '/api/oracle-reading'
+      path: '/api/oracle-reading'
+      fullPath: '/api/oracle-reading'
+      preLoaderRoute: typeof ApiOracleReadingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/oracle-lifecycle': {
+      id: '/api/oracle-lifecycle'
+      path: '/api/oracle-lifecycle'
+      fullPath: '/api/oracle-lifecycle'
+      preLoaderRoute: typeof ApiOracleLifecycleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/host-state': {
       id: '/api/host-state'
       path: '/api/host-state'
       fullPath: '/api/host-state'
       preLoaderRoute: typeof ApiHostStateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/host-score-events': {
+      id: '/api/host-score-events'
+      path: '/api/host-score-events'
+      fullPath: '/api/host-score-events'
+      preLoaderRoute: typeof ApiHostScoreEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/host-release-health': {
+      id: '/api/host-release-health'
+      path: '/api/host-release-health'
+      fullPath: '/api/host-release-health'
+      preLoaderRoute: typeof ApiHostReleaseHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/host-party-records': {
+      id: '/api/host-party-records'
+      path: '/api/host-party-records'
+      fullPath: '/api/host-party-records'
+      preLoaderRoute: typeof ApiHostPartyRecordsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/host-field-report-draft': {
+      id: '/api/host-field-report-draft'
+      path: '/api/host-field-report-draft'
+      fullPath: '/api/host-field-report-draft'
+      preLoaderRoute: typeof ApiHostFieldReportDraftRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/host-command': {
+      id: '/api/host-command'
+      path: '/api/host-command'
+      fullPath: '/api/host-command'
+      preLoaderRoute: typeof ApiHostCommandRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/host-artifact': {
@@ -305,6 +630,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHostArtifactRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/host-access': {
+      id: '/api/host-access'
+      path: '/api/host-access'
+      fullPath: '/api/host-access'
+      preLoaderRoute: typeof ApiHostAccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/finale-narrative': {
+      id: '/api/finale-narrative'
+      path: '/api/finale-narrative'
+      fullPath: '/api/finale-narrative'
+      preLoaderRoute: typeof ApiFinaleNarrativeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/crossexamination': {
+      id: '/api/crossexamination'
+      path: '/api/crossexamination'
+      fullPath: '/api/crossexamination'
+      preLoaderRoute: typeof ApiCrossexaminationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/contraband': {
+      id: '/api/contraband'
+      path: '/api/contraband'
+      fullPath: '/api/contraband'
+      preLoaderRoute: typeof ApiContrabandRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cleanup': {
       id: '/api/cleanup'
       path: '/api/cleanup'
@@ -312,19 +665,44 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCleanupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ai-prewarm': {
+      id: '/api/ai-prewarm'
+      path: '/api/ai-prewarm'
+      fullPath: '/api/ai-prewarm'
+      preLoaderRoute: typeof ApiAiPrewarmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiAiPrewarmRoute: ApiAiPrewarmRoute,
   ApiCleanupRoute: ApiCleanupRoute,
+  ApiContrabandRoute: ApiContrabandRoute,
+  ApiCrossexaminationRoute: ApiCrossexaminationRoute,
+  ApiFinaleNarrativeRoute: ApiFinaleNarrativeRoute,
+  ApiHostAccessRoute: ApiHostAccessRoute,
   ApiHostArtifactRoute: ApiHostArtifactRoute,
+  ApiHostCommandRoute: ApiHostCommandRoute,
+  ApiHostFieldReportDraftRoute: ApiHostFieldReportDraftRoute,
+  ApiHostPartyRecordsRoute: ApiHostPartyRecordsRoute,
+  ApiHostReleaseHealthRoute: ApiHostReleaseHealthRoute,
+  ApiHostScoreEventsRoute: ApiHostScoreEventsRoute,
   ApiHostStateRoute: ApiHostStateRoute,
+  ApiOracleLifecycleRoute: ApiOracleLifecycleRoute,
+  ApiOracleReadingRoute: ApiOracleReadingRoute,
   ApiPlayerActionRoute: ApiPlayerActionRoute,
   ApiPlayerArtifactRoute: ApiPlayerArtifactRoute,
+  ApiPlayerPartyRecordsRoute: ApiPlayerPartyRecordsRoute,
   ApiPlayerUploadTargetRoute: ApiPlayerUploadTargetRoute,
+  ApiSmokescreenRoute: ApiSmokescreenRoute,
+  ApiSommelierRoute: ApiSommelierRoute,
   ApiSpeakRoute: ApiSpeakRoute,
   ApiSpeakerStatusRoute: ApiSpeakerStatusRoute,
+  ApiStilllifeRoute: ApiStilllifeRoute,
+  ApiToastsyndicateRoute: ApiToastsyndicateRoute,
+  ApiTongsoftruthRoute: ApiTongsoftruthRoute,
   ApiTranscribeRoute: ApiTranscribeRoute,
   HostCodeRoute: HostCodeRoute,
   PlayCodeRoute: PlayCodeRoute,

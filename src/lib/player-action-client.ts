@@ -1,5 +1,5 @@
 import { eventProfile } from "./event-profile";
-import type { RoomState, SpectrumCourtAppeal } from "./types";
+import type { DeviceCheckStatus, RoomState, SpectrumCourtAppeal } from "./types";
 
 export type StoredPlayer = { id: string; name: string; teamId: string; secret?: string };
 
@@ -17,6 +17,8 @@ export type PlayerActionRequest = {
   direction?: SpectrumCourtAppeal["direction"];
   answer?: string;
   answerId?: string;
+  cameraStatus?: DeviceCheckStatus;
+  microphoneStatus?: DeviceCheckStatus;
   playerSecret?: string;
 };
 

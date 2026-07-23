@@ -2,12 +2,21 @@ import { describe, expect, test } from "bun:test";
 import type { PartyContext } from "@/lib/party-context";
 import { contextForExperience, getExperienceRoute } from "./catalog";
 import {
+  buildActTimeline,
   buildRouteTimeline,
+  formatActElapsed,
   getActiveExperienceAct,
   getActiveExperiencePack,
   getActiveExperienceRoute,
   getConductorLabels,
+  getNextActionableRouteStep,
+  getNextExperienceAct,
   getNextRecommendedRouteStep,
+  getRouteDurationMinutes,
+  getRunStepCue,
+  getRunStepLabel,
+  getRunStepStoryBridge,
+  getRunStepStoryOpening,
   localizeText,
 } from "./conductor";
 
@@ -255,5 +264,104 @@ describe("conductor selectors", () => {
     expect(next?.id).toBe("sommelier");
     expect(Boolean(next?.optional)).toBe(false);
     expect(optionalIds.includes(next!.id)).toBe(false);
+  });
+
+  test("act timeline exposes safe next-act navigation and realistic route duration", () => {
+    const grill = contextForExperience("smoke-neon-norrebro", "normal");
+    const acts = buildActTimeline(grill);
+
+    expect(acts.map(({ act }) => act.id)).toEqual(["grill", "transition", "bar", "finale"]);
+    expect(acts[0]?.status).toBe("current");
+    expect(acts.slice(1).every(({ status }) => status === "upcoming")).toBe(true);
+    expect(acts.reduce((sum, act) => sum + act.durationMinutes, 0)).toBe(
+      getRouteDurationMinutes(grill),
+    );
+    expect(getRouteDurationMinutes(grill) >= 120).toBe(true);
+    expect(getNextExperienceAct(grill)).toBe("transition");
+    expect(getNextExperienceAct(withParty(grill, { actId: "finale" }))).toBeUndefined();
+  });
+
+  test("actionable fallback skips planned games without rewriting the canonical route", () => {
+    const grill = contextForExperience("smoke-neon-norrebro", "normal");
+    const implemented = new Set(["soundscape", "challenge", "phototunt", "trackguess"]);
+    const actionable = getNextActionableRouteStep(
+      grill,
+      (step) => "gameId" in step && implemented.has(step.gameId),
+    );
+
+    expect(getNextRecommendedRouteStep(grill)?.id).toBe("smoke-assign");
+    expect(actionable?.id).toBe("photo-hunt");
+    expect(actionable && getRunStepLabel(actionable, "ru")).toBe("Фотоохота");
+    expect(actionable && getRunStepCue(actionable, "en")).toContain("focused round");
+  });
+
+  test("elapsed act clock is stable and host-readable", () => {
+    expect(formatActElapsed(undefined, 100_000)).toBe("0:00");
+    expect(formatActElapsed(100_000, 100_000)).toBe("0:00");
+    expect(formatActElapsed(100_000, 100_000 + 67 * 60_000)).toBe("1:07");
+  });
+
+  test("turns public evidence into a localized host-ready bridge for the next route beat", () => {
+    const route = getExperienceRoute("house-party", "normal");
+    const transition = getExperienceRoute("smoke-neon-norrebro", "normal").steps.find(
+      (step) => step.id === "seal-evidence",
+    )!;
+    const game = route.steps.find((step) => step.id === "home-spectrum-180")!;
+    const reveal = route.steps.find((step) => step.id === "home-smoke-reveal-180")!;
+    const finale = route.steps.find((step) => step.id === "home-finale-180")!;
+    const evidence = {
+      id: "soundscape:home_sound_1",
+      gameId: "soundscape",
+      title: "Soundscape: Kitchen static",
+      detail: "  The kettle and the window\n became a shared soundtrack.  ",
+    };
+
+    expect(getRunStepStoryBridge(game, "en", evidence)).toBe(
+      "“The kettle and the window became a shared soundtrack.” is now Exhibit A. “Spectrum Court” gives the room one chance to explain itself.",
+    );
+    expect(getRunStepStoryBridge(game, "ru", evidence)).toBe(
+      "«The kettle and the window became a shared soundtrack.» — теперь улика №1. В «Суд Спектра» у комнаты будет один шанс объясниться.",
+    );
+    expect(getRunStepStoryBridge(transition, "en", evidence)).toContain(
+      "comes with us. Seal it in “Seal the evidence”; the next location inherits the case.",
+    );
+    expect(getRunStepStoryBridge(transition, "ru", evidence)).toContain(
+      "едет с нами. Опечатай это в «Опечатать улики»: следующая локация наследует дело.",
+    );
+    expect(getRunStepStoryBridge(reveal, "en", evidence)).toContain(
+      "was the warning. “Secret missions — reveal” is where the room explains itself.",
+    );
+    expect(getRunStepStoryBridge(finale, "ru", evidence)).toContain(
+      "пережило весь маршрут. Внесём это в «Вердикт вечера» как улику №1.",
+    );
+    expect(getRunStepStoryBridge(game, "en", { ...evidence, detail: " \n " })).toBeUndefined();
+  });
+
+  test("turns the quick-start thread into an opening bridge until real evidence exists", () => {
+    const home = getExperienceRoute("house-party", "normal");
+    const arrival = home.steps.find((step) => step.id === "home-arrival-180")!;
+    const reveal = home.steps.find((step) => step.id === "home-smoke-reveal-180")!;
+    const finale = home.steps.find((step) => step.id === "home-finale-180")!;
+    const transition = getExperienceRoute("smoke-neon-norrebro", "normal").steps.find(
+      (step) => step.id === "seal-evidence",
+    )!;
+    const seed = "  Mira's birthday\n and the missing silver tongs  ";
+
+    expect(getRunStepStoryOpening(arrival, "en", seed)).toBe(
+      "Tonight's case begins with “Mira's birthday and the missing silver tongs”. Use “Inspect the premises” to collect the first real clue.",
+    );
+    expect(getRunStepStoryOpening(arrival, "ru", seed)).toContain(
+      "Сегодняшнее дело начинается с «Mira's birthday and the missing silver tongs»",
+    );
+    expect(getRunStepStoryOpening(transition, "en", seed)).toContain(
+      "the next location must add its own evidence",
+    );
+    expect(getRunStepStoryOpening(reveal, "ru", seed)).toContain(
+      "комната покажет, как она её переписала",
+    );
+    expect(getRunStepStoryOpening(finale, "en", seed)).toContain(
+      "show what the room turned that thread into",
+    );
+    expect(getRunStepStoryOpening(arrival, "en", " \n ")).toBeUndefined();
   });
 });

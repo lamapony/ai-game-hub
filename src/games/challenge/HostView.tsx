@@ -2,10 +2,11 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { postHostArtifact } from "@/lib/host-artifact-client";
-import { updateRoomState, genId } from "@/lib/room";
+import { updateRoomState, genId, hostPromptAuth } from "@/lib/room";
 import { CHALLENGE_BRIEFING_MS } from "@/lib/host-controls";
 import { generateChallengeTask, judgeChallenge } from "@/lib/ai/challenge.functions";
 import { teamColorClasses, formatClock } from "@/lib/team-style";
+import { speechUrl } from "@/lib/speech-client";
 import type { ChallengeState, RoomState, Team } from "@/lib/types";
 
 const RECORDING_MS = 25_000; // 20s record + buffer
@@ -23,7 +24,17 @@ type ChallengeRow = {
   created_at: string;
 };
 
-export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomState }) {
+export function ChallengeHost({
+  roomId,
+  code,
+  state,
+  onBackToHub,
+}: {
+  roomId: string;
+  code: string;
+  state: RoomState;
+  onBackToHub: () => void | Promise<void>;
+}) {
   const ch = state.challenge!;
   const [history, setHistory] = useState<ChallengeRow[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
@@ -31,6 +42,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const spokenForRef = useRef<string | null>(null);
   const judgedForRef = useRef<string | null>(null);
+  const generatingRoundRef = useRef<string | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 250);
@@ -100,7 +112,11 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
   }, [roomId, ch.roundId]);
 
   const update = (patch: Partial<ChallengeState>) =>
-    updateRoomState(roomId, { ...state, challenge: { ...ch, ...patch } });
+    updateRoomState(
+      roomId,
+      { ...state, challenge: { ...ch, ...patch } },
+      { gameId: "challenge", roundId: ch.roundId },
+    );
 
   // Auto-generate task on briefing entry
   useEffect(() => {
@@ -113,26 +129,31 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
 
   async function generate() {
     if (!ch.operatorName) return;
+    const roundId = ch.roundId;
+    if (generatingRoundRef.current === roundId) return;
+    generatingRoundRef.current = roundId;
     setBusy("Generating task…");
     try {
       const r = await generateChallengeTask({
         data: {
+          ...hostPromptAuth(roomId, code),
           operatorName: ch.operatorName,
           pastTasks: history.map((h) => h.task),
-          venue: state.venue,
         },
       });
-      // speak intro + task via slot 1
-      speak(`${r.intro} ${r.task}`);
-      await update({
+      const written = await update({
         task: r.task,
         aiFallback: r.fallback,
         briefingEndsAt: Date.now() + CHALLENGE_BRIEFING_MS,
       });
+      if (!written) return;
+      // speak intro + task via slot 1 only while this round is still active
+      speak(`${r.intro} ${r.task}`);
       // Recording starts when the operator taps "Open camera" on their phone.
     } catch (e) {
       console.error(e);
     } finally {
+      if (generatingRoundRef.current === roundId) generatingRoundRef.current = null;
       setBusy(null);
     }
   }
@@ -186,6 +207,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
       await update({ phase: "judging" });
       const r = await judgeChallenge({
         data: {
+          ...hostPromptAuth(roomId, code),
           task: p.task,
           transcript: p.transcript,
           frames: p.frames,
@@ -203,17 +225,27 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
       const teams: Team[] = state.teams.map((t) =>
         operator && t.id === operator.teamId ? { ...t, score: t.score + r.score } : t,
       );
-      await updateRoomState(roomId, {
-        ...state,
-        teams,
-        challenge: {
-          ...ch,
-          phase: "results",
-          result: { score: r.score, feedback: r.feedback, videoUrl: p.videoUrl },
-          aiFallback: ch.aiFallback || r.fallback,
-          pastOperatorIds: [...(ch.pastOperatorIds ?? []), ch.operatorId ?? ""].filter(Boolean),
+      const written = await updateRoomState(
+        roomId,
+        {
+          ...state,
+          teams,
+          challenge: {
+            ...ch,
+            phase: "results",
+            result: {
+              score: r.score,
+              feedback: r.feedback,
+              videoUrl: p.videoUrl,
+              breakdown: r.breakdown,
+            },
+            aiFallback: ch.aiFallback || r.fallback,
+            pastOperatorIds: [...(ch.pastOperatorIds ?? []), ch.operatorId ?? ""].filter(Boolean),
+          },
         },
-      });
+        { gameId: "challenge", roundId: ch.roundId },
+      );
+      if (!written) return;
       if (spokenForRef.current !== p.roundId) {
         spokenForRef.current = p.roundId;
         speak(r.verdict);
@@ -228,7 +260,7 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
   function speak(text: string) {
     try {
       if (!audioRef.current) audioRef.current = new Audio();
-      audioRef.current.src = `/api/speak?text=${encodeURIComponent(text)}`;
+      audioRef.current.src = speechUrl(text, roomId);
       audioRef.current.play().catch(() => {});
     } catch {
       /* */
@@ -241,21 +273,25 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
     const candidates = pool.length > 0 ? pool : state.players;
     const nextOp = candidates[Math.floor(Math.random() * candidates.length)];
     if (!nextOp) return;
-    updateRoomState(roomId, {
-      ...state,
-      challenge: {
-        phase: "briefing",
-        roundId: genId("ch"),
-        operatorId: nextOp.id,
-        operatorName: nextOp.name,
-        aiFallback: undefined,
-        pastOperatorIds: [...(ch.pastOperatorIds ?? []), ch.operatorId ?? ""].filter(Boolean),
+    updateRoomState(
+      roomId,
+      {
+        ...state,
+        challenge: {
+          phase: "briefing",
+          roundId: genId("ch"),
+          operatorId: nextOp.id,
+          operatorName: nextOp.name,
+          aiFallback: undefined,
+          pastOperatorIds: [...(ch.pastOperatorIds ?? []), ch.operatorId ?? ""].filter(Boolean),
+        },
       },
-    });
+      { gameId: "challenge", roundId: ch.roundId },
+    );
   }
 
   function backToHub() {
-    updateRoomState(roomId, { ...state, currentGame: null, challenge: undefined, status: "lobby" });
+    void onBackToHub();
   }
 
   const operator = state.players.find((p) => p.id === ch.operatorId);
@@ -354,6 +390,14 @@ export function ChallengeHost({ roomId, state }: { roomId: string; state: RoomSt
             )}
           </div>
           <p className="mt-4 text-white text-lg leading-snug">«{ch.result.feedback}»</p>
+          {ch.result.breakdown && (
+            <div className="mt-4 flex flex-wrap gap-2 text-xs text-white/75">
+              <ScoreChip label="Scene" value={ch.result.breakdown.performance} />
+              <ScoreChip label="Creative" value={ch.result.breakdown.creativity} />
+              <ScoreChip label="Energy" value={ch.result.breakdown.energy} />
+              <ScoreChip label="Environment" value={ch.result.breakdown.environment} bonus />
+            </div>
+          )}
           {ch.result.videoUrl && (
             <video
               src={ch.result.videoUrl}
@@ -393,6 +437,23 @@ function AiFallbackNotice() {
     <div className="mb-4 rounded-2xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
       The AI provider didn&apos;t respond reliably, so this round continued in fallback mode.
     </div>
+  );
+}
+
+function ScoreChip({
+  label,
+  value,
+  bonus = false,
+}: {
+  label: string;
+  value: number;
+  bonus?: boolean;
+}) {
+  return (
+    <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-1">
+      {label} {bonus ? "+" : ""}
+      {value}
+    </span>
   );
 }
 

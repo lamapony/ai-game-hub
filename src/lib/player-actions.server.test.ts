@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { applyPlayerAction } from "./player-actions.server";
+import { MAX_ROOM_PLAYERS } from "./room-capacity";
 import type { RoomState } from "./types";
 
 function roomState(overrides: Partial<RoomState> = {}): RoomState {
@@ -99,6 +100,108 @@ describe("player server actions", () => {
         }),
       ),
     ).toBe(403);
+  });
+
+  test("caps new identities at 30 while allowing an existing player to rejoin", async () => {
+    const fullRoom = roomState({
+      players: Array.from({ length: MAX_ROOM_PLAYERS }, (_, index) => ({
+        id: `p${index + 1}`,
+        name: `Guest ${index + 1}`,
+        teamId: index % 2 === 0 ? "forest" : "lake",
+        joinedAt: index + 1,
+        secretHash: `hash-p${index + 1}`,
+      })),
+    });
+
+    expect(
+      await rejectedStatus(() =>
+        applyPlayerAction(fullRoom, {
+          action: "join",
+          playerId: "p31",
+          name: "Overflow Guest",
+          teamId: "forest",
+          playerSecretHash: "hash-p31",
+        }),
+      ),
+    ).toBe(409);
+
+    const rejoined = await applyPlayerAction(fullRoom, {
+      action: "join",
+      playerId: "p30",
+      name: "Returning Guest",
+      teamId: "forest",
+      playerSecretHash: "hash-p30",
+    });
+
+    expect(rejoined.players).toHaveLength(MAX_ROOM_PLAYERS);
+    expect(rejoined.players.find((player) => player.id === "p30")?.name).toBe("Returning Guest");
+  });
+
+  test("stores an authorized lobby device check and preserves it through team changes", async () => {
+    const joined = await applyPlayerAction(
+      roomState(),
+      {
+        action: "join",
+        playerId: "p1",
+        name: "Ada",
+        teamId: "forest",
+        playerSecretHash: "hash-p1",
+      },
+      1000,
+    );
+    const checked = await applyPlayerAction(
+      joined,
+      {
+        action: "device-check",
+        playerId: "p1",
+        cameraStatus: "ready",
+        microphoneStatus: "ready",
+        playerSecretHash: "hash-p1",
+      },
+      2000,
+    );
+    const switched = await applyPlayerAction(
+      checked,
+      {
+        action: "switch-team",
+        playerId: "p1",
+        name: "Ada",
+        teamId: "lake",
+        playerSecretHash: "hash-p1",
+      },
+      3000,
+    );
+
+    expect(switched.players[0]?.deviceCheck).toEqual({
+      camera: "ready",
+      microphone: "ready",
+      checkedAt: 2000,
+    });
+    expect(
+      await rejectedStatus(() =>
+        applyPlayerAction(checked, {
+          action: "device-check",
+          playerId: "p1",
+          cameraStatus: "ready",
+          microphoneStatus: "not-a-status" as never,
+          playerSecretHash: "hash-p1",
+        }),
+      ),
+    ).toBe(400);
+    expect(
+      await rejectedStatus(() =>
+        applyPlayerAction(
+          { ...checked, status: "playing" },
+          {
+            action: "device-check",
+            playerId: "p1",
+            cameraStatus: "ready",
+            microphoneStatus: "ready",
+            playerSecretHash: "hash-p1",
+          },
+        ),
+      ),
+    ).toBe(409);
   });
 
   test("starts Challenge recording only for the active operator", async () => {

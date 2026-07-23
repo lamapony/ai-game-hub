@@ -85,12 +85,10 @@ export function GameRulesBrowser() {
   const rules = GAME_RULES[selected];
 
   return (
-    <div className="mt-4 text-left">
-      <div className="text-[10px] uppercase tracking-widest text-white/50 mb-2">
-        While waiting — check the rules
-      </div>
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory">
-        {GAME_IDS.map((id) => {
+    <div className="agh-rules-browser">
+      <div className="agh-rules-browser-heading">While waiting: check the rules</div>
+      <div className="agh-rules-browser-tabs">
+        {GAME_IDS.map((id, index) => {
           const item = GAME_RULES[id];
           const active = id === selected;
           return (
@@ -98,32 +96,23 @@ export function GameRulesBrowser() {
               key={id}
               type="button"
               onClick={() => setSelected(id)}
-              className={`shrink-0 snap-start rounded-2xl border px-3 py-2 text-center transition ${
-                active
-                  ? "border-[var(--color-park-bright)]/50 bg-[var(--color-park-bright)]/15"
-                  : "border-white/10 bg-white/5 hover:bg-white/10"
-              }`}
+              className={active ? "is-active" : ""}
               aria-label={item.title}
               aria-pressed={active}
             >
-              <div className="text-2xl leading-none">{item.emoji}</div>
-              <div className="text-[10px] mt-1 max-w-[4.5rem] truncate opacity-80">
-                {item.title.split(" ")[0]}
-              </div>
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <strong>{item.title}</strong>
             </button>
           );
         })}
       </div>
-      <div className="mt-3 rounded-2xl border border-white/10 bg-black/30 p-4 text-white">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">{rules.emoji}</span>
-          <div className="font-display text-lg leading-tight">{rules.title}</div>
-        </div>
-        <p className="text-xs text-white/55 mt-1">{rules.tagline}</p>
-        <div className="mt-3 text-white/75">
+      <div className="agh-rules-browser-detail">
+        <strong>{rules.title}</strong>
+        <p>{rules.tagline}</p>
+        <div>
           <GameRulesStepsList rules={rules} compact />
         </div>
-        <p className="mt-3 text-xs text-[var(--color-park-bright)]/90">{rules.scoring}</p>
+        <p>{rules.scoring}</p>
       </div>
     </div>
   );

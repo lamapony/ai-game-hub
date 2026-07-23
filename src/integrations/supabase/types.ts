@@ -92,6 +92,121 @@ export type Database = {
         };
         Relationships: [];
       };
+      party_records: {
+        Row: {
+          act_id: string;
+          created_at: string;
+          game_id: string;
+          id: string;
+          idempotency_key: string;
+          kind: string;
+          owner_player_id: string | null;
+          owner_team_id: string | null;
+          payload: Json;
+          revealed_at: string | null;
+          room_id: string;
+          run_id: string;
+          session_started_at: number;
+          visibility: string;
+        };
+        Insert: {
+          act_id: string;
+          created_at?: string;
+          game_id: string;
+          id?: string;
+          idempotency_key: string;
+          kind: string;
+          owner_player_id?: string | null;
+          owner_team_id?: string | null;
+          payload?: Json;
+          revealed_at?: string | null;
+          room_id: string;
+          run_id: string;
+          session_started_at?: number;
+          visibility?: string;
+        };
+        Update: {
+          act_id?: string;
+          created_at?: string;
+          game_id?: string;
+          id?: string;
+          idempotency_key?: string;
+          kind?: string;
+          owner_player_id?: string | null;
+          owner_team_id?: string | null;
+          payload?: Json;
+          revealed_at?: string | null;
+          room_id?: string;
+          run_id?: string;
+          session_started_at?: number;
+          visibility?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "party_records_room_id_fkey";
+            columns: ["room_id"];
+            isOneToOne: false;
+            referencedRelation: "rooms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      score_events: {
+        Row: {
+          act_id: string;
+          created_at: string;
+          game_id: string;
+          id: string;
+          idempotency_key: string;
+          player_id: string | null;
+          points: number;
+          reason: string;
+          room_id: string;
+          rubric: Json;
+          run_id: string;
+          source: string;
+          team_id: string;
+        };
+        Insert: {
+          act_id: string;
+          created_at?: string;
+          game_id: string;
+          id?: string;
+          idempotency_key: string;
+          player_id?: string | null;
+          points: number;
+          reason: string;
+          room_id: string;
+          rubric?: Json;
+          run_id: string;
+          source: string;
+          team_id: string;
+        };
+        Update: {
+          act_id?: string;
+          created_at?: string;
+          game_id?: string;
+          id?: string;
+          idempotency_key?: string;
+          player_id?: string | null;
+          points?: number;
+          reason?: string;
+          room_id?: string;
+          rubric?: Json;
+          run_id?: string;
+          source?: string;
+          team_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "score_events_room_id_fkey";
+            columns: ["room_id"];
+            isOneToOne: false;
+            referencedRelation: "rooms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       rooms: {
         Row: {
           code: string;
@@ -209,7 +324,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      award_score_events: {
+        Args: { p_events?: Json; p_room_id: string };
+        Returns: Json;
+      };
     };
     Enums: {
       [_ in never]: never;

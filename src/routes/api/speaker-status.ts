@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { publicApiErrorResponse } from "@/lib/api-error-response.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { logError, logInfo, logWarn } from "@/lib/structured-log";
 import { migrateRoomState } from "@/lib/room-state-migration";
@@ -66,7 +67,8 @@ export const Route = createFileRoute("/api/speaker-status")({
             durationMs: Date.now() - startedAt,
             status: 500,
           });
-          return new Response(error instanceof Error ? error.message : "speaker status failed", {
+          return publicApiErrorResponse(error, {
+            fallbackMessage: "speaker status failed",
             status: 500,
           });
         }

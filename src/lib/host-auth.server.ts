@@ -1,11 +1,14 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { mergeRecentHostCommandIds } from "./host-command";
 import { migrateRoomState } from "./room-state-migration";
+import { statusError } from "./player-auth.server";
 import type { RoomState } from "./types";
 
 export type AuthorizedHostRoom = {
   id: string;
   code: string;
   state: RoomState;
+  updatedAt: string;
 };
 
 function mergePlayersForHostWrite(current: RoomState, submitted: RoomState) {
@@ -14,8 +17,17 @@ function mergePlayersForHostWrite(current: RoomState, submitted: RoomState) {
   return [
     ...submitted.players.map((player) => {
       const currentPlayer = currentById.get(player.id);
-      if (!currentPlayer?.secretHash || player.secretHash) return player;
-      return { ...player, secretHash: currentPlayer.secretHash };
+      if (!currentPlayer) return player;
+      return {
+        ...player,
+        ...(!player.secretHash && currentPlayer.secretHash
+          ? { secretHash: currentPlayer.secretHash }
+          : {}),
+        ...(currentPlayer.deviceCheck &&
+        (!player.deviceCheck || currentPlayer.deviceCheck.checkedAt > player.deviceCheck.checkedAt)
+          ? { deviceCheck: currentPlayer.deviceCheck }
+          : {}),
+      };
     }),
     ...current.players.filter((player) => !submittedIds.has(player.id)),
   ];
@@ -62,6 +74,33 @@ function mergeActiveRoundPlayerData(current: RoomState, submitted: RoomState): R
   if (current.currentGame !== submitted.currentGame) return submitted;
 
   if (
+    current.currentGame === "toastsyndicate" &&
+    current.toastsyndicate &&
+    submitted.toastsyndicate &&
+    current.toastsyndicate.roundId === submitted.toastsyndicate.roundId
+  ) {
+    return { ...submitted, toastsyndicate: current.toastsyndicate };
+  }
+
+  if (
+    current.currentGame === "stilllife" &&
+    current.stilllife &&
+    submitted.stilllife &&
+    current.stilllife.roundId === submitted.stilllife.roundId
+  ) {
+    return { ...submitted, stilllife: current.stilllife };
+  }
+
+  if (
+    current.currentGame === "sommelier" &&
+    current.sommelier &&
+    submitted.sommelier &&
+    current.sommelier.sessionId === submitted.sommelier.sessionId
+  ) {
+    return { ...submitted, sommelier: current.sommelier };
+  }
+
+  if (
     current.currentGame === "soundscape" &&
     sameRoundPhase(current.soundscape, submitted.soundscape)
   ) {
@@ -86,6 +125,32 @@ function mergeActiveRoundPlayerData(current: RoomState, submitted: RoomState): R
           current.phototunt?.submittedPlayerIds,
           submitted.phototunt?.submittedPlayerIds,
         ),
+      },
+    };
+  }
+
+  if (
+    current.currentGame === "grilloracle" &&
+    current.grilloracle &&
+    submitted.grilloracle &&
+    current.grilloracle.roundId === submitted.grilloracle.roundId
+  ) {
+    const currentClosed = current.grilloracle.phase === "results";
+    const submittedClosed = submitted.grilloracle.phase === "results";
+    return {
+      ...submitted,
+      grilloracle: {
+        ...submitted.grilloracle!,
+        phase: currentClosed || submittedClosed ? "results" : "capturing",
+        participantIds: current.grilloracle.participantIds,
+        submittedPlayerIds:
+          mergeArraySet(
+            current.grilloracle?.submittedPlayerIds,
+            submitted.grilloracle?.submittedPlayerIds,
+          ) ?? [],
+        captureEndsAt: currentClosed
+          ? current.grilloracle.captureEndsAt
+          : submitted.grilloracle.captureEndsAt,
       },
     };
   }
@@ -147,6 +212,24 @@ export function mergeHostSubmittedState(current: RoomState, submitted: RoomState
   const mergedActiveRound = mergeActiveRoundPlayerData(current, submitted);
   return {
     ...mergedActiveRound,
+    party: current.party ?? mergedActiveRound.party,
+    quickStart: current.quickStart ?? mergedActiveRound.quickStart,
+    aiRuntime: current.aiRuntime ?? mergedActiveRound.aiRuntime,
+    status: current.status === "finished" ? "finished" : mergedActiveRound.status,
+    runOfShow: current.runOfShow ?? mergedActiveRound.runOfShow,
+    finale: current.finale ?? mergedActiveRound.finale,
+    oracleMemory: current.oracleMemory ?? mergedActiveRound.oracleMemory,
+    smokescreen: current.smokescreen ?? mergedActiveRound.smokescreen,
+    contraband: current.contraband ?? mergedActiveRound.contraband,
+    tongsoftruth: current.tongsoftruth ?? mergedActiveRound.tongsoftruth,
+    crossexamination:
+      mergedActiveRound.currentGame === "crossexamination"
+        ? (current.crossexamination ?? mergedActiveRound.crossexamination)
+        : mergedActiveRound.crossexamination,
+    recentHostCommandIds: mergeRecentHostCommandIds(
+      mergedActiveRound.recentHostCommandIds,
+      current.recentHostCommandIds,
+    ),
     players: mergePlayersForHostWrite(current, mergedActiveRound),
     speakerSlots: mergeSpeakerSlotsForHostWrite(current, mergedActiveRound),
   };
@@ -171,28 +254,29 @@ export async function authorizeHostRoom(params: {
   hostSecret: string;
 }): Promise<AuthorizedHostRoom> {
   const hostSecret = params.hostSecret.trim();
-  if (!hostSecret) throw Object.assign(new Error("host authorization required"), { status: 401 });
+  if (!hostSecret) throw statusError("host authorization required", 401);
 
-  let query = supabaseAdmin.from("rooms").select("id, code, host_secret, state");
+  let query = supabaseAdmin.from("rooms").select("id, code, host_secret, state, updated_at");
   if (params.roomId) {
     query = query.eq("id", params.roomId);
   } else if (params.code) {
     query = query.eq("code", params.code.trim().toUpperCase());
   } else {
-    throw Object.assign(new Error("roomId or code required"), { status: 400 });
+    throw statusError("roomId or code required", 400);
   }
 
   const { data, error } = await query.maybeSingle();
   if (error) throw error;
-  if (!data) throw Object.assign(new Error("room not found"), { status: 404 });
+  if (!data) throw statusError("room not found", 404);
   if (!timingSafeEqual(hostSecret, data.host_secret)) {
-    throw Object.assign(new Error("invalid host secret"), { status: 403 });
+    throw statusError("invalid host secret", 403);
   }
 
   return {
     id: data.id,
     code: data.code,
     state: migrateRoomState(data.state as unknown as RoomState),
+    updatedAt: data.updated_at,
   };
 }
 

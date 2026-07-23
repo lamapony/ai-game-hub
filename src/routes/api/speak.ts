@@ -1,5 +1,6 @@
 // TTS endpoint: returns an MP3 stream for a given text. Cached by browser via query string.
 import { createFileRoute } from "@tanstack/react-router";
+import { publicApiErrorResponse, publicApiErrorStatus } from "@/lib/api-error-response.server";
 import { logError, logInfo, logWarn } from "@/lib/structured-log";
 
 export const Route = createFileRoute("/api/speak")({
@@ -10,9 +11,10 @@ export const Route = createFileRoute("/api/speak")({
         const url = new URL(request.url);
         const text = (url.searchParams.get("text") ?? "").slice(0, 600);
         const voice = url.searchParams.get("voice") ?? "alloy";
-        if (!text) {
+        const roomId = (url.searchParams.get("roomId") ?? "").trim();
+        if (!text || !roomId) {
           logWarn("api.speak.invalid", { durationMs: Date.now() - startedAt, status: 400 });
-          return new Response("text required", { status: 400 });
+          return new Response("text and roomId required", { status: 400 });
         }
         const { checkRequestRateLimit, rateLimitResponse } =
           await import("@/lib/api-rate-limit.server");
@@ -29,14 +31,15 @@ export const Route = createFileRoute("/api/speak")({
           });
           return rateLimitResponse(rateLimit);
         }
-        const { ttsMp3 } = await import("@/lib/ai-gateway.server");
+        const { speakWithRoomBudget } = await import("@/lib/ai-budget.server");
         try {
-          const buf = await ttsMp3(text, voice);
+          const buf = await speakWithRoomBudget({ roomId, text, voice });
           logInfo("api.speak.success", {
             durationMs: Date.now() - startedAt,
             status: 200,
             textChars: text.length,
             voice,
+            roomId,
           });
           return new Response(buf, {
             headers: {
@@ -50,10 +53,10 @@ export const Route = createFileRoute("/api/speak")({
             status: 502,
             textChars: text.length,
             voice,
+            roomId,
           });
-          return new Response(`TTS failed: ${e instanceof Error ? e.message : "error"}`, {
-            status: 502,
-          });
+          const status = publicApiErrorStatus(e, 502);
+          return publicApiErrorResponse(e, { fallbackMessage: "TTS failed", status });
         }
       },
     },

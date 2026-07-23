@@ -4,10 +4,11 @@ import {
   type ContingencyPlan,
   type ExperienceId,
   type PartyActId,
+  type VenueKind,
 } from "./party-context";
 import type { RoomState, Venue } from "./types";
 
-function legacyVenueFor(venue: "park" | "grill-site" | "bar"): Venue {
+function legacyVenueFor(venue: VenueKind): Venue {
   return venue === "bar" ? "bar" : "park";
 }
 
@@ -21,7 +22,14 @@ export function selectExperienceState(
   return {
     ...state,
     schemaVersion: ROOM_STATE_SCHEMA_VERSION,
-    party: { ...party, actStartedAt: now },
+    party: {
+      ...party,
+      sessionStartedAt: state.party?.sessionStartedAt ?? now,
+      actStartedAt: now,
+    },
+    quickStart: undefined,
+    runOfShow: { experienceId, contingency, completedStepIds: [] },
+    finale: undefined,
     venue: legacyVenueFor(party.venue),
   };
 }
@@ -42,6 +50,13 @@ export function selectPartyActState(
     ...state,
     schemaVersion: ROOM_STATE_SCHEMA_VERSION,
     party: { ...party, actId, venue: act.venue, actStartedAt: now },
+    runOfShow: state.runOfShow
+      ? {
+          ...state.runOfShow,
+          activeStepId: undefined,
+          activeStepStartedAt: undefined,
+        }
+      : undefined,
     venue: legacyVenueFor(act.venue),
   };
 }

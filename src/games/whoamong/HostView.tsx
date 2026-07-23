@@ -5,13 +5,22 @@ import { WHO_AMONG_REVEAL_MS, WHO_AMONG_VOTE_MS } from "@/lib/host-controls";
 import type { RoomState, WhoAmongState } from "@/lib/types";
 import { pickCatalogPrompt } from "./catalog";
 import { scoreWhoAmongRound } from "./scoring";
+import { speechUrl } from "@/lib/speech-client";
 
-function speak(text: string) {
-  const a = new Audio(`/api/speak?text=${encodeURIComponent(text)}`);
+function speak(text: string, roomId: string) {
+  const a = new Audio(speechUrl(text, roomId));
   a.play().catch(() => {});
 }
 
-export function WhoAmongHost({ roomId, state }: { roomId: string; state: RoomState }) {
+export function WhoAmongHost({
+  roomId,
+  state,
+  onBackToHub,
+}: {
+  roomId: string;
+  state: RoomState;
+  onBackToHub: () => void | Promise<void>;
+}) {
   const wa = state.whoamong!;
   const [now, setNow] = useState(Date.now());
   const introSpokenRef = useRef(false);
@@ -47,6 +56,7 @@ export function WhoAmongHost({ roomId, state }: { roomId: string; state: RoomSta
     introSpokenRef.current = true;
     speak(
       `Who Among Us. ${wa.totalRounds} rounds. A spicy question on screen — secretly vote for whoever fits best.`,
+      roomId,
     );
     const t = window.setTimeout(() => startRound(), 3500);
     return () => window.clearTimeout(t);
@@ -78,11 +88,11 @@ export function WhoAmongHost({ roomId, state }: { roomId: string; state: RoomSta
       .map((id) => state.players.find((p) => p.id === id)?.name)
       .filter(Boolean);
     if (starNames.length === 1) {
-      speak(`Round star — ${starNames[0]}!`);
+      speak(`Round star — ${starNames[0]}!`, roomId);
     } else if (starNames.length > 1) {
-      speak(`Round stars — ${starNames.join(" and ")}!`);
+      speak(`Round stars — ${starNames.join(" and ")}!`, roomId);
     } else {
-      speak("Nobody got votes this round.");
+      speak("Nobody got votes this round.", roomId);
     }
 
     void updateRoomState(roomId, {
@@ -216,14 +226,7 @@ export function WhoAmongHost({ roomId, state }: { roomId: string; state: RoomSta
           </div>
           <button
             type="button"
-            onClick={() =>
-              updateRoomState(roomId, {
-                ...state,
-                status: "lobby",
-                currentGame: null,
-                whoamong: undefined,
-              })
-            }
+            onClick={onBackToHub}
             className="mt-4 rounded-2xl bg-white/10 hover:bg-white/15 px-4 py-2 text-sm"
           >
             ↺ Back to lobby

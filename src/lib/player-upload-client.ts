@@ -2,7 +2,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { isRetryableError, retryOperation } from "./retry";
 import { playerSecretFor } from "./player-action-client";
 
-export type PlayerUploadAction = "soundscape-audio" | "challenge-video" | "photo";
+export type PlayerUploadAction =
+  | "soundscape-audio"
+  | "challenge-video"
+  | "photo"
+  | "oracle-photo"
+  | "toast-audio"
+  | "stilllife-photo"
+  | "sommelier-photo"
+  | "contraband-audio"
+  | "tongs-audio"
+  | "cross-audio";
 
 export type PlayerUploadTargetRequest = {
   action: PlayerUploadAction;

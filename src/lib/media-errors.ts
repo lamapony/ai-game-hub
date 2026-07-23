@@ -15,7 +15,7 @@ export function friendlyMediaError(error: unknown, kind: MediaKind) {
     kind === "microphone" ? "microphone" : kind === "camera" ? "camera" : "camera and microphone";
 
   if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-    return `Browser denied access to the ${device}. Allow access in site settings and reload the screen.`;
+    return `Browser denied access to the ${device}. Allow access in site settings, then tap Try again.`;
   }
   if (name === "NotFoundError" || name === "DevicesNotFoundError") {
     return `Device did not find the ${device}. Make sure the camera or microphone is not in use by another app.`;
@@ -30,21 +30,18 @@ export function friendlyMediaError(error: unknown, kind: MediaKind) {
     return "Browser blocked recording. Make sure the page is opened over HTTPS.";
   }
 
-  const message = errorMessage(error);
-  return message
-    ? `Failed to start recording: ${message}`
-    : "Failed to start recording. Try reloading the page.";
+  return `Could not start the ${device}. Close other apps using it, then tap Try again.`;
 }
 
 export function friendlyUploadError(error: unknown, kind: UploadKind) {
   const label = kind === "audio" ? "sound" : kind === "video" ? "video" : "photo";
   const message = errorMessage(error).toLowerCase();
 
-  if (message.includes("network") || message.includes("fetch") || message.includes("failed")) {
+  if (message.includes("network") || message.includes("fetch") || message.includes("load failed")) {
     return `Failed to send ${label}: looks like network dropped. Move closer to Wi-Fi and try again.`;
   }
   if (message.includes("storage") || message.includes("bucket")) {
-    return `Failed to save ${label}. Recordings bucket unavailable, host should check Supabase Storage.`;
+    return `Party media is temporarily unavailable. Stay on this screen and try sending the ${label} again in a moment.`;
   }
   if (message.includes("signed url") || message.includes("signed")) {
     return `Failed to prepare link for ${label}. Try sending again.`;
@@ -53,6 +50,5 @@ export function friendlyUploadError(error: unknown, kind: UploadKind) {
     return `Failed to send ${label}: file too large. Record shorter and try again.`;
   }
 
-  const raw = errorMessage(error);
-  return raw ? `Failed to send ${label}: ${raw}` : `Failed to send ${label}.`;
+  return `Failed to send ${label}. Stay on this screen and try again.`;
 }

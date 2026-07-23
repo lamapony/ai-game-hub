@@ -19,6 +19,7 @@ import {
   spectrumCourtFallbackClue,
 } from "./host-controls";
 import type { RoomState } from "./types";
+import { contextForExperience } from "@/experiences/catalog";
 
 function roomState(overrides: Partial<RoomState> = {}): RoomState {
   return {
@@ -86,6 +87,60 @@ describe("host controls state helpers", () => {
         voteEndsAt: 18_500,
         revealEndsAt: 19_000,
       },
+      grilloracle: {
+        phase: "capturing",
+        roundId: "oracle",
+        participantIds: ["p1", "p2"],
+        submittedPlayerIds: [],
+        captureEndsAt: 20_000,
+      },
+      sommelier: {
+        phase: "voting",
+        sessionId: "sommelier",
+        participantIds: ["p1", "p2"],
+        submittedPlayerIds: ["p1", "p2"],
+        roundNumber: 1,
+        totalRounds: 2,
+        submittedVoterIds: [],
+        roundResults: [],
+        votingEndsAt: 20_500,
+      },
+      tongsoftruth: {
+        runId: "tongs",
+        status: "recording",
+        participantIds: ["p1", "p2"],
+        speakerOrder: ["p1", "p2"],
+        roundNumber: 1,
+        totalRounds: 2,
+        currentRoundId: "tongs_r1",
+        speakerPlayerId: "p1",
+        speakerName: "One",
+        level: 1,
+        question: "Which plan burned first?",
+        recordingEndsAt: 21_000,
+        roundResults: [],
+      },
+      crossexamination: {
+        runId: "cross",
+        status: "capturing",
+        participantIds: ["p1", "p2"],
+        pairOrder: [
+          {
+            pairId: "cross_p1",
+            playerAId: "p1",
+            playerAName: "One",
+            playerBId: "p2",
+            playerBName: "Two",
+          },
+        ],
+        pairNumber: 1,
+        totalPairs: 1,
+        currentPairId: "cross_p1",
+        submittedPlayerIds: [],
+        predictionVoterIds: [],
+        pairResults: [],
+        recordingEndsAt: 22_000,
+      },
     });
 
     const paused = pauseRoomState(state, 20_000);
@@ -105,6 +160,10 @@ describe("host controls state helpers", () => {
     expect(resumed.spectrumcourt?.revealEndsAt).toBe(23_500);
     expect(resumed.whoamong?.voteEndsAt).toBe(24_000);
     expect(resumed.whoamong?.revealEndsAt).toBe(24_500);
+    expect(resumed.grilloracle?.captureEndsAt).toBe(25_500);
+    expect(resumed.sommelier?.votingEndsAt).toBe(26_000);
+    expect(resumed.tongsoftruth?.recordingEndsAt).toBe(26_500);
+    expect(resumed.crossexamination?.recordingEndsAt).toBe(27_500);
   });
 
   test("forceBackToHub clears active games and pause state", () => {
@@ -128,6 +187,49 @@ describe("host controls state helpers", () => {
         totalRounds: 5,
         usedPromptIds: [],
       },
+      grilloracle: {
+        phase: "capturing",
+        roundId: "oracle",
+        participantIds: ["p1", "p2"],
+        submittedPlayerIds: [],
+      },
+      sommelier: {
+        phase: "capture",
+        sessionId: "sommelier",
+        participantIds: ["p1", "p2"],
+        submittedPlayerIds: [],
+        roundNumber: 0,
+        totalRounds: 2,
+        submittedVoterIds: [],
+        roundResults: [],
+      },
+      oracleMemory: {
+        runId: "oracle",
+        participantIds: ["p1", "p2"],
+        submittedPlayerIds: ["p1"],
+        verifiedPlayerIds: [],
+        status: "collecting",
+      },
+      crossexamination: {
+        runId: "cross",
+        status: "capturing",
+        participantIds: ["p1", "p2"],
+        pairOrder: [
+          {
+            pairId: "cross_p1",
+            playerAId: "p1",
+            playerAName: "One",
+            playerBId: "p2",
+            playerBName: "Two",
+          },
+        ],
+        pairNumber: 1,
+        totalPairs: 1,
+        currentPairId: "cross_p1",
+        submittedPlayerIds: [],
+        predictionVoterIds: [],
+        pairResults: [],
+      },
     });
 
     const result = forceBackToHubState(state);
@@ -140,6 +242,170 @@ describe("host controls state helpers", () => {
     expect(result.phototunt).toBeUndefined();
     expect(result.spectrumcourt).toBeUndefined();
     expect(result.whoamong).toBeUndefined();
+    expect(result.grilloracle).toBeUndefined();
+    expect(result.sommelier).toBeUndefined();
+    expect(result.crossexamination).toBeUndefined();
+    expect(result.oracleMemory).toEqual(state.oracleMemory);
+  });
+
+  test("forceBackToHub captures every legacy public result before clearing game state", () => {
+    const state = roomState({
+      currentGame: "impostor",
+      party: contextForExperience("smoke-neon-norrebro", "normal"),
+      soundscape: {
+        phase: "results",
+        roundId: "sound_1",
+        topic: "The bar at closing time",
+        mixes: {
+          forest: { teamId: "forest", intro: "Final mix", cues: [], totalMs: 60_000 },
+        },
+      },
+      challenge: {
+        phase: "results",
+        roundId: "challenge_1",
+        operatorName: "One",
+        result: {
+          score: 9,
+          feedback: "One turned a bar stool into a getaway vehicle.",
+          videoUrl: "https://example.test/challenge.mp4",
+        },
+      },
+      phototunt: {
+        phase: "results",
+        roundId: "photo_1",
+        results: [
+          {
+            playerId: "p2",
+            playerName: "Two",
+            teamId: "lake",
+            photoUrl: "https://example.test/photo.jpg",
+            rank: 1,
+            points: 5,
+            comment: "Two made the fire extinguisher look like the guest of honor.",
+          },
+        ],
+      },
+      trackguess: {
+        phase: "results",
+        roundId: "track_1",
+        roundNumber: 1,
+        totalRounds: 1,
+        usedTrackIds: ["track_a"],
+        roundResults: [
+          {
+            trackId: "track_a",
+            title: "Last Call Algorithm",
+            artist: "The Turing Tones",
+            genre: "disco",
+            isAi: true,
+            correctPlayerIds: ["p1"],
+          },
+        ],
+      },
+      spectrumcourt: {
+        phase: "results",
+        roundId: "spectrum_1",
+        roundNumber: 1,
+        totalRounds: 1,
+        usedSpectrumIds: ["quiet_loud"],
+        roundResults: [
+          {
+            spectrumId: "quiet_loud",
+            leftLabel: "whisper",
+            rightLabel: "fire alarm",
+            target: 82,
+            clue: "the bartender sees the bill",
+            clueTeamId: "forest",
+            cluePlayerId: "p1",
+            teamResults: [],
+            clueTeamPoints: 3,
+          },
+        ],
+      },
+      whoamong: {
+        phase: "results",
+        roundId: "who_1",
+        roundNumber: 1,
+        totalRounds: 1,
+        usedPromptIds: ["prompt_1"],
+        roundResults: [
+          {
+            promptId: "prompt_1",
+            prompt: "Who would accidentally start a cult by midnight?",
+            starIds: ["p2"],
+            voteCounts: { p2: 2 },
+            correctVoterIds: ["p1", "p2"],
+          },
+        ],
+      },
+      impostor: {
+        phase: "results",
+        roundId: "bot_1",
+        roundNumber: 1,
+        totalRounds: 1,
+        usedQuestionIds: ["question_1"],
+        roundResults: [
+          {
+            questionId: "question_1",
+            question: "What did the coat rack witness?",
+            answers: [
+              { id: "human_1", playerId: "p1", text: "A very deliberate escape." },
+              { id: "ai_1", text: "A statistically unusual hat." },
+            ],
+            aiAnswerId: "ai_1",
+            votes: { p1: "ai_1" },
+            correctVoterIds: ["p1"],
+          },
+        ],
+      },
+    });
+
+    const result = forceBackToHubState(state, 45_000);
+    const expectedGameIds = [
+      "soundscape",
+      "challenge",
+      "phototunt",
+      "trackguess",
+      "spectrumcourt",
+      "whoamong",
+      "impostor",
+    ];
+
+    expect(result.finale?.evidence.map((item) => item.gameId)).toEqual(expectedGameIds);
+    expect(result.party?.storyEvidence?.map((item) => item.gameId)).toEqual(
+      expectedGameIds.slice(-3),
+    );
+    expect(result.currentGame).toBeNull();
+    expect(result.soundscape).toBeUndefined();
+    expect(result.challenge).toBeUndefined();
+    expect(result.phototunt).toBeUndefined();
+    expect(result.trackguess).toBeUndefined();
+    expect(result.spectrumcourt).toBeUndefined();
+    expect(result.whoamong).toBeUndefined();
+    expect(result.impostor).toBeUndefined();
+  });
+
+  test("skip closes Oracle capture without awarding model-proposed points", () => {
+    const state = roomState({
+      currentGame: "grilloracle",
+      teams: [
+        { id: "forest", name: "Forest", color: "green", score: 7 },
+        { id: "lake", name: "Lake", color: "blue", score: 3 },
+      ],
+      grilloracle: {
+        phase: "capturing",
+        roundId: "oracle",
+        participantIds: ["p1", "p2"],
+        submittedPlayerIds: ["p1"],
+        captureEndsAt: 50_000,
+      },
+    });
+
+    expect(canSkipCurrentPhase(state)).toBe(true);
+    const result = skipCurrentPhaseState(state, 12_000);
+    expect(result.grilloracle?.phase).toBe("results");
+    expect(result.grilloracle?.captureEndsAt).toBe(12_000);
+    expect(result.teams.map((team) => team.score)).toEqual([7, 3]);
   });
 
   test("skip soundscape topics without generated topics uses fallback theme", () => {
@@ -402,6 +668,42 @@ describe("host controls state helpers", () => {
         totalRounds: 5,
         usedPromptIds: [],
       },
+      oracleMemory: {
+        runId: "oracle",
+        participantIds: ["p1", "p2"],
+        submittedPlayerIds: ["p1"],
+        verifiedPlayerIds: [],
+        status: "collecting",
+      },
+      smokescreen: {
+        runId: "smoke",
+        status: "active",
+        participantIds: ["p1", "p2"],
+        assignedPlayerIds: ["p1", "p2"],
+        submittedVoterIds: [],
+        startedAt: 1,
+      },
+      contraband: {
+        runId: "contraband",
+        status: "active",
+        participantIds: ["p1", "p2"],
+        assignedPlayerIds: ["p1", "p2"],
+        resolvedPlayerIds: [],
+        startedAt: 1,
+      },
+      tongsoftruth: {
+        runId: "tongs",
+        status: "results",
+        participantIds: ["p1", "p2"],
+        speakerOrder: ["p1", "p2"],
+        roundNumber: 1,
+        totalRounds: 1,
+        currentRoundId: "tongs_r1",
+        speakerPlayerId: "p1",
+        speakerName: "One",
+        level: 1,
+        roundResults: [],
+      },
     });
 
     const result = finishPartyState(state);
@@ -415,6 +717,10 @@ describe("host controls state helpers", () => {
     expect(result.trackguess).toBeUndefined();
     expect(result.spectrumcourt).toBeUndefined();
     expect(result.whoamong).toBeUndefined();
+    expect(result.oracleMemory).toBeUndefined();
+    expect(result.smokescreen).toBeUndefined();
+    expect(result.contraband).toBeUndefined();
+    expect(result.tongsoftruth).toBeUndefined();
     expect(result.teams.find((team) => team.id === "forest")?.score).toBe(12);
     expect(result.players).toHaveLength(2);
   });
@@ -427,6 +733,45 @@ describe("host controls state helpers", () => {
         { id: "forest", name: "Forest", color: "green", score: 15 },
         { id: "lake", name: "Lake", color: "blue", score: 3 },
       ],
+      oracleMemory: {
+        runId: "old_oracle",
+        participantIds: ["p1"],
+        submittedPlayerIds: ["p1"],
+        verifiedPlayerIds: ["p1"],
+        status: "verified",
+      },
+      smokescreen: {
+        runId: "old_smoke",
+        status: "results",
+        participantIds: ["p1", "p2"],
+        assignedPlayerIds: ["p1", "p2"],
+        submittedVoterIds: ["p1", "p2"],
+        startedAt: 1,
+        results: [],
+        recap: "Old evidence.",
+      },
+      contraband: {
+        runId: "old_contraband",
+        status: "results",
+        participantIds: ["p1", "p2"],
+        assignedPlayerIds: ["p1", "p2"],
+        resolvedPlayerIds: ["p1", "p2"],
+        startedAt: 1,
+        results: [],
+      },
+      tongsoftruth: {
+        runId: "old_tongs",
+        status: "results",
+        participantIds: ["p1", "p2"],
+        speakerOrder: ["p1", "p2"],
+        roundNumber: 1,
+        totalRounds: 1,
+        currentRoundId: "old_tongs_r1",
+        speakerPlayerId: "p1",
+        speakerName: "One",
+        level: 1,
+        roundResults: [],
+      },
     });
 
     const result = resumePartyState(state);
@@ -434,6 +779,10 @@ describe("host controls state helpers", () => {
     expect(result.status).toBe("lobby");
     expect(result.currentGame).toBeNull();
     expect(result.teams.find((team) => team.id === "forest")?.score).toBe(15);
+    expect(result.oracleMemory).toBeUndefined();
+    expect(result.smokescreen).toBeUndefined();
+    expect(result.contraband).toBeUndefined();
+    expect(result.tongsoftruth).toBeUndefined();
   });
 
   test("resumePartyState leaves non-finished room unchanged", () => {

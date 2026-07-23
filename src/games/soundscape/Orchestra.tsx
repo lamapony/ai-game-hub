@@ -1,10 +1,12 @@
 // Plays scheduled cues for one slot. Driven by props (mix, startAt, slot).
 import { useEffect, useRef } from "react";
 import type { SoundscapeMix } from "@/lib/types";
+import { speechUrl } from "@/lib/speech-client";
 
 const PAST_CUE_GRACE_MS = 1000;
 
 type Props = {
+  roomId: string;
   slot: number;
   mix: SoundscapeMix | null | undefined;
   startAt: number | null | undefined; // epoch ms; null = idle
@@ -12,7 +14,7 @@ type Props = {
   onCueFired?: (cue: { atMs: number; kind: string }) => void;
 };
 
-export function Orchestra({ slot, mix, startAt, intro, onCueFired }: Props) {
+export function Orchestra({ roomId, slot, mix, startAt, intro, onCueFired }: Props) {
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const audiosRef = useRef<HTMLAudioElement[]>([]);
   const onCueFiredRef = useRef(onCueFired);
@@ -50,7 +52,7 @@ export function Orchestra({ slot, mix, startAt, intro, onCueFired }: Props) {
 
     if (introText && introSlot === slot) {
       fire(offsetToStart, () => {
-        const a = new Audio(`/api/speak?text=${encodeURIComponent(introText)}`);
+        const a = new Audio(speechUrl(introText, roomId));
         a.volume = 1;
         a.play().catch(() => {});
         audiosRef.current.push(a);
@@ -67,7 +69,7 @@ export function Orchestra({ slot, mix, startAt, intro, onCueFired }: Props) {
           a.play().catch(() => {});
           audiosRef.current.push(a);
         } else if (cue.type === "tts" && cue.text) {
-          const a = new Audio(`/api/speak?text=${encodeURIComponent(cue.text)}`);
+          const a = new Audio(speechUrl(cue.text, roomId));
           a.volume = 1;
           a.play().catch(() => {});
           audiosRef.current.push(a);
@@ -88,7 +90,7 @@ export function Orchestra({ slot, mix, startAt, intro, onCueFired }: Props) {
       });
       audiosRef.current = [];
     };
-  }, [mix, startAt, slot, intro?.text, intro?.slot]);
+  }, [mix, startAt, slot, intro?.text, intro?.slot, roomId]);
 
   return null;
 }

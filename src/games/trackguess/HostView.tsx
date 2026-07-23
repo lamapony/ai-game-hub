@@ -24,13 +24,22 @@ import {
 import { scoreTrackGuessRound } from "./scoring";
 import { isSpotifyUrl, spotifyTrackId } from "./spotify";
 import { TrackAudioPlayer } from "./TrackAudioPlayer";
+import { speechUrl } from "@/lib/speech-client";
 
-function speak(text: string) {
-  const a = new Audio(`/api/speak?text=${encodeURIComponent(text)}`);
+function speak(text: string, roomId: string) {
+  const a = new Audio(speechUrl(text, roomId));
   a.play().catch(() => {});
 }
 
-export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomState }) {
+export function TrackGuessHost({
+  roomId,
+  state,
+  onBackToHub,
+}: {
+  roomId: string;
+  state: RoomState;
+  onBackToHub: () => void | Promise<void>;
+}) {
   const tg = state.trackguess!;
   const [now, setNow] = useState(Date.now());
   const [customTracks, setCustomTracks] = useState<CustomRealTrack[]>(() => loadCustomRealTracks());
@@ -92,8 +101,9 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
     introSpokenRef.current = true;
     speak(
       `Real or AI. ${tg.totalRounds} tracks. Listen carefully and guess whether it's a live recording or AI-generated.`,
+      roomId,
     );
-  }, [state.paused, tg.phase, tg.totalRounds]);
+  }, [state.paused, tg.phase, tg.totalRounds, roomId]);
 
   // listening → guessing
   useEffect(() => {
@@ -124,6 +134,7 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
       roundResult.isAi
         ? `That was an AI track: ${roundResult.title}.`
         : `That was a real track: ${roundResult.title}.`,
+      roomId,
     );
 
     void updateRoomState(roomId, {
@@ -302,14 +313,7 @@ export function TrackGuessHost({ roomId, state }: { roomId: string; state: RoomS
           </div>
           <button
             type="button"
-            onClick={() =>
-              updateRoomState(roomId, {
-                ...state,
-                status: "lobby",
-                currentGame: null,
-                trackguess: undefined,
-              })
-            }
+            onClick={onBackToHub}
             className="mt-4 rounded-2xl bg-white/10 hover:bg-white/15 px-4 py-2 text-sm"
           >
             ↺ Back to lobby

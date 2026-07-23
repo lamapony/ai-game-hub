@@ -41,6 +41,9 @@ jobs:
       - name: Verify production configuration
         run: bun run verify:prod-env
 
+      - name: Verify production backend
+        run: bun run verify:backend
+
       - name: Build
         run: bun run build
 

@@ -1,4 +1,5 @@
 import { normalizePartyContext } from "./party-context";
+import { captureFinaleState, capturePartyEvidenceState } from "./finale-narrative";
 import type { RoomState, SpectrumCourtState, Team } from "./types";
 
 const SOUND_RECORDING_MS = 180_000;
@@ -129,55 +130,110 @@ export function resumeRoomState(state: RoomState, now = Date.now()): RoomState {
           revealEndsAt: shiftTime(state.impostor.revealEndsAt, deltaMs),
         }
       : undefined,
+    grilloracle: state.grilloracle
+      ? {
+          ...state.grilloracle,
+          captureEndsAt: shiftTime(state.grilloracle.captureEndsAt, deltaMs),
+        }
+      : undefined,
+    toastsyndicate: state.toastsyndicate
+      ? {
+          ...state.toastsyndicate,
+          briefingEndsAt: shiftTime(state.toastsyndicate.briefingEndsAt, deltaMs),
+          recordingEndsAt: shiftTime(state.toastsyndicate.recordingEndsAt, deltaMs),
+          catchingEndsAt: shiftTime(state.toastsyndicate.catchingEndsAt, deltaMs),
+        }
+      : undefined,
+    stilllife: state.stilllife
+      ? {
+          ...state.stilllife,
+          buildingEndsAt: shiftTime(state.stilllife.buildingEndsAt, deltaMs),
+          votingEndsAt: shiftTime(state.stilllife.votingEndsAt, deltaMs),
+        }
+      : undefined,
+    sommelier: state.sommelier
+      ? {
+          ...state.sommelier,
+          captureEndsAt: shiftTime(state.sommelier.captureEndsAt, deltaMs),
+          votingEndsAt: shiftTime(state.sommelier.votingEndsAt, deltaMs),
+        }
+      : undefined,
+    contraband: state.contraband
+      ? {
+          ...state.contraband,
+          endsAt: shiftTime(state.contraband.endsAt, deltaMs),
+          activeAccusation: state.contraband.activeAccusation
+            ? {
+                ...state.contraband.activeAccusation,
+                audioEndsAt: shiftTime(state.contraband.activeAccusation.audioEndsAt, deltaMs),
+              }
+            : undefined,
+        }
+      : undefined,
+    tongsoftruth: state.tongsoftruth
+      ? {
+          ...state.tongsoftruth,
+          recordingEndsAt: shiftTime(state.tongsoftruth.recordingEndsAt, deltaMs),
+        }
+      : undefined,
+    crossexamination: state.crossexamination
+      ? {
+          ...state.crossexamination,
+          recordingEndsAt: shiftTime(state.crossexamination.recordingEndsAt, deltaMs),
+        }
+      : undefined,
   };
 }
 
-export function forceBackToHubState(state: RoomState): RoomState {
+function clearForegroundGameState(state: RoomState): RoomState {
   return {
     ...state,
+    currentGame: null,
+    paused: undefined,
+    soundscape: undefined,
+    challenge: undefined,
+    phototunt: undefined,
+    trackguess: undefined,
+    spectrumcourt: undefined,
+    whoamong: undefined,
+    impostor: undefined,
+    grilloracle: undefined,
+    toastsyndicate: undefined,
+    stilllife: undefined,
+    sommelier: undefined,
+    crossexamination: undefined,
+  };
+}
+
+function clearAllGameState(state: RoomState): RoomState {
+  return {
+    ...clearForegroundGameState(state),
+    oracleMemory: undefined,
+    smokescreen: undefined,
+    contraband: undefined,
+    tongsoftruth: undefined,
+  };
+}
+
+export function forceBackToHubState(state: RoomState, now = Date.now()): RoomState {
+  return {
+    ...clearForegroundGameState(capturePartyEvidenceState(state, now)),
     status: "lobby",
-    currentGame: null,
-    paused: undefined,
-    soundscape: undefined,
-    challenge: undefined,
-    phototunt: undefined,
-    trackguess: undefined,
-    spectrumcourt: undefined,
-    whoamong: undefined,
-    impostor: undefined,
   };
 }
 
-export function finishPartyState(state: RoomState): RoomState {
+export function finishPartyState(state: RoomState, now = Date.now()): RoomState {
   return {
-    ...state,
+    ...clearAllGameState({ ...state, finale: captureFinaleState(state, now) }),
     status: "finished",
-    currentGame: null,
-    paused: undefined,
-    soundscape: undefined,
-    challenge: undefined,
-    phototunt: undefined,
-    trackguess: undefined,
-    spectrumcourt: undefined,
-    whoamong: undefined,
-    impostor: undefined,
   };
 }
 
 export function resumePartyState(state: RoomState): RoomState {
   if (state.status !== "finished") return state;
   return {
-    ...state,
+    ...clearAllGameState(state),
     status: "lobby",
-    currentGame: null,
-    paused: undefined,
-    soundscape: undefined,
-    challenge: undefined,
-    phototunt: undefined,
-    trackguess: undefined,
-    spectrumcourt: undefined,
-    whoamong: undefined,
-    impostor: undefined,
   };
 }
 
@@ -292,6 +348,9 @@ export function canSkipCurrentPhase(state: RoomState): boolean {
   }
   if (state.currentGame === "impostor" && state.impostor) {
     return ["answering", "voting", "reveal"].includes(state.impostor.phase);
+  }
+  if (state.currentGame === "grilloracle" && state.grilloracle) {
+    return state.grilloracle.phase === "capturing";
   }
   return false;
 }
@@ -500,6 +559,17 @@ export function skipCurrentPhaseState(state: RoomState, now = Date.now()): RoomS
         impostor: { ...imp, revealEndsAt: now },
       };
     }
+  }
+
+  if (state.currentGame === "grilloracle" && state.grilloracle) {
+    return {
+      ...state,
+      grilloracle: {
+        ...state.grilloracle,
+        phase: "results",
+        captureEndsAt: now,
+      },
+    };
   }
 
   return state;

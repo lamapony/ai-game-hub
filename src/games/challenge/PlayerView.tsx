@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { postPlayerArtifact } from "@/lib/player-artifact-client";
 import { friendlyPlayerActionError } from "@/lib/player-action-errors";
 import { postPlayerAction } from "@/lib/player-action-client";
+import { playerSecretFor } from "@/lib/player-action-client";
 import { uploadPlayerMedia } from "@/lib/player-upload-client";
 import { logError } from "@/lib/structured-log";
 import { VideoRecorder } from "./VideoRecorder";
@@ -94,6 +95,12 @@ export function ChallengePlayer({
           <span className="text-white/40 text-3xl">/10</span>
         </div>
         <p className="text-white mt-3">«{ch.result.feedback}»</p>
+        {ch.result.breakdown && (
+          <p className="mt-2 text-xs text-white/60">
+            Scene {ch.result.breakdown.performance} · creative {ch.result.breakdown.creativity} ·
+            energy {ch.result.breakdown.energy} · environment +{ch.result.breakdown.environment}
+          </p>
+        )}
         <P>Video saved to the room gallery.</P>
       </Card>
     );
@@ -122,7 +129,6 @@ function OperatorReady({ roomId, me, task }: { roomId: string; me: { id: string 
       });
       stream.getTracks().forEach((t) => t.stop());
     } catch (e) {
-      console.error(e);
       setErr(friendlyMediaError(e, "camera-microphone"));
       setStarting(false);
       return;
@@ -141,7 +147,7 @@ function OperatorReady({ roomId, me, task }: { roomId: string; me: { id: string 
   }
 
   return (
-    <div className="space-y-3">
+    <div data-testid="challenge-operator-ready" className="space-y-3">
       <div className="rounded-3xl bg-[var(--color-park-bright)]/15 border border-[var(--color-park-bright)]/40 p-5 text-white">
         <div className="text-xs uppercase tracking-widest text-[var(--color-park-bright)]">
           You&apos;re the operator 🎥
@@ -155,13 +161,18 @@ function OperatorReady({ roomId, me, task }: { roomId: string; me: { id: string 
         <GameRulesChecklist gameId="challenge" />
       </div>
       <button
+        data-testid="challenge-open-camera"
         onClick={start}
         disabled={starting}
         className="w-full rounded-3xl bg-[var(--color-park-bright)] text-[oklch(0.16_0.05_160)] py-6 text-xl font-display disabled:opacity-50"
       >
         {starting ? "Starting…" : "📷 Open camera"}
       </button>
-      {err && <p className="text-sm text-red-300 text-center">{err}</p>}
+      {err && (
+        <p data-testid="challenge-permission-error" className="text-sm text-red-300 text-center">
+          {err}
+        </p>
+      )}
     </div>
   );
 }
@@ -212,7 +223,15 @@ function OperatorRecord({
       const fd = new FormData();
       fd.append("file", blob, `clip.${ext}`);
       fd.append("filename", `clip.${ext}`);
-      const r = await fetch("/api/transcribe", { method: "POST", body: fd });
+      fd.append("roomId", roomId);
+      fd.append("playerId", me.id);
+      fd.append("roundId", ch.roundId);
+      const playerSecret = playerSecretFor(me.id);
+      const r = await fetch("/api/transcribe", {
+        method: "POST",
+        headers: playerSecret ? { "x-player-secret": playerSecret } : undefined,
+        body: fd,
+      });
       if (r.ok) transcript = (await r.json()).text ?? "";
     } catch {
       /* */

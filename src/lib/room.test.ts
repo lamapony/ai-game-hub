@@ -16,6 +16,7 @@ type RoomRecord = {
   id: string;
   code: string;
   state: RoomState;
+  updated_at: string;
 };
 
 const mockRooms = {
@@ -94,6 +95,7 @@ const logEvents: {
 const mockFetch = {
   calls: [] as { input: string | URL | Request; init?: RequestInit }[],
   response: new Response("ok", { status: 200 }),
+  responses: [] as Response[],
 };
 
 bunMock.mock.module("@/integrations/supabase/client", () => ({
@@ -121,10 +123,14 @@ const {
   createRoom,
   fetchRoomByCode,
   genCode,
+  genHostSecret,
   genId,
   getHostSecret,
   getOrCreatePlayer,
   readStoredPlayer,
+  sendHostCommand,
+  sendHostCommandSnapshot,
+  storeHostSecret,
   storedPlayerResumes,
   updateRoomState,
 } = await import("./room");
@@ -158,7 +164,7 @@ function installMemoryStorage() {
   Object.defineProperty(globalThis, "fetch", {
     value: async (input: string | URL | Request, init?: RequestInit) => {
       mockFetch.calls.push({ input, init });
-      return mockFetch.response;
+      return mockFetch.responses.shift() ?? mockFetch.response;
     },
     configurable: true,
   });
@@ -180,6 +186,7 @@ function resetTestState() {
   resetMockRooms();
   mockFetch.calls = [];
   mockFetch.response = new Response("ok", { status: 200 });
+  mockFetch.responses = [];
 }
 
 function installHostSecret(roomId = "room_1", code = "ABCD", secret = "secret") {
@@ -209,6 +216,16 @@ describe("room helpers", () => {
     expect(code.length).toBe(4);
     expect(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4}$/.test(code)).toBe(true);
     expect(/^room_[a-z0-9]{8}$/.test(id)).toBe(true);
+    expect(/^hs_[a-f0-9]{48}$/.test(genHostSecret())).toBe(true);
+  });
+
+  test("stores verified host access for both room code and room id lookup", () => {
+    resetTestState();
+
+    storeHostSecret("ab12", "room_1", "hs_12345678");
+
+    expect(getHostSecret("AB12")).toBe("hs_12345678");
+    expect(localStorage.getItem("dimas:host-room:room_1")).toBe("AB12");
   });
 
   test("createRoom retries duplicate room codes and stores the host secret", async () => {
@@ -235,6 +252,29 @@ describe("room helpers", () => {
     expect(JSON.stringify(logEvents).includes("host_secret")).toBe(false);
   });
 
+  test("createRoom atomically persists the selected quick-start program", async () => {
+    resetTestState();
+
+    const room = await createRoom("Maya", {
+      venue: "home",
+      targetDurationMinutes: 240,
+      expectedPlayers: 16,
+    });
+    const inserted = mockRooms.inserts[0]?.state;
+
+    expect(room.id).toBe(`room_${room.code}`);
+    expect(inserted?.hostName).toBe("Maya");
+    expect(inserted?.party?.experienceId).toBe("house-party");
+    expect(inserted?.party?.contingency).toBe("extended");
+    expect(inserted?.quickStart?.venue).toBe("home");
+    expect(inserted?.quickStart?.targetDurationMinutes).toBe(240);
+    expect(inserted?.quickStart?.expectedPlayers).toBe(16);
+    const successFields = logEvents.find((entry) => entry.event === "room.create.success")?.fields;
+    expect(successFields?.quickStartVenue).toBe("home");
+    expect(successFields?.targetDurationMinutes).toBe(240);
+    expect(successFields?.expectedPlayers).toBe(16);
+  });
+
   test("createRoom fails immediately on non-duplicate insert errors", async () => {
     resetTestState();
 
@@ -253,7 +293,7 @@ describe("room helpers", () => {
 
     const state = emptyRoomState("Host");
     mockRooms.maybeSingleResult = {
-      data: { id: "room_1", code: "ABCD", state },
+      data: { id: "room_1", code: "ABCD", state, updated_at: "2026-07-18T12:00:00Z" },
       error: null,
     };
 
@@ -261,6 +301,8 @@ describe("room helpers", () => {
     expect(room?.id).toBe("room_1");
     expect(room?.code).toBe("ABCD");
     expect(room?.state).toBe(state);
+    expect(room?.updatedAt).toBe("2026-07-18T12:00:00Z");
+    expect(mockRooms.selects).toContain("id, code, state, updated_at");
     expect(logEvents.some((entry) => entry.event === "room.fetch.success")).toBe(true);
     expect(
       mockRooms.filters.some((filter) => filter.field === "code" && filter.value === "ABCD"),
@@ -277,7 +319,12 @@ describe("room helpers", () => {
     const current = emptyRoomState("Legacy Host");
     const { schemaVersion: _schemaVersion, party: _party, ...legacy } = current;
     mockRooms.maybeSingleResult = {
-      data: { id: "room_legacy", code: "BAR1", state: { ...legacy, venue: "bar" } },
+      data: {
+        id: "room_legacy",
+        code: "BAR1",
+        state: { ...legacy, venue: "bar" },
+        updated_at: "2026-07-18T12:00:00Z",
+      },
       error: null,
     };
 
@@ -325,7 +372,8 @@ describe("room helpers", () => {
     }
 
     expect(messages.length).toBe(1);
-    expect(messages[0]).toContain("write rejected");
+    expect(messages[0]).toContain("pause the party");
+    expect(messages[0]?.includes("write rejected")).toBe(false);
   });
 
   test("updateRoomState writes the complete state for the target room id", async () => {
@@ -346,6 +394,91 @@ describe("room helpers", () => {
       state,
     });
     expect(logEvents.some((entry) => entry.event === "room.update.success")).toBe(true);
+  });
+
+  test("updateRoomState treats a guarded stale round as a safe no-op", async () => {
+    resetTestState();
+    installHostSecret();
+    mockFetch.response = Response.json({ skipped: true });
+
+    const state = emptyRoomState("Host");
+    const written = await updateRoomState("room_1", state, {
+      gameId: "challenge",
+      roundId: "ch_old",
+    });
+
+    expect(written).toBe(false);
+    expect(JSON.parse(String(mockFetch.calls[0]?.init?.body))).toEqual({
+      roomId: "room_1",
+      state,
+      guard: { gameId: "challenge", roundId: "ch_old" },
+    });
+    expect(logEvents.some((entry) => entry.event === "room.update.stale_skipped")).toBe(true);
+    expect(logEvents.some((entry) => entry.event === "room.update.failure")).toBe(false);
+  });
+
+  test("sendHostCommand sends a typed command instead of a room snapshot", async () => {
+    resetTestState();
+    installHostSecret();
+    const state = {
+      ...emptyRoomState("Host"),
+      recentHostCommandIds: ["cmd_12345678"],
+    };
+    mockFetch.response = Response.json({ state });
+
+    const result = await sendHostCommand(
+      "room_1",
+      { type: "select-act", actId: "bar" },
+      "cmd_12345678",
+    );
+
+    expect(result).toEqual(state);
+    expect(String(mockFetch.calls[0]?.input)).toBe("/api/host-command");
+    expect(JSON.parse(String(mockFetch.calls[0]?.init?.body))).toEqual({
+      roomId: "room_1",
+      commandId: "cmd_12345678",
+      command: { type: "select-act", actId: "bar" },
+    });
+    expect(String(mockFetch.calls[0]?.init?.body).includes("teams")).toBe(false);
+    expect(logEvents.some((entry) => entry.event === "room.host_command.success")).toBe(true);
+  });
+
+  test("sendHostCommandSnapshot exposes the committed room revision", async () => {
+    resetTestState();
+    installHostSecret();
+    const state = emptyRoomState("Host");
+    mockFetch.response = Response.json({
+      state,
+      updatedAt: "2026-07-18T12:00:00.123456+00:00",
+    });
+
+    const result = await sendHostCommandSnapshot(
+      "room_1",
+      { type: "force-hub" },
+      "cmd_committed_revision",
+    );
+
+    expect(result.state).toEqual(state);
+    expect(result.updatedAt).toBe("2026-07-18T12:00:00.123456+00:00");
+  });
+
+  test("sendHostCommand retries a transient response with the same idempotency key", async () => {
+    resetTestState();
+    installHostSecret();
+    const state = emptyRoomState("Host");
+    mockFetch.responses = [
+      new Response("temporarily unavailable", { status: 503 }),
+      Response.json({ state }),
+    ];
+
+    await sendHostCommand("room_1", { type: "pause" }, "cmd_retry_same_key");
+
+    expect(mockFetch.calls).toHaveLength(2);
+    const first = JSON.parse(String(mockFetch.calls[0]?.init?.body));
+    const second = JSON.parse(String(mockFetch.calls[1]?.init?.body));
+    expect(first.commandId).toBe("cmd_retry_same_key");
+    expect(second.commandId).toBe(first.commandId);
+    expect(logEvents.some((entry) => entry.event === "room.host_command.retry")).toBe(true);
   });
 
   test("getOrCreatePlayer persists player identity and allows name/team updates", () => {

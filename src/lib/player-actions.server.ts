@@ -1,11 +1,13 @@
-import type { RoomState, SpectrumCourtAppeal } from "./types";
+import type { DeviceCheckStatus, RoomState, SpectrumCourtAppeal } from "./types";
 import { isGenericPlayerName, normalizePlayerName } from "./player-name";
 import { assertPlayerSecret, cleanId, statusError } from "./player-auth.server";
+import { MAX_ROOM_PLAYERS, roomHasPlayerCapacity } from "./room-capacity";
 
 export type PlayerAction =
   | "join"
   | "ensure-player"
   | "switch-team"
+  | "device-check"
   | "soundscape-topic-vote"
   | "challenge-start-recording"
   | "trackguess-guess"
@@ -29,6 +31,8 @@ export type PlayerActionPayload = {
   direction?: SpectrumCourtAppeal["direction"];
   answer?: string;
   answerId?: string;
+  cameraStatus?: DeviceCheckStatus;
+  microphoneStatus?: DeviceCheckStatus;
   playerSecretHash?: string;
 };
 
@@ -54,6 +58,13 @@ function cleanNumber(value: unknown, field: string, min: number, max: number) {
     throw statusError(`${field} required`, 400);
   }
   return Math.max(min, Math.min(max, Math.round(value)));
+}
+
+function cleanDeviceCheckStatus(value: unknown, field: string): DeviceCheckStatus {
+  if (value === "ready" || value === "denied" || value === "unavailable" || value === "error") {
+    return value;
+  }
+  throw statusError(`${field} invalid`, 400);
 }
 
 function assertTeam(state: RoomState, teamId: string) {
@@ -89,9 +100,13 @@ function upsertPlayer(
   assertTeam(state, teamId);
   const current = state.players.find((player) => player.id === playerId);
   if (opts.requireExisting && !current) throw statusError("player not found", 404);
+  if (!current && !roomHasPlayerCapacity(state.players.length)) {
+    throw statusError(`room is full (${MAX_ROOM_PLAYERS} players)`, 409);
+  }
   if (current) assertPlayerSecret(current, payload.playerSecretHash);
   if (!payload.playerSecretHash) throw statusError("player authorization required", 401);
   const player = {
+    ...current,
     id: playerId,
     name: cleanName(payload.name, current?.name),
     teamId,
@@ -103,6 +118,22 @@ function upsertPlayer(
     players: current
       ? state.players.map((candidate) => (candidate.id === playerId ? player : candidate))
       : [...state.players, player],
+  };
+}
+
+function deviceCheckState(state: RoomState, payload: PlayerActionPayload, now: number): RoomState {
+  if (state.status !== "lobby") throw statusError("device check is closed", 409);
+  const player = requireAuthorizedPlayer(state, payload);
+  const deviceCheck = {
+    camera: cleanDeviceCheckStatus(payload.cameraStatus, "cameraStatus"),
+    microphone: cleanDeviceCheckStatus(payload.microphoneStatus, "microphoneStatus"),
+    checkedAt: now,
+  };
+  return {
+    ...state,
+    players: state.players.map((candidate) =>
+      candidate.id === player.id ? { ...candidate, deviceCheck } : candidate,
+    ),
   };
 }
 
@@ -361,6 +392,7 @@ export async function applyPlayerAction(
   if (payload.action === "switch-team") {
     return upsertPlayer(state, payload, now, { requireExisting: true, lobbyOnly: true });
   }
+  if (payload.action === "device-check") return deviceCheckState(state, payload, now);
   if (payload.action === "soundscape-topic-vote") return soundscapeTopicVoteState(state, payload);
   if (payload.action === "challenge-start-recording") {
     return challengeStartRecordingState(state, payload, now);

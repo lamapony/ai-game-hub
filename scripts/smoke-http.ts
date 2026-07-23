@@ -2,6 +2,8 @@ type SmokeCheck = {
   name: string;
   path: string;
   method?: "GET" | "POST";
+  body?: string;
+  headers?: Record<string, string>;
   expectedStatus: number;
   expectedContentType?: string;
 };
@@ -35,6 +37,89 @@ const checks: SmokeCheck[] = [
     name: "cleanup requires auth",
     path: "/api/cleanup",
     method: "POST",
+    expectedStatus: 401,
+    expectedContentType: "text/plain",
+  },
+  {
+    name: "live host command requires auth",
+    path: "/api/host-command",
+    method: "POST",
+    body: JSON.stringify({
+      roomId: "smoke-missing-room",
+      commandId: "cmd_smoke_pause",
+      command: { type: "pause" },
+    }),
+    headers: { "content-type": "application/json" },
+    expectedStatus: 401,
+    expectedContentType: "text/plain",
+  },
+  {
+    name: "speech requires room scope",
+    path: "/api/speak?text=test",
+    expectedStatus: 400,
+    expectedContentType: "text/plain",
+  },
+  {
+    name: "transcription requires player context",
+    path: "/api/transcribe",
+    method: "POST",
+    expectedStatus: 400,
+    expectedContentType: "text/plain",
+  },
+  {
+    name: "AI prewarm requires host auth",
+    path: "/api/ai-prewarm",
+    method: "POST",
+    body: JSON.stringify({
+      roomId: "smoke-missing-room",
+      gameId: "smokescreen",
+      targetActId: "grill",
+    }),
+    headers: { "content-type": "application/json" },
+    expectedStatus: 401,
+    expectedContentType: "text/plain",
+  },
+  {
+    name: "tongs rejects invalid request",
+    path: "/api/tongsoftruth",
+    method: "POST",
+    body: "{}",
+    headers: { "content-type": "application/json" },
+    expectedStatus: 400,
+    expectedContentType: "text/plain",
+  },
+  {
+    name: "tongs host action requires auth",
+    path: "/api/tongsoftruth",
+    method: "POST",
+    body: JSON.stringify({
+      action: "prepare",
+      roomId: "smoke-missing-room",
+      runId: "smoke-run",
+    }),
+    headers: { "content-type": "application/json" },
+    expectedStatus: 401,
+    expectedContentType: "text/plain",
+  },
+  {
+    name: "cross rejects invalid request",
+    path: "/api/crossexamination",
+    method: "POST",
+    body: "{}",
+    headers: { "content-type": "application/json" },
+    expectedStatus: 400,
+    expectedContentType: "text/plain",
+  },
+  {
+    name: "cross host case requires auth",
+    path: "/api/crossexamination",
+    method: "POST",
+    body: JSON.stringify({
+      action: "case",
+      roomId: "smoke-missing-room",
+      runId: "smoke-run",
+    }),
+    headers: { "content-type": "application/json" },
     expectedStatus: 401,
     expectedContentType: "text/plain",
   },
@@ -77,6 +162,8 @@ for (const check of checks) {
   try {
     const response = await fetch(url, {
       method: check.method || "GET",
+      body: check.body,
+      headers: check.headers,
       signal: AbortSignal.timeout(10_000),
     });
     assertStatus(check, response);

@@ -12,6 +12,7 @@ describe("party controls", () => {
       contingency: "normal",
       uiLocale: "en",
       contentLocale: "ru",
+      sessionStartedAt: 100,
       actStartedAt: 100,
     });
     expect(normal.venue).toBe("park");
@@ -26,6 +27,7 @@ describe("party controls", () => {
     const state = selectExperienceState(emptyRoomState(), "smoke-neon-norrebro", "normal", 100);
     const bar = selectPartyActState(state, "bar", 300);
     expect(bar?.party?.actId).toBe("bar");
+    expect(bar?.party?.sessionStartedAt).toBe(100);
     expect(bar?.party?.actStartedAt).toBe(300);
     expect(bar?.venue).toBe("bar");
 
@@ -36,5 +38,16 @@ describe("party controls", () => {
     const state = selectExperienceState(emptyRoomState(), "classic-park", "bar-only", 10);
     expect(state.party?.actId).toBe("bar");
     expect(state.venue).toBe("bar");
+  });
+
+  test("selecting an experience clears the previous party's finale", () => {
+    const previous = emptyRoomState();
+    previous.finale = {
+      evidenceVersion: 1,
+      evidenceCapturedAt: 1,
+      evidence: [],
+    };
+    const state = selectExperienceState(previous, "house-party", "normal", 10);
+    expect(state.finale).toBeUndefined();
   });
 });

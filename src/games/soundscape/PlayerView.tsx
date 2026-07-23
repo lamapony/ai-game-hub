@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { postPlayerArtifact } from "@/lib/player-artifact-client";
 import { friendlyPlayerActionError } from "@/lib/player-action-errors";
 import { postPlayerAction } from "@/lib/player-action-client";
+import { playerSecretFor } from "@/lib/player-action-client";
 import { uploadPlayerMedia } from "@/lib/player-upload-client";
 import { logError } from "@/lib/structured-log";
 import { Recorder } from "./Recorder";
@@ -165,7 +166,15 @@ function RecordPhase({
       const fd = new FormData();
       fd.append("file", blob, `clip.${ext}`);
       fd.append("filename", `clip.${ext}`);
-      const res = await fetch("/api/transcribe", { method: "POST", body: fd });
+      fd.append("roomId", roomId);
+      fd.append("playerId", me.id);
+      fd.append("roundId", snd.roundId);
+      const playerSecret = playerSecretFor(me.id);
+      const res = await fetch("/api/transcribe", {
+        method: "POST",
+        headers: playerSecret ? { "x-player-secret": playerSecret } : undefined,
+        body: fd,
+      });
       if (res.ok) {
         transcript = (await res.json()).text ?? "";
       }

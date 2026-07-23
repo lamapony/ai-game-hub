@@ -7,6 +7,7 @@ describe("friendlyMediaError", () => {
 
     expect(friendlyMediaError(error, "microphone")).toContain("microphone");
     expect(friendlyMediaError(error, "microphone")).toContain("Allow access");
+    expect(friendlyMediaError(error, "microphone")).toContain("Try again");
   });
 
   test("explains unavailable camera/microphone device", () => {
@@ -16,10 +17,15 @@ describe("friendlyMediaError", () => {
     expect(friendlyMediaError(error, "camera-microphone")).toContain("camera and microphone");
   });
 
-  test("keeps unknown media errors visible", () => {
-    expect(friendlyMediaError(new Error("weird browser failure"), "camera")).toContain(
-      "weird browser failure",
+  test("keeps unknown media errors private", () => {
+    const message = friendlyMediaError(
+      new Error("weird browser failure at private-device-sentinel"),
+      "camera",
     );
+
+    expect(message).toContain("camera");
+    expect(message).toContain("Try again");
+    expect(message.includes("private-device-sentinel")).toBe(false);
   });
 });
 
@@ -43,5 +49,24 @@ describe("friendlyUploadError", () => {
 
     expect(message).toContain("sound");
     expect(message).toContain("file too large");
+  });
+
+  test("turns storage failures into a non-technical retry", () => {
+    const message = friendlyUploadError(
+      new Error("Supabase Storage bucket private-bucket-sentinel is missing"),
+      "photo",
+    );
+
+    expect(message).toContain("temporarily unavailable");
+    expect(message).toContain("Stay on this screen");
+    expect(message.includes("Supabase")).toBe(false);
+    expect(message.includes("private-bucket-sentinel")).toBe(false);
+  });
+
+  test("keeps unknown upload failures private", () => {
+    const message = friendlyUploadError(new Error("unexpected private-upload-sentinel"), "audio");
+
+    expect(message).toContain("Stay on this screen");
+    expect(message.includes("private-upload-sentinel")).toBe(false);
   });
 });

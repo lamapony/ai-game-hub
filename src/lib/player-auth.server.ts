@@ -2,7 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import type { Player, RoomState } from "./types";
 
 export function statusError(message: string, status: number) {
-  return Object.assign(new Error(message), { status });
+  return Object.assign(new Error(message), { status, publicMessage: message });
 }
 
 export function cleanId(value: unknown, field: string) {

@@ -1,5 +1,5 @@
 // Client-side room helpers. All anonymous; host control gated by host_secret in localStorage.
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   eventProfile,
@@ -9,19 +9,45 @@ import {
   playerStoragePrefix,
 } from "./event-profile";
 import { emitHostActionError } from "./host-action-errors";
+import type { HostStateWriteGuard } from "./host-state-write-guard";
+import type { HostCommand } from "./host-command";
 import { isValidPlayerName, normalizePlayerName } from "./player-name";
 import { migrateRoomState } from "./room-state-migration";
+import { buildQuickStartRoomState, type QuickStartInput } from "./quick-start";
+import { isRetryableError, retryOperation } from "./retry";
+import { ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH } from "./room-code";
+import {
+  friendlyRoomLookupError,
+  ROOM_NOT_FOUND_ERROR,
+  ROOM_OFFLINE_ERROR,
+} from "./room-entry-errors";
+import {
+  chooseMonotonicRoomSnapshot,
+  roomConnectionStatusAfterRealtime,
+  shouldResyncVisibleRoom,
+  type RoomConnectionStatus,
+} from "./room-connection";
 import { logError, logInfo, logWarn } from "./structured-log";
 import { type RoomRow, type RoomState, emptyRoomState } from "./types";
 
 export function genCode(): string {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let out = "";
-  for (let i = 0; i < 4; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  for (let i = 0; i < ROOM_CODE_LENGTH; i++) {
+    out += ROOM_CODE_ALPHABET[Math.floor(Math.random() * ROOM_CODE_ALPHABET.length)];
+  }
   return out;
 }
 export function genId(prefix = "id"): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function genHostSecret(): string {
+  if (typeof crypto !== "undefined" && "getRandomValues" in crypto) {
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    return `hs_${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+  }
+  return `${genId("hs")}_${genId("hs")}`;
 }
 
 function hostRoomCodeStorageKey(roomId: string) {
@@ -31,6 +57,13 @@ function hostRoomCodeStorageKey(roomId: string) {
 function rememberRoomCode(roomId: string, code: string) {
   if (typeof window === "undefined") return;
   localStorage.setItem(hostRoomCodeStorageKey(roomId), code.toUpperCase());
+}
+
+export function storeHostSecret(code: string, roomId: string, hostSecret: string) {
+  if (typeof window === "undefined") return;
+  const normalizedCode = code.toUpperCase();
+  localStorage.setItem(hostStorageKey(normalizedCode), hostSecret);
+  rememberRoomCode(roomId, normalizedCode);
 }
 
 function rememberPlayerRoom(code: string) {
@@ -65,24 +98,31 @@ function genPlayerSecret() {
   return `${genId("ps")}_${genId("ps")}`;
 }
 
-export async function createRoom(hostName: string): Promise<{ code: string; id: string }> {
+export async function createRoom(
+  hostName: string,
+  quickStart?: QuickStartInput,
+): Promise<{ code: string; id: string }> {
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = genCode();
-    const host_secret = genId("hs");
-    const state = emptyRoomState(hostName);
+    const host_secret = genHostSecret();
+    const state = quickStart
+      ? buildQuickStartRoomState(hostName, quickStart)
+      : emptyRoomState(hostName);
     const { data, error } = await supabase
       .from("rooms")
       .insert({ code, host_secret, state: state as never })
       .select("id, code")
       .single();
     if (!error && data) {
-      localStorage.setItem(hostStorageKey(code), host_secret);
-      rememberRoomCode(data.id, data.code);
+      storeHostSecret(data.code, data.id, host_secret);
       logInfo("room.create.success", {
         roomId: data.id,
         code: data.code,
         attempts: attempt + 1,
         teamCount: state.teams.length,
+        quickStartVenue: state.quickStart?.venue,
+        targetDurationMinutes: state.quickStart?.targetDurationMinutes,
+        expectedPlayers: state.quickStart?.expectedPlayers,
       });
       return { code: data.code, id: data.id };
     }
@@ -99,7 +139,7 @@ export async function createRoom(hostName: string): Promise<{ code: string; id: 
 export async function fetchRoomByCode(code: string): Promise<RoomRow | null> {
   const { data, error } = await supabase
     .from("rooms")
-    .select("id, code, state")
+    .select("id, code, state, updated_at")
     .eq("code", code.toUpperCase())
     .maybeSingle();
   if (error) {
@@ -116,10 +156,15 @@ export async function fetchRoomByCode(code: string): Promise<RoomRow | null> {
     id: data.id,
     code: data.code,
     state: migrateRoomState(data.state as unknown as RoomState),
+    updatedAt: data.updated_at,
   };
 }
 
-export async function updateRoomState(id: string, state: RoomState): Promise<void> {
+export async function updateRoomState(
+  id: string,
+  state: RoomState,
+  guard?: HostStateWriteGuard,
+): Promise<boolean> {
   const secrets = hostSecretCandidates(id);
   if (secrets.length === 0) {
     const error = new Error("host authorization required");
@@ -142,20 +187,42 @@ export async function updateRoomState(id: string, state: RoomState): Promise<voi
           "content-type": "application/json",
           "x-host-secret": secret,
         },
-        body: JSON.stringify({ roomId: id, state }),
+        body: JSON.stringify({ roomId: id, state, ...(guard ? { guard } : {}) }),
       });
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       break;
     }
     if (response.ok) {
+      if (guard) {
+        const payload = (await response
+          .clone()
+          .json()
+          .catch(() => ({}))) as { skipped?: unknown };
+        if (payload.skipped === true) {
+          logInfo("room.update.stale_skipped", {
+            roomId: id,
+            gameId: guard.gameId,
+            roundId: guard.roundId,
+          });
+          return false;
+        }
+      }
       logInfo("room.update.success", {
         roomId: id,
         status: state.status,
         currentGame: state.currentGame ?? undefined,
         playerCount: state.players.length,
       });
-      return;
+      return true;
+    }
+    if (guard && response.status === 409) {
+      logInfo("room.update.stale_skipped", {
+        roomId: id,
+        gameId: guard.gameId,
+        roundId: guard.roundId,
+      });
+      return false;
     }
     lastError = new Error(await response.text());
     if (response.status !== 403) break;
@@ -171,8 +238,123 @@ export async function updateRoomState(id: string, state: RoomState): Promise<voi
   throw error;
 }
 
+export type HostCommandRoomSnapshot = {
+  state: RoomState;
+  updatedAt?: string;
+};
+
+async function requestHostCommand(
+  id: string,
+  command: HostCommand,
+  commandId: string,
+): Promise<HostCommandRoomSnapshot> {
+  const secrets = hostSecretCandidates(id);
+  if (secrets.length === 0) {
+    const error = new Error("host authorization required");
+    logError("room.host_command.failure", error, {
+      roomId: id,
+      commandId,
+      commandType: command.type,
+    });
+    emitHostActionError(error);
+    throw error;
+  }
+
+  let error: Error;
+  try {
+    return await retryOperation(
+      async () => {
+        let lastError: Error | null = null;
+        for (const secret of secrets) {
+          const response = await fetch("/api/host-command", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "x-host-secret": secret,
+            },
+            body: JSON.stringify({ roomId: id, commandId, command }),
+          });
+
+          if (response.ok) {
+            const payload = (await response.json()) as { state?: unknown; updatedAt?: unknown };
+            if (!payload.state || typeof payload.state !== "object") {
+              throw new Error("host command returned an invalid room state");
+            }
+            const state = migrateRoomState(payload.state as RoomState);
+            logInfo("room.host_command.success", {
+              roomId: id,
+              commandId,
+              commandType: command.type,
+            });
+            return {
+              state,
+              updatedAt: typeof payload.updatedAt === "string" ? payload.updatedAt : undefined,
+            };
+          }
+
+          lastError = Object.assign(new Error(await response.text()), { status: response.status });
+          if (response.status !== 403) throw lastError;
+        }
+        throw lastError ?? new Error("host command failed");
+      },
+      {
+        attempts: 3,
+        shouldRetry: (candidate) => {
+          const status =
+            candidate && typeof candidate === "object" && "status" in candidate
+              ? Number((candidate as { status?: unknown }).status)
+              : undefined;
+          return status !== 409 && isRetryableError(candidate);
+        },
+        onRetry: (_candidate, attempt, delayMs) => {
+          logWarn("room.host_command.retry", {
+            roomId: id,
+            commandId,
+            commandType: command.type,
+            attempt,
+            delayMs,
+          });
+        },
+      },
+    );
+  } catch (candidate) {
+    error = candidate instanceof Error ? candidate : new Error(String(candidate));
+  }
+
+  logError("room.host_command.failure", error, {
+    roomId: id,
+    commandId,
+    commandType: command.type,
+  });
+  emitHostActionError(error);
+  throw error;
+}
+
+export async function sendHostCommandSnapshot(
+  id: string,
+  command: HostCommand,
+  commandId = genId("cmd"),
+): Promise<HostCommandRoomSnapshot> {
+  return requestHostCommand(id, command, commandId);
+}
+
+export async function sendHostCommand(
+  id: string,
+  command: HostCommand,
+  commandId = genId("cmd"),
+): Promise<RoomState> {
+  return (await requestHostCommand(id, command, commandId)).state;
+}
+
 export function getHostSecret(code: string): string | null {
   return typeof window === "undefined" ? null : localStorage.getItem(hostStorageKey(code));
+}
+
+/** Credentials for server functions that must derive party context from the authorized room. */
+export function hostPromptAuth(roomId: string, code: string) {
+  const hostSecret = getHostSecret(code);
+  if (!hostSecret) throw new Error("host authorization required");
+  return { roomId, hostSecret };
 }
 
 export type LocalStoredPlayer = {
@@ -291,22 +473,57 @@ export function useRoom(code: string | undefined) {
   const [room, setRoom] = useState<RoomRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<RoomConnectionStatus>("connecting");
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
+
+  const refreshRoom = useCallback(async () => {
+    if (!code) return null;
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      setConnectionStatus("offline");
+      setError(ROOM_OFFLINE_ERROR);
+      return null;
+    }
+    try {
+      const next = await fetchRoomByCode(code);
+      setRoom((current) => (next ? chooseMonotonicRoomSnapshot(current, next) : null));
+      setError(next ? null : ROOM_NOT_FOUND_ERROR);
+      setLastSyncedAt(Date.now());
+      setConnectionStatus(next ? "live" : "error");
+      return next;
+    } catch (candidate) {
+      setError(friendlyRoomLookupError(candidate));
+      setConnectionStatus("error");
+      throw candidate;
+    }
+  }, [code]);
 
   useEffect(() => {
-    if (!code) return;
+    if (!code) {
+      setRoom(null);
+      setLoading(false);
+      setError(null);
+      setConnectionStatus("error");
+      return;
+    }
     let cancelled = false;
+    setRoom(null);
     setLoading(true);
+    setError(null);
+    setConnectionStatus("connecting");
     fetchRoomByCode(code)
       .then((r) => {
         if (cancelled) return;
         setRoom(r);
+        setLastSyncedAt(Date.now());
         setLoading(false);
-        if (!r) setError("Room not found");
+        setError(r ? null : ROOM_NOT_FOUND_ERROR);
+        if (!r) setConnectionStatus("error");
       })
       .catch((e) => {
         if (cancelled) return;
-        setError(String(e?.message ?? e));
+        setError(friendlyRoomLookupError(e));
         setLoading(false);
+        setConnectionStatus("error");
       });
     return () => {
       cancelled = true;
@@ -315,24 +532,71 @@ export function useRoom(code: string | undefined) {
 
   useEffect(() => {
     if (!room?.id) return;
+    let active = true;
     const channel = supabase
       .channel(`room:${room.id}`)
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "rooms", filter: `id=eq.${room.id}` },
         (payload) => {
-          const next = payload.new as { id: string; code: string; state: RoomState };
-          setRoom({ id: next.id, code: next.code, state: migrateRoomState(next.state) });
+          if (!active) return;
+          const next = payload.new as {
+            id: string;
+            code: string;
+            state: RoomState;
+            updated_at?: unknown;
+          };
+          const incoming: RoomRow = {
+            id: next.id,
+            code: next.code,
+            state: migrateRoomState(next.state),
+            updatedAt: typeof next.updated_at === "string" ? next.updated_at : "",
+          };
+          setRoom((current) => chooseMonotonicRoomSnapshot(current, incoming));
+          setLastSyncedAt(Date.now());
+          setConnectionStatus("live");
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (!active) return;
+        const online = typeof navigator === "undefined" || navigator.onLine;
+        setConnectionStatus(roomConnectionStatusAfterRealtime(status, online));
+        if (status === "SUBSCRIBED" && online) {
+          void refreshRoom().catch(() => {});
+        }
+      });
     return () => {
+      active = false;
       supabase.removeChannel(channel);
     };
-  }, [room?.id]);
+  }, [refreshRoom, room?.id]);
 
-  return { room, loading, error, setRoom };
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const resync = () => {
+      if (!navigator.onLine) {
+        setConnectionStatus("offline");
+        return;
+      }
+      setConnectionStatus("reconnecting");
+      void refreshRoom().catch(() => {});
+    };
+    const handleVisibility = () => {
+      if (shouldResyncVisibleRoom(navigator.onLine, document.visibilityState)) resync();
+    };
+    window.addEventListener("online", resync);
+    window.addEventListener("offline", resync);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("online", resync);
+      window.removeEventListener("offline", resync);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [refreshRoom]);
+
+  return { room, loading, error, setRoom, connectionStatus, lastSyncedAt, refreshRoom };
 }
+export type { RoomConnectionStatus } from "./room-connection";
 
 // Broadcast channel for ephemeral speaker cues (no DB writes).
 export type BroadcastEvent =

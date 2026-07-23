@@ -11,27 +11,36 @@ type CleanupOptions = {
   now?: Date;
 };
 
+type TargetedCleanupOptions = {
+  dryRun?: boolean;
+};
+
 type StorageEntry = {
   name: string;
   id?: string | null;
   metadata?: unknown;
 };
 
-type CleanupResult = {
+type CleanupSummary = {
   dryRun: boolean;
-  cutoffIso: string;
-  retentionHours: number;
   roomsMatched: number;
   roomsDeleted: number;
   rowsDeleted: {
     challenges: number;
+    party_records: number;
     photos: number;
+    score_events: number;
     submissions: number;
     votes: number;
   };
   storageObjectsMatched: number;
   storageObjectsDeleted: number;
   errors: string[];
+};
+
+type CleanupResult = CleanupSummary & {
+  cutoffIso: string;
+  retentionHours: number;
 };
 
 function normalizeRetentionHours(value: number | undefined) {
@@ -47,6 +56,18 @@ function chunk<T>(items: T[], size: number) {
 
 function isStorageFolder(entry: StorageEntry) {
   return entry.id === null || (!entry.id && !entry.metadata);
+}
+
+function isMissingTableError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const code = "code" in error ? error.code : undefined;
+  const message = "message" in error ? error.message : undefined;
+  return (
+    code === "PGRST205" ||
+    (typeof message === "string" &&
+      message.includes("Could not find the table") &&
+      message.includes("schema cache"))
+  );
 }
 
 async function listStorageFiles(prefix: string): Promise<string[]> {
@@ -81,7 +102,7 @@ async function listStorageFiles(prefix: string): Promise<string[]> {
 }
 
 async function deleteRows(
-  table: "challenges" | "photos" | "submissions" | "votes",
+  table: "challenges" | "party_records" | "photos" | "score_events" | "submissions" | "votes",
   roomIds: string[],
   dryRun: boolean,
 ) {
@@ -94,43 +115,36 @@ async function deleteRows(
       .select("id", { count: "exact", head: true })
       .in("room_id", ids);
     const { count, error: countError } = await countQuery;
-    if (countError) throw countError;
+    if (countError) {
+      if (isMissingTableError(countError)) return deleted;
+      throw countError;
+    }
     deleted += count ?? 0;
 
     if (!dryRun) {
       const { error } = await supabaseAdmin.from(table).delete().in("room_id", ids);
-      if (error) throw error;
+      if (error) {
+        if (isMissingTableError(error)) return deleted;
+        throw error;
+      }
     }
   }
 
   return deleted;
 }
 
-export async function cleanupOldRooms(options: CleanupOptions = {}): Promise<CleanupResult> {
-  const retentionHours = normalizeRetentionHours(options.retentionHours);
-  const now = options.now ?? new Date();
-  const cutoffIso = new Date(now.getTime() - retentionHours * 60 * 60 * 1000).toISOString();
-  const dryRun = options.dryRun ?? false;
+async function cleanupRoomIds(roomIds: string[], dryRun: boolean): Promise<CleanupSummary> {
   const errors: string[] = [];
   const failedStorageRoomIds = new Set<string>();
-
-  const { data: rooms, error: roomsError } = await supabaseAdmin
-    .from("rooms")
-    .select("id")
-    .lt("updated_at", cutoffIso)
-    .order("updated_at", { ascending: true });
-  if (roomsError) throw roomsError;
-
-  const roomIds = (rooms ?? []).map((room) => room.id);
-  const result: CleanupResult = {
+  const result: CleanupSummary = {
     dryRun,
-    cutoffIso,
-    retentionHours,
     roomsMatched: roomIds.length,
     roomsDeleted: 0,
     rowsDeleted: {
       challenges: 0,
+      party_records: 0,
       photos: 0,
+      score_events: 0,
       submissions: 0,
       votes: 0,
     },
@@ -162,6 +176,8 @@ export async function cleanupOldRooms(options: CleanupOptions = {}): Promise<Cle
 
   const cleanableRoomIds = roomIds.filter((roomId) => !failedStorageRoomIds.has(roomId));
 
+  result.rowsDeleted.party_records = await deleteRows("party_records", cleanableRoomIds, dryRun);
+  result.rowsDeleted.score_events = await deleteRows("score_events", cleanableRoomIds, dryRun);
   result.rowsDeleted.challenges = await deleteRows("challenges", cleanableRoomIds, dryRun);
   result.rowsDeleted.photos = await deleteRows("photos", cleanableRoomIds, dryRun);
   result.rowsDeleted.submissions = await deleteRows("submissions", cleanableRoomIds, dryRun);
@@ -176,4 +192,32 @@ export async function cleanupOldRooms(options: CleanupOptions = {}): Promise<Cle
   }
 
   return result;
+}
+
+export async function cleanupRoomById(
+  roomId: string,
+  options: TargetedCleanupOptions = {},
+): Promise<CleanupSummary> {
+  const normalizedRoomId = roomId.trim();
+  if (!normalizedRoomId) throw new Error("roomId is required for targeted cleanup");
+  return cleanupRoomIds([normalizedRoomId], options.dryRun ?? false);
+}
+
+export async function cleanupOldRooms(options: CleanupOptions = {}): Promise<CleanupResult> {
+  const retentionHours = normalizeRetentionHours(options.retentionHours);
+  const now = options.now ?? new Date();
+  const cutoffIso = new Date(now.getTime() - retentionHours * 60 * 60 * 1000).toISOString();
+
+  const { data: rooms, error: roomsError } = await supabaseAdmin
+    .from("rooms")
+    .select("id")
+    .lt("updated_at", cutoffIso)
+    .order("updated_at", { ascending: true });
+  if (roomsError) throw roomsError;
+
+  const summary = await cleanupRoomIds(
+    (rooms ?? []).map((room) => room.id),
+    options.dryRun ?? false,
+  );
+  return { ...summary, cutoffIso, retentionHours };
 }

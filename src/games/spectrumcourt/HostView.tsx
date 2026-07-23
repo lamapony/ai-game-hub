@@ -11,9 +11,10 @@ import {
 import type { RoomState, SpectrumCourtState, Team } from "@/lib/types";
 import { pickSpectrumPrompt, randomSpectrumTarget } from "./catalog";
 import { scoreSpectrumCourtRound } from "./scoring";
+import { speechUrl } from "@/lib/speech-client";
 
-function speak(text: string) {
-  const a = new Audio(`/api/speak?text=${encodeURIComponent(text)}`);
+function speak(text: string, roomId: string) {
+  const a = new Audio(speechUrl(text, roomId));
   a.play().catch(() => {});
 }
 
@@ -26,7 +27,15 @@ function teamName(state: RoomState, teamId?: string) {
   return state.teams.find((team) => team.id === teamId)?.name ?? "Team";
 }
 
-export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: RoomState }) {
+export function SpectrumCourtHost({
+  roomId,
+  state,
+  onBackToHub,
+}: {
+  roomId: string;
+  state: RoomState;
+  onBackToHub: () => void | Promise<void>;
+}) {
   const sc = state.spectrumcourt!;
   const [now, setNow] = useState(Date.now());
   const introSpokenRef = useRef(false);
@@ -74,6 +83,7 @@ export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: Ro
     introSpokenRef.current = true;
     speak(
       "Spectrum Court. One team gets a hidden point on the spectrum, gives a clue, everyone else argues and places a marker.",
+      roomId,
     );
     const t = window.setTimeout(() => startRound(), 3000);
     return () => window.clearTimeout(t);
@@ -136,7 +146,7 @@ export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: Ro
       });
       return;
     }
-    speak(`Court verdict. Target was ${sc.target} out of 100.`);
+    speak(`Court verdict. Target was ${sc.target} out of 100.`, roomId);
     void updateRoomState(roomId, {
       ...state,
       teams: scored.teams,
@@ -265,14 +275,7 @@ export function SpectrumCourtHost({ roomId, state }: { roomId: string; state: Ro
           <ScoreGrid teams={state.teams} />
           <button
             type="button"
-            onClick={() =>
-              updateRoomState(roomId, {
-                ...state,
-                status: "lobby",
-                currentGame: null,
-                spectrumcourt: undefined,
-              })
-            }
+            onClick={onBackToHub}
             className="mt-4 rounded-2xl bg-white/10 hover:bg-white/15 px-4 py-2 text-sm"
           >
             ↺ Back to lobby

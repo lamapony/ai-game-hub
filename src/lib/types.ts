@@ -1,7 +1,17 @@
 // Shared game/room types for DIMAS fest.
 import { eventProfile } from "./event-profile";
-import { ROOM_STATE_SCHEMA_VERSION, legacyPartyContext, type PartyContext } from "./party-context";
-import type { LegacyGameId } from "@/games/ids";
+import {
+  ROOM_STATE_SCHEMA_VERSION,
+  legacyPartyContext,
+  type ContingencyPlan,
+  type ExperienceId,
+  type PartyContext,
+} from "./party-context";
+import type { AiRuntimeState } from "./ai-budget";
+import type { QuickStartSetup } from "./quick-start";
+import type { GameId } from "@/games/ids";
+
+export type { GameId } from "@/games/ids";
 
 export type Team = {
   id: string;
@@ -10,12 +20,21 @@ export type Team = {
   score: number;
 };
 
+export type DeviceCheckStatus = "ready" | "denied" | "unavailable" | "error";
+
+export type PlayerDeviceCheck = {
+  camera: DeviceCheckStatus;
+  microphone: DeviceCheckStatus;
+  checkedAt: number;
+};
+
 export type Player = {
   id: string;
   name: string;
   teamId: string;
   joinedAt: number;
   secretHash?: string;
+  deviceCheck?: PlayerDeviceCheck;
 };
 
 export type SoundscapePhase =
@@ -78,15 +97,344 @@ export type ChallengeState = {
   operatorName?: string;
   briefingEndsAt?: number;
   recordingEndsAt?: number;
-  result?: { score: number; feedback: string; videoUrl: string };
+  result?: {
+    score: number;
+    feedback: string;
+    videoUrl: string;
+    breakdown?: {
+      performance: number;
+      creativity: number;
+      energy: number;
+      environment: number;
+    };
+  };
   aiFallback?: boolean;
   pastOperatorIds?: string[];
 };
 
-export type GameId = LegacyGameId;
-
 /** Where the party is happening right now — affects AI prompts and available games. */
 export type Venue = "park" | "bar";
+
+export type GrillOraclePhase = "capturing" | "results";
+
+export type GrillOracleMemoryStatus = "collecting" | "ready" | "sealed" | "revealed" | "verified";
+
+/** Public progress only. Prophecies and photo paths live in private party_records. */
+export type GrillOracleState = {
+  phase: GrillOraclePhase;
+  roundId: string;
+  participantIds: string[];
+  submittedPlayerIds: string[];
+  captureEndsAt?: number;
+};
+
+/** Public cross-act summary only. Secret text remains exclusively in party_records. */
+export type GrillOracleMemory = {
+  runId: string;
+  participantIds: string[];
+  submittedPlayerIds: string[];
+  verifiedPlayerIds: string[];
+  status: GrillOracleMemoryStatus;
+};
+
+export type SmokeScreenStatus = "assigning" | "active" | "sealed" | "revealed" | "results";
+
+export type SmokeScreenResultEntry = {
+  missionId: string;
+  ownerPlayerId: string;
+  tier: 1 | 2 | 3;
+  completed: boolean;
+  caught: boolean;
+  correctDetectiveIds: string[];
+  ownerPoints: number;
+};
+
+/** Public background-run summary. Mission text and guesses remain in party_records. */
+export type SmokeScreenState = {
+  runId: string;
+  status: SmokeScreenStatus;
+  participantIds: string[];
+  assignedPlayerIds: string[];
+  submittedVoterIds: string[];
+  startedAt: number;
+  revealedAt?: number;
+  completedAt?: number;
+  results?: SmokeScreenResultEntry[];
+  recap?: string;
+  aiFallback?: boolean;
+};
+
+export type ContrabandStatus =
+  "assigning" | "active" | "awaiting-response" | "awaiting-audio" | "review" | "results";
+
+export type ContrabandResultEntry = {
+  playerId: string;
+  playerName: string;
+  phrase: string;
+  outcome: "caught" | "clean" | "survived";
+  points: number;
+};
+
+/** Public progress only. Phrases, quotes, transcripts and media paths stay in party_records. */
+export type ContrabandState = {
+  runId: string;
+  status: ContrabandStatus;
+  participantIds: string[];
+  assignedPlayerIds: string[];
+  resolvedPlayerIds: string[];
+  startedAt: number;
+  endsAt?: number;
+  activeAccusation?: {
+    accusationId: string;
+    accuserPlayerId: string;
+    accusedPlayerId: string;
+    createdAt: number;
+    audioEndsAt?: number;
+  };
+  lastResolution?: {
+    accusationId: string;
+    accuserPlayerId: string;
+    accusedPlayerId: string;
+    outcome: "caught" | "clean" | "false-accusation";
+    smugglerPoints: number;
+    catcherPoints: number;
+    falseAccusationPenalty: number;
+    completedAt: number;
+  };
+  completedAt?: number;
+  results?: ContrabandResultEntry[];
+};
+
+export type TongsOfTruthStatus =
+  "question" | "recording" | "judging" | "review" | "reveal" | "results";
+
+export type TongsOfTruthRoundResult = {
+  roundId: string;
+  speakerPlayerId: string;
+  speakerName: string;
+  level: 1 | 2 | 3;
+  question: string;
+  honestyScore: number;
+  dodgeDetected: boolean;
+  artistryScore: number;
+  environmentUsed: boolean;
+  points: number;
+  comment: string;
+  source: "ai" | "manual" | "skipped";
+};
+
+/** Public ritual state. Audio paths and verbatim transcripts stay in host-only party_records. */
+export type TongsOfTruthState = {
+  runId: string;
+  status: TongsOfTruthStatus;
+  participantIds: string[];
+  speakerOrder: string[];
+  roundNumber: number;
+  totalRounds: number;
+  currentRoundId: string;
+  speakerPlayerId: string;
+  speakerName: string;
+  level: 1 | 2 | 3;
+  question?: string;
+  questionAiFallback?: boolean;
+  recordingEndsAt?: number;
+  result?: TongsOfTruthRoundResult;
+  roundResults: TongsOfTruthRoundResult[];
+  completedAt?: number;
+};
+
+export type CrossExaminationStatus =
+  "curation" | "briefing" | "capturing" | "comparing" | "review" | "reveal" | "results";
+
+export type CrossQuestionCategory = "order" | "object" | "person" | "detail";
+
+export type CrossExaminationQuestion = {
+  questionId: string;
+  category: CrossQuestionCategory;
+  text: string;
+};
+
+export type CrossExaminationPair = {
+  pairId: string;
+  playerAId: string;
+  playerAName: string;
+  playerBId: string;
+  playerBName: string;
+};
+
+export type CrossExaminationFinding = {
+  questionId: string;
+  category: CrossQuestionCategory;
+  question: string;
+  versionA: string;
+  versionB: string;
+  severity: 0 | 1 | 2 | 3;
+};
+
+export type CrossExaminationPairResult = {
+  pairId: string;
+  playerAId: string;
+  playerAName: string;
+  playerBId: string;
+  playerBName: string;
+  findings: CrossExaminationFinding[];
+  alibiStrength: number;
+  environmentBonus: 0 | 5;
+  pairPoints: number;
+  verdict: string;
+  predictionCounts: Partial<Record<CrossQuestionCategory, number>>;
+  correctPredictionCategories: CrossQuestionCategory[];
+  correctVoterIds: string[];
+  source: "ai" | "manual" | "skipped";
+};
+
+/** Public finale-game state. Evidence ids, votes, audio paths and transcripts stay host-only. */
+export type CrossExaminationState = {
+  runId: string;
+  status: CrossExaminationStatus;
+  participantIds: string[];
+  pairOrder: CrossExaminationPair[];
+  pairNumber: number;
+  totalPairs: number;
+  currentPairId: string;
+  questions?: CrossExaminationQuestion[];
+  selectedSourceCount?: number;
+  questionsAiFallback?: boolean;
+  recordingEndsAt?: number;
+  submittedPlayerIds: string[];
+  predictionVoterIds: string[];
+  result?: CrossExaminationPairResult;
+  pairResults: CrossExaminationPairResult[];
+  completedAt?: number;
+};
+
+export type ToastSyndicatePhase = "briefing" | "recording" | "catching" | "judging" | "results";
+
+export type ToastSyndicateRoundResult = {
+  roundId: string;
+  speakerPlayerId: string;
+  genre: string;
+  transcript: string;
+  genreScore: number;
+  words: Array<{
+    id: string;
+    text: string;
+    used: boolean;
+    smoothness: number;
+    caughtByPlayerIds: string[];
+  }>;
+  speakerPoints: number;
+  listenerPoints: Record<string, number>;
+  comment: string;
+};
+
+/** Public ritual state. Contraband words stay in the speaker's private party record until results. */
+export type ToastSyndicateState = {
+  phase: ToastSyndicatePhase;
+  sessionId: string;
+  roundId: string;
+  roundNumber: number;
+  totalRounds: number;
+  speakerPlayerId: string;
+  speakerName: string;
+  genre?: string;
+  genreInstructions?: string;
+  briefingEndsAt?: number;
+  recordingEndsAt?: number;
+  catchingEndsAt?: number;
+  recordingSubmitted: boolean;
+  submittedListenerIds: string[];
+  result?: ToastSyndicateRoundResult;
+  roundResults: ToastSyndicateRoundResult[];
+  aiFallback?: boolean;
+};
+
+export type StillLifePhase = "briefing" | "building" | "judging" | "voting" | "results";
+
+export type StillLifeResultEntry = {
+  teamId: string;
+  teamName: string;
+  compositionScore: number;
+  dramaScore: number;
+  materialScore: number;
+  points: number;
+  catalogTitle: string;
+  auctionPriceDkk: number;
+  critique: string;
+  audienceVotes: number;
+  aiFallback: boolean;
+  manualOverride: boolean;
+};
+
+export type StillLifeRoundResult = {
+  roundId: string;
+  headline: string;
+  entries: StillLifeResultEntry[];
+  winningTeamIds: string[];
+};
+
+/** Public progress and reveal only. Image paths and raw judgments live in party_records. */
+export type StillLifeState = {
+  phase: StillLifePhase;
+  sessionId: string;
+  roundId: string;
+  roundNumber: number;
+  totalRounds: number;
+  activeTeamIds: string[];
+  headline?: string;
+  headlineAiFallback?: boolean;
+  buildingEndsAt?: number;
+  votingEndsAt?: number;
+  submittedTeamIds: string[];
+  submittedVoterIds: string[];
+  judgments?: StillLifeResultEntry[];
+  result?: StillLifeRoundResult;
+  roundResults: StillLifeRoundResult[];
+};
+
+export type SommelierPhase =
+  "capture" | "analyzing" | "voting" | "reveal" | "crowd-favorite" | "results";
+
+export type SommelierPublicProfile = {
+  drink_guess: string;
+  tasting_notes: string;
+  owner_profile: string;
+  pretentiousness: number;
+  pairing_advice: string;
+};
+
+export type SommelierRoundResult = {
+  entryId: string;
+  ownerPlayerId: string;
+  ownerPlayerName: string;
+  ownerTeamId: string;
+  profile: SommelierPublicProfile;
+  correctGuesserIds: string[];
+  ballotCount: number;
+  ownerPoints: number;
+  guesserPoints: Record<string, number>;
+  aiFallback: boolean;
+};
+
+/** Public progress and revealed cards only. Owner mapping, photo paths and ballots stay private. */
+export type SommelierState = {
+  phase: SommelierPhase;
+  sessionId: string;
+  participantIds: string[];
+  submittedPlayerIds: string[];
+  captureEndsAt?: number;
+  currentEntryId?: string;
+  currentProfile?: SommelierPublicProfile;
+  currentAiFallback?: boolean;
+  roundNumber: number;
+  totalRounds: number;
+  votingEndsAt?: number;
+  submittedVoterIds: string[];
+  result?: SommelierRoundResult;
+  roundResults: SommelierRoundResult[];
+  crowdFavoriteEntryId?: string;
+  crowdFavoriteOwnerId?: string;
+};
 
 export type WhoAmongPhase = "briefing" | "voting" | "reveal" | "results";
 
@@ -264,6 +612,21 @@ export type ImpostorState = {
 export type RoomState = {
   schemaVersion?: typeof ROOM_STATE_SCHEMA_VERSION;
   party?: PartyContext;
+  /** Host-selected launch promise: venue, full-program duration and expected group size. */
+  quickStart?: QuickStartSetup;
+  runOfShow?: {
+    experienceId: ExperienceId;
+    contingency: ContingencyPlan;
+    completedStepIds: string[];
+    /** Persisted cue currently being led by the host; optional for legacy rooms. */
+    activeStepId?: string;
+    activeStepStartedAt?: number;
+  };
+  aiRuntime?: AiRuntimeState;
+  /** Public-only evidence and the server-authored connected epilogue for a finished party. */
+  finale?: import("./finale-narrative").FinaleState;
+  /** Bounded idempotency receipts for server-authoritative host commands. */
+  recentHostCommandIds?: string[];
   hostName: string;
   status: "lobby" | "playing" | "finished";
   teams: Team[];
@@ -280,6 +643,15 @@ export type RoomState = {
   spectrumcourt?: SpectrumCourtState;
   whoamong?: WhoAmongState;
   impostor?: ImpostorState;
+  grilloracle?: GrillOracleState;
+  oracleMemory?: GrillOracleMemory;
+  smokescreen?: SmokeScreenState;
+  toastsyndicate?: ToastSyndicateState;
+  stilllife?: StillLifeState;
+  sommelier?: SommelierState;
+  contraband?: ContrabandState;
+  tongsoftruth?: TongsOfTruthState;
+  crossexamination?: CrossExaminationState;
   speakerSlots: Record<number, { connected: boolean; name: string; lastSeenAt?: number }>; // 1..5
 };
 
@@ -287,6 +659,7 @@ export type RoomRow = {
   id: string;
   code: string;
   state: RoomState;
+  updatedAt: string;
 };
 
 export const DEFAULT_TEAMS: Team[] = [

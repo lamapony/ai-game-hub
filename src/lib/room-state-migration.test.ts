@@ -75,10 +75,20 @@ describe("room state migration", () => {
       contingency: "compact",
       uiLocale: "en",
       contentLocale: "ru",
+      storySeed: "A public birthday cake with one missing candle",
       actStartedAt: 1234,
     };
     const state: RoomState = { ...emptyRoomState("Host"), party };
 
     expect(migrateRoomState(state)).toBe(state);
+    expect(state.party?.storySeed).toContain("birthday cake");
+  });
+
+  test("preserves a valid room-level manual AI mode", () => {
+    const state = emptyRoomState("Host");
+    state.party = { ...state.party!, aiMode: "manual" };
+
+    expect(migrateRoomState(state)).toBe(state);
+    expect(state.party.aiMode).toBe("manual");
   });
 });

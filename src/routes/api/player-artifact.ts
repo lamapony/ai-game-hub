@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { publicApiErrorResponse, publicApiErrorStatus } from "@/lib/api-error-response.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   cleanId,
@@ -12,6 +13,7 @@ import {
   assertStorageObjectExists,
   cleanRoundId,
   mediaKindForAction,
+  PLAYER_ARTIFACT_SIGNED_URL_TTL_SECONDS,
   RECORDINGS_BUCKET,
 } from "@/lib/player-media.server";
 import { logError, logInfo, logWarn } from "@/lib/structured-log";
@@ -80,7 +82,7 @@ async function submitSoundscapeClip(state: RoomState, roomId: string, body: Arti
     roundId,
     playerId: player.id,
   });
-  const audioUrl = await signedRecordingUrl(storagePath, 60 * 60 * 24);
+  const audioUrl = await signedRecordingUrl(storagePath, PLAYER_ARTIFACT_SIGNED_URL_TTL_SECONDS);
 
   const { data, error } = await supabaseAdmin
     .from("submissions")
@@ -167,7 +169,7 @@ async function submitChallengeVideo(state: RoomState, roomId: string, body: Arti
     roundId,
     playerId: player.id,
   });
-  const videoUrl = await signedRecordingUrl(storagePath, 60 * 60 * 24);
+  const videoUrl = await signedRecordingUrl(storagePath, PLAYER_ARTIFACT_SIGNED_URL_TTL_SECONDS);
 
   const existing = await supabaseAdmin
     .from("challenges")
@@ -208,7 +210,7 @@ async function submitPhoto(state: RoomState, roomId: string, body: ArtifactBody)
     roundId,
     playerId: player.id,
   });
-  const photoUrl = await signedRecordingUrl(storagePath, 60 * 60 * 24);
+  const photoUrl = await signedRecordingUrl(storagePath, PLAYER_ARTIFACT_SIGNED_URL_TTL_SECONDS);
 
   const existing = await supabaseAdmin
     .from("photos")
@@ -272,16 +274,14 @@ export const Route = createFileRoute("/api/player-artifact")({
           });
           return Response.json(result);
         } catch (error) {
-          const status =
-            error && typeof error === "object" && "status" in error
-              ? Number((error as { status?: unknown }).status) || 500
-              : 500;
+          const status = publicApiErrorStatus(error);
           logError("api.player_artifact.failure", error, {
             durationMs: Date.now() - startedAt,
             status,
             action: body.action,
           });
-          return new Response(error instanceof Error ? error.message : "player artifact failed", {
+          return publicApiErrorResponse(error, {
+            fallbackMessage: "player artifact failed",
             status,
           });
         }

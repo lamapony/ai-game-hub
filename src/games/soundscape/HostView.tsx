@@ -2,9 +2,10 @@
 // runs AI composition, and plays slot-1 cues itself.
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { updateRoomState, genId } from "@/lib/room";
-import { SOUND_RECORDING_MS, SOUND_TOPICS_MS } from "@/lib/host-controls";
+import { updateRoomState, genId, hostPromptAuth } from "@/lib/room";
+import { SOUND_RECORDING_MS } from "@/lib/host-controls";
 import { generateTopics, composeMix, judgeMix } from "@/lib/ai/soundscape.functions";
+import { mapAllSettledBounded } from "@/lib/async-pool";
 import type { RoomState, SoundscapeMix, SoundscapeState, Team } from "@/lib/types";
 import { Orchestra } from "./Orchestra";
 import { teamColorClasses, formatClock } from "@/lib/team-style";
@@ -12,6 +13,7 @@ import { teamColorClasses, formatClock } from "@/lib/team-style";
 const RECORDING_MS = SOUND_RECORDING_MS;
 const VOTING_MS = 30_000;
 const PLAYBACK_TOTAL_MS = 65_000;
+const SOUNDSCAPE_AI_CONCURRENCY = 2;
 
 type SubmissionRow = {
   id: string;
@@ -36,10 +38,12 @@ export function SoundscapeHost({
   roomId,
   code,
   state,
+  onBackToHub,
 }: {
   roomId: string;
   code: string;
   state: RoomState;
+  onBackToHub: () => void | Promise<void>;
 }) {
   const snd = state.soundscape!;
   const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
@@ -123,15 +127,9 @@ export function SoundscapeHost({
   async function triggerTopics() {
     setBusy("topics");
     try {
-      const result = await generateTopics({ data: {} });
-      await update({
-        phase: "topics",
-        topics: result.topics,
-        topicVotes: {},
-        aiFallback: result.fallback,
-        topicsEndsAt: Date.now() + SOUND_TOPICS_MS,
-      });
+      await generateTopics({ data: hostPromptAuth(roomId, code) });
     } catch (e) {
+      if (e instanceof Error && e.message === "Soundscape topic round changed") return;
       console.error(e);
     } finally {
       setBusy(null);
@@ -165,29 +163,41 @@ export function SoundscapeHost({
     setBusy("mixing");
     setMixNotice(null);
     try {
-      const mixes: Record<string, SoundscapeMix> = {};
-      for (const team of state.teams) {
-        const clips = (teamsWithClips[team.id] ?? []).filter((c) => c.audio_url);
-        if (clips.length === 0) continue;
-        try {
+      const jobs = state.teams.flatMap((team) => {
+        const clips = (teamsWithClips[team.id] ?? []).filter((clip) => clip.audio_url);
+        return clips.length > 0 ? [{ team, clips }] : [];
+      });
+      const results = await mapAllSettledBounded(
+        jobs,
+        SOUNDSCAPE_AI_CONCURRENCY,
+        async ({ team, clips }) => {
           const mix = await composeMix({
             data: {
+              ...hostPromptAuth(roomId, code),
+              teamId: team.id,
               teamName: team.name,
               topic: snd.topic ?? "",
-              clips: clips.map((c) => ({
-                url: c.audio_url!,
-                transcript: c.transcript ?? "",
-                durationMs: (c.duration_seconds ?? 5) * 1000,
-                playerName: c.player_name,
+              clips: clips.map((clip) => ({
+                url: clip.audio_url!,
+                transcript: clip.transcript ?? "",
+                durationMs: (clip.duration_seconds ?? 5) * 1000,
+                playerName: clip.player_name,
               })),
             },
           });
-          mixes[team.id] = { ...mix, teamId: team.id };
-        } catch (mixError) {
-          console.error(mixError);
-          mixes[team.id] = naiveLocalMix(team.id, team.name, clips);
+          return { ...mix, teamId: team.id };
+        },
+      );
+      const mixes: Record<string, SoundscapeMix> = {};
+      results.forEach((result, index) => {
+        const job = jobs[index]!;
+        if (result.status === "fulfilled") {
+          mixes[job.team.id] = result.value;
+          return;
         }
-      }
+        console.error(result.reason);
+        mixes[job.team.id] = naiveLocalMix(job.team.id, job.team.name, job.clips);
+      });
       const teamOrder = state.teams.filter((t) => mixes[t.id]);
       if (teamOrder.length === 0) {
         await update({ phase: "idle" });
@@ -224,12 +234,7 @@ export function SoundscapeHost({
   }
 
   function backToHub() {
-    updateRoomState(roomId, {
-      ...state,
-      currentGame: null,
-      soundscape: undefined,
-      status: "lobby",
-    });
+    void onBackToHub();
   }
 
   // Advance through playback teams
@@ -271,30 +276,40 @@ export function SoundscapeHost({
       }
       // AI bonus + feedback per team
       const updatedMixes = { ...(snd.mixes ?? {}) };
-      for (const team of state.teams) {
+      const judgmentJobs = state.teams.flatMap((team) => {
         const mix = updatedMixes[team.id];
-        if (!mix) continue;
-        const clips = teamsWithClips[team.id] ?? [];
-        try {
-          const { feedback, bonus, fallback } = await judgeMix({
+        return mix ? [{ team, mix, clips: teamsWithClips[team.id] ?? [] }] : [];
+      });
+      const judgments = await mapAllSettledBounded(
+        judgmentJobs,
+        SOUNDSCAPE_AI_CONCURRENCY,
+        async ({ team, clips }) => {
+          const judgment = await judgeMix({
             data: {
+              ...hostPromptAuth(roomId, code),
+              teamId: team.id,
               teamName: team.name,
               topic: snd.topic ?? "",
               clipsSummary:
-                clips.map((c) => c.transcript || "(non-verbal)").join(" | ") || "no recordings",
+                clips.map((clip) => clip.transcript || "(non-verbal)").join(" | ") ||
+                "no recordings",
             },
           });
-          updatedMixes[team.id] = {
-            ...mix,
-            feedback,
-            bonusPoints: bonus,
-            aiFallback: mix.aiFallback || fallback,
-          };
-          perTeam[team.id] = (perTeam[team.id] ?? 0) + bonus;
-        } catch {
-          /* keep going */
-        }
-      }
+          return { teamId: team.id, ...judgment };
+        },
+      );
+      judgments.forEach((result, index) => {
+        if (result.status === "rejected") return;
+        const { teamId, feedback, bonus, fallback } = result.value;
+        const mix = judgmentJobs[index]!.mix;
+        updatedMixes[teamId] = {
+          ...mix,
+          feedback,
+          bonusPoints: bonus,
+          aiFallback: mix.aiFallback || fallback,
+        };
+        perTeam[teamId] = (perTeam[teamId] ?? 0) + bonus;
+      });
       // Apply scores
       const newTeams: Team[] = state.teams.map((t) => ({
         ...t,
@@ -321,8 +336,15 @@ export function SoundscapeHost({
     snd.phase === "playback" && snd.playback ? snd.mixes?.[snd.playback.teamId] : null;
 
   return (
-    <div className="space-y-4">
+    <div
+      data-testid="soundscape-host"
+      data-topics-ready={snd.topics?.length ? "true" : "false"}
+      data-ai-fallback={snd.aiFallback ? "true" : "false"}
+      data-topics={JSON.stringify(snd.topics ?? [])}
+      className="space-y-4"
+    >
       <Orchestra
+        roomId={roomId}
         slot={1}
         mix={state.paused ? null : activeMix}
         startAt={state.paused ? null : (snd.playback?.startAt ?? null)}
@@ -372,20 +394,7 @@ export function SoundscapeHost({
         <PlaybackPanel state={state} snd={snd} now={now} />
       )}
       {snd.phase === "voting" && <VotingPanel state={state} snd={snd} votes={votes} now={now} />}
-      {snd.phase === "results" && (
-        <ResultsPanel
-          state={state}
-          snd={snd}
-          onClose={() =>
-            updateRoomState(roomId, {
-              ...state,
-              currentGame: null,
-              soundscape: undefined,
-              status: "lobby",
-            })
-          }
-        />
-      )}
+      {snd.phase === "results" && <ResultsPanel state={state} snd={snd} onClose={backToHub} />}
     </div>
   );
 }
@@ -439,6 +448,7 @@ function TopicsPanel({
         ))}
       </div>
       <button
+        data-testid="soundscape-lock-theme"
         onClick={onPick}
         className="rounded-2xl bg-[var(--color-park-bright)] text-[oklch(0.18_0.05_160)] px-5 py-2.5 font-medium"
       >

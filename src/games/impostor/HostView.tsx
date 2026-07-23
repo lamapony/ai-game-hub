@@ -1,7 +1,7 @@
 // "Who's the Bot?" host orchestration: AI asks a question, everyone (including AI) writes
 // an answer, players hunt for the machine among the humans. AI IS the gameplay here.
 import { useEffect, useRef, useState } from "react";
-import { updateRoomState, genId } from "@/lib/room";
+import { updateRoomState, genId, hostPromptAuth } from "@/lib/room";
 import { teamColorClasses, formatClock } from "@/lib/team-style";
 import { IMPOSTOR_ANSWER_MS, IMPOSTOR_REVEAL_MS, IMPOSTOR_VOTE_MS } from "@/lib/host-controls";
 import {
@@ -12,9 +12,10 @@ import {
 import type { ImpostorAnswer, ImpostorState, RoomState } from "@/lib/types";
 import { pickImpostorQuestion } from "./catalog";
 import { scoreImpostorRound } from "./scoring";
+import { speechUrl } from "@/lib/speech-client";
 
-function speak(text: string) {
-  const a = new Audio(`/api/speak?text=${encodeURIComponent(text)}`);
+function speak(text: string, roomId: string) {
+  const a = new Audio(speechUrl(text, roomId));
   a.play().catch(() => {});
 }
 
@@ -27,7 +28,17 @@ function shuffle<T>(items: T[], random = Math.random): T[] {
   return result;
 }
 
-export function ImpostorHost({ roomId, state }: { roomId: string; state: RoomState }) {
+export function ImpostorHost({
+  roomId,
+  code,
+  state,
+  onBackToHub,
+}: {
+  roomId: string;
+  code: string;
+  state: RoomState;
+  onBackToHub: () => void | Promise<void>;
+}) {
   const imp = state.impostor!;
   const [now, setNow] = useState(Date.now());
   const [busy, setBusy] = useState<string | null>(null);
@@ -58,17 +69,20 @@ export function ImpostorHost({ roomId, state }: { roomId: string; state: RoomSta
       try {
         const pastQuestions = (imp.roundResults ?? []).map((r) => r.question);
         const r = await generateImpostorQuestion({
-          data: { pastQuestions, venue: state.venue },
+          data: { ...hostPromptAuth(roomId, code), pastQuestions },
         });
         const fallbackQuestion = pickImpostorQuestion(imp.usedQuestionIds);
-        const question = r.fallback || !r.question ? fallbackQuestion.text : r.question;
-        const questionId = r.fallback || !r.question ? fallbackQuestion.id : genId("q");
+        const classicExperience = (state.party?.experienceId ?? "classic-park") === "classic-park";
+        const useLocalDeck = !r.question || (classicExperience && r.fallback);
+        const question = useLocalDeck ? fallbackQuestion.text : r.question;
+        const questionId = useLocalDeck ? fallbackQuestion.id : genId("q");
         if (imp.roundNumber === 1) {
           speak(
             `Who's the Bot? Everyone writes a funny answer to the question, and I secretly slip in mine. Find mine — earn points.`,
+            roomId,
           );
         }
-        if (r.intro && !r.fallback) speak(r.intro);
+        if (r.intro && (!r.fallback || !classicExperience)) speak(r.intro, roomId);
         await update({
           phase: "answering",
           questionId,
@@ -110,9 +124,9 @@ export function ImpostorHost({ roomId, state }: { roomId: string; state: RoomSta
         const humanEntries = Object.entries(imp.answers ?? {});
         const ai = await generateImpostorAnswer({
           data: {
+            ...hostPromptAuth(roomId, code),
             question: imp.question!,
             humanAnswers: humanEntries.map(([, text]) => text),
-            venue: state.venue,
           },
         });
         const aiAnswerId = genId("ai");
@@ -132,7 +146,7 @@ export function ImpostorHost({ roomId, state }: { roomId: string; state: RoomSta
           voteEndsAt: Date.now() + IMPOSTOR_VOTE_MS,
           aiFallback: imp.aiFallback || ai.fallback,
         });
-        speak("Answers are on screen. One of them is mine. Vote.");
+        speak("Answers are on screen. One of them is mine. Vote.", roomId);
       } catch (e) {
         console.error(e);
         mixedForRef.current = null;
@@ -175,13 +189,14 @@ export function ImpostorHost({ roomId, state }: { roomId: string; state: RoomSta
         const aiAnswer = imp.shuffled!.find((a) => a.id === imp.aiAnswerId)?.text ?? "";
         const r = await impostorRevealComment({
           data: {
+            ...hostPromptAuth(roomId, code),
             question: imp.question ?? "",
             aiAnswer,
             caughtCount: scored.roundResult.correctVoterIds.length,
             totalVoters: Object.keys(scored.roundResult.votes).length,
           },
         });
-        speak(r.verdict);
+        speak(r.verdict, roomId);
       } catch (e) {
         console.error(e);
       }
@@ -343,14 +358,7 @@ export function ImpostorHost({ roomId, state }: { roomId: string; state: RoomSta
           </div>
           <button
             type="button"
-            onClick={() =>
-              updateRoomState(roomId, {
-                ...state,
-                status: "lobby",
-                currentGame: null,
-                impostor: undefined,
-              })
-            }
+            onClick={onBackToHub}
             className="mt-4 rounded-2xl bg-white/10 hover:bg-white/15 px-4 py-2 text-sm"
           >
             ↺ Back to lobby

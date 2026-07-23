@@ -129,7 +129,7 @@ export function VideoRecorder({
   const remaining = Math.ceil((maxMs - elapsed) / 1000);
 
   return (
-    <div className="space-y-3">
+    <div data-testid="video-recorder" data-state={state} className="space-y-3">
       <div className="relative aspect-video rounded-3xl overflow-hidden bg-black ring-1 ring-white/10">
         <video ref={videoRef} muted playsInline className="w-full h-full object-cover" />
         {state === "idle" && (
@@ -163,14 +163,25 @@ export function VideoRecorder({
 
       {state === "idle" && (
         <button
+          data-testid="video-recorder-open"
           onClick={openCamera}
           className="w-full rounded-3xl bg-[var(--color-park-bright)] text-[oklch(0.18_0.05_160)] py-5 text-lg font-medium"
         >
           📷 Open camera
         </button>
       )}
+      {state === "error" && (
+        <button
+          data-testid="video-recorder-retry"
+          onClick={openCamera}
+          className="w-full rounded-3xl bg-[var(--color-park-bright)] text-[oklch(0.18_0.05_160)] py-5 text-lg font-medium"
+        >
+          Try camera and microphone again
+        </button>
+      )}
       {state === "preview" && (
         <button
+          data-testid="video-recorder-start"
           onClick={start}
           className="w-full rounded-3xl bg-red-500 text-white py-6 text-xl font-display"
         >
@@ -179,6 +190,7 @@ export function VideoRecorder({
       )}
       {state === "recording" && (
         <button
+          data-testid="video-recorder-stop"
           onClick={stop}
           className="w-full rounded-3xl bg-red-500 text-white py-6 text-xl font-display animate-pulse"
         >
@@ -190,7 +202,11 @@ export function VideoRecorder({
           ✓ Video sent to the judge. Waiting for verdict.
         </div>
       )}
-      {err && <p className="text-sm text-red-300 text-center">{err}</p>}
+      {err && (
+        <p data-testid="video-recorder-error" className="text-sm text-red-300 text-center">
+          {err}
+        </p>
+      )}
     </div>
   );
 }

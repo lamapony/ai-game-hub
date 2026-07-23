@@ -1,6 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { publicApiErrorResponse, publicApiErrorStatus } from "@/lib/api-error-response.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { playerSecretHashFromRequest, requireAuthorizedPlayer } from "@/lib/player-auth.server";
+import {
+  playerSecretHashFromRequest,
+  requireAuthorizedPlayer,
+  statusError,
+} from "@/lib/player-auth.server";
 import {
   buildPlayerUploadPath,
   cleanRoundId,
@@ -23,10 +28,21 @@ type UploadTargetBody = {
 };
 
 function cleanAction(value: unknown): PlayerUploadAction {
-  if (value === "soundscape-audio" || value === "challenge-video" || value === "photo") {
+  if (
+    value === "soundscape-audio" ||
+    value === "challenge-video" ||
+    value === "photo" ||
+    value === "oracle-photo" ||
+    value === "toast-audio" ||
+    value === "stilllife-photo" ||
+    value === "sommelier-photo" ||
+    value === "contraband-audio" ||
+    value === "tongs-audio" ||
+    value === "cross-audio"
+  ) {
     return value;
   }
-  throw Object.assign(new Error("unknown upload action"), { status: 400 });
+  throw statusError("unknown upload action", 400);
 }
 
 export const Route = createFileRoute("/api/player-upload-target")({
@@ -89,18 +105,13 @@ export const Route = createFileRoute("/api/player-upload-target")({
             token: signed.data.token,
           });
         } catch (error) {
-          const status =
-            error && typeof error === "object" && "status" in error
-              ? Number((error as { status?: unknown }).status) || 500
-              : 500;
+          const status = publicApiErrorStatus(error);
           logError("api.player_upload_target.failure", error, {
             durationMs: Date.now() - startedAt,
             status,
             action: body.action,
           });
-          return new Response(error instanceof Error ? error.message : "upload target failed", {
-            status,
-          });
+          return publicApiErrorResponse(error, { fallbackMessage: "upload target failed", status });
         }
       },
     },

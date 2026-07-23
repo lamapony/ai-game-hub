@@ -45,6 +45,7 @@ function clampNumber(value: unknown, fallback: number, min: number, max: number)
 }
 
 function validClipIndex(value: unknown, clipCount: number) {
+  if (value === null || value === undefined || value === "") return -1;
   const numeric = typeof value === "number" ? value : Number(value);
   if (!Number.isInteger(numeric)) return -1;
   return numeric >= 0 && numeric < clipCount ? numeric : -1;

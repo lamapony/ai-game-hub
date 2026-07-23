@@ -47,6 +47,7 @@ describe("AI response sanitizers", () => {
         score: [
           { at_ms: 70000, clip_index: 0, slot: 9 },
           { at_ms: 1000, clip_index: 99, slot: 3 },
+          { at_ms: 1500, clip_index: null, speak: null, slot: 2 },
           { at_ms: "2500", speak: "  Oak says hello  ", slot: 1 },
           { at_ms: -10, clip_index: 1, slot: 4 },
         ],

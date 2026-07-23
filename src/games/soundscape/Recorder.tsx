@@ -3,11 +3,20 @@ import { friendlyMediaError, friendlyUploadError } from "@/lib/media-errors";
 
 type Props = {
   maxMs?: number;
+  minMs?: number;
   onComplete: (blob: Blob, durationMs: number) => Promise<void> | void;
   disabled?: boolean;
+  labels?: {
+    start: (maxSeconds: number) => string;
+    retry: string;
+    keepGoing: (seconds: number) => string;
+    stop: (seconds: number) => string;
+    uploading: string;
+    sent: string;
+  };
 };
 
-export function Recorder({ maxMs = 15000, onComplete, disabled }: Props) {
+export function Recorder({ maxMs = 15000, minMs = 0, onComplete, disabled, labels }: Props) {
   const [state, setState] = useState<"idle" | "recording" | "uploading" | "done" | "error">("idle");
   const [elapsed, setElapsed] = useState(0);
   const [err, setErr] = useState<string | null>(null);
@@ -83,9 +92,19 @@ export function Recorder({ maxMs = 15000, onComplete, disabled }: Props) {
   }
 
   const pct = Math.min(100, (elapsed / maxMs) * 100);
+  const copy =
+    labels ??
+    ({
+      start: (maxSeconds: number) => `● Record sound (${maxSeconds}s max)`,
+      retry: "Try microphone again",
+      keepGoing: (seconds: number) => `⏹ Keep going ${seconds}s`,
+      stop: (seconds: number) => `⏹ Stop (${seconds}s)`,
+      uploading: "Uploading sound and transcribing…",
+      sent: "✓ Sent. Record another?",
+    } satisfies NonNullable<Props["labels"]>);
 
   return (
-    <div className="space-y-3">
+    <div data-testid="audio-recorder" data-state={state} className="space-y-3">
       <div className="relative h-2 w-full overflow-hidden rounded-full bg-white/10">
         <div
           className="absolute inset-y-0 left-0 bg-[var(--color-park-bright)] transition-[width] duration-100"
@@ -94,17 +113,22 @@ export function Recorder({ maxMs = 15000, onComplete, disabled }: Props) {
       </div>
       {state === "recording" ? (
         <button
+          data-testid="audio-recorder-stop"
           onClick={stop}
+          disabled={elapsed < minMs}
           className="w-full rounded-3xl bg-red-500 text-white py-6 text-xl font-display animate-pulse"
         >
-          ⏹ Stop ({Math.ceil((maxMs - elapsed) / 1000)}s)
+          {elapsed < minMs
+            ? copy.keepGoing(Math.ceil((minMs - elapsed) / 1000))
+            : copy.stop(Math.ceil((maxMs - elapsed) / 1000))}
         </button>
       ) : state === "uploading" ? (
         <div className="rounded-3xl bg-white/10 text-white/80 py-6 text-center">
-          Uploading sound and transcribing…
+          {copy.uploading}
         </div>
       ) : state === "done" ? (
         <button
+          data-testid="audio-recorder-reset"
           onClick={() => {
             setState("idle");
             setElapsed(0);
@@ -112,18 +136,23 @@ export function Recorder({ maxMs = 15000, onComplete, disabled }: Props) {
           disabled={disabled}
           className="w-full rounded-3xl bg-[var(--color-park-bright)] text-[oklch(0.18_0.05_160)] py-5 text-lg font-medium"
         >
-          ✓ Sent. Record another?
+          {copy.sent}
         </button>
       ) : (
         <button
+          data-testid="audio-recorder-start"
           onClick={start}
           disabled={disabled}
           className="w-full rounded-3xl bg-red-500 text-white py-6 text-xl font-display disabled:opacity-40"
         >
-          ● Record sound ({Math.round(maxMs / 1000)}s max)
+          {state === "error" ? copy.retry : copy.start(Math.round(maxMs / 1000))}
         </button>
       )}
-      {err && <p className="text-sm text-red-300">{err}</p>}
+      {err && (
+        <p data-testid="audio-recorder-error" className="text-sm text-red-300">
+          {err}
+        </p>
+      )}
     </div>
   );
 }
