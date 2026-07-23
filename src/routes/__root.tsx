@@ -133,7 +133,8 @@ const criticalLandingCssGuard = `
         .find((link) => link.href.includes('/assets/styles-'))?.sheet;
       let hasRules = false;
       try { hasRules = Boolean(stylesheet && stylesheet.cssRules.length); } catch (_) {}
-      if (hasRules) document.getElementById('agh-critical-fallback')?.remove();
+      const fallback = document.getElementById('agh-critical-fallback');
+      if (hasRules && fallback?.sheet) fallback.sheet.disabled = true;
     };
     removeFallbackWhenReady();
     window.addEventListener('load', removeFallbackWhenReady, { once: true });
