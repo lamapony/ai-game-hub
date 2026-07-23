@@ -796,7 +796,7 @@ function PrimaryGameRecommendation({
   const blocked = availability.status === "blocked";
   return (
     <>
-      <div className="agh-conductor-primary-game">
+      <div className="agh-conductor-primary-game" data-game-id={game.id}>
         <div>
           <div>{game.localizedTitle[locale]}</div>
           <small>
@@ -875,6 +875,7 @@ function ConductorGameCard({
             ? "is-available"
             : "is-recommended"
       }`}
+      data-game-id={game.id}
     >
       <button
         type="button"

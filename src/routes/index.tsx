@@ -182,6 +182,7 @@ function Landing() {
                 <button
                   key={id}
                   data-testid={`quick-start-venue-${id}`}
+                  data-venue={id}
                   type="button"
                   aria-pressed={venue === id}
                   onClick={() => setVenue(id)}

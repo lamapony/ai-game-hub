@@ -424,6 +424,7 @@
 
 .agh-venue-options button {
   position: relative;
+  isolation: isolate;
   min-height: 230px;
   display: flex;
   flex-direction: column;
@@ -432,12 +433,53 @@
   padding: 24px clamp(20px, 2.2vw, 36px) 28px;
   border: 0;
   border-right: 2px solid var(--agh-ink);
-  background: transparent;
+  overflow: hidden;
+  background: var(--agh-ink);
+  color: var(--agh-paper);
   text-align: left;
   cursor: pointer;
   transition:
-    background-color 150ms ease,
     color 150ms ease;
+}
+
+.agh-venue-options button::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background-position: center;
+  background-size: cover;
+  opacity: 0.8;
+  transition: opacity 180ms ease;
+}
+
+.agh-venue-options button[data-venue="park"]::before {
+  background-image:
+    linear-gradient(90deg, rgba(17, 47, 44, 0.96) 0%, rgba(17, 47, 44, 0.82) 42%, rgba(17, 47, 44, 0.28) 100%),
+    url("/assets/brand/venue-park-v2.webp");
+}
+
+.agh-venue-options button[data-venue="bar"]::before {
+  background-image:
+    linear-gradient(90deg, rgba(17, 47, 44, 0.96) 0%, rgba(17, 47, 44, 0.8) 42%, rgba(17, 47, 44, 0.28) 100%),
+    url("/assets/brand/venue-bar-v2.webp");
+}
+
+.agh-venue-options button[data-venue="home"]::before {
+  background-image:
+    linear-gradient(90deg, rgba(17, 47, 44, 0.96) 0%, rgba(17, 47, 44, 0.8) 42%, rgba(17, 47, 44, 0.28) 100%),
+    url("/assets/brand/venue-home-v2.webp");
+}
+
+.agh-venue-options button[data-venue="festival"]::before {
+  background-image:
+    linear-gradient(90deg, rgba(17, 47, 44, 0.96) 0%, rgba(17, 47, 44, 0.8) 42%, rgba(17, 47, 44, 0.28) 100%),
+    url("/assets/brand/venue-festival-v2.webp");
+}
+
+.agh-venue-options button > * {
+  position: relative;
+  z-index: 1;
 }
 
 .agh-venue-options button:last-child {
@@ -445,18 +487,25 @@
 }
 
 .agh-venue-options button:hover {
-  background: color-mix(in srgb, var(--agh-coral) 40%, var(--agh-paper));
+  color: var(--agh-paper);
 }
 
 .agh-venue-options button.is-selected {
-  background: var(--agh-coral);
+  color: var(--agh-paper);
+  box-shadow: inset 0 0 0 4px var(--agh-coral);
+}
+
+.agh-venue-options button:hover::before,
+.agh-venue-options button.is-selected::before {
+  opacity: 1;
 }
 
 .agh-venue-options button.is-selected::after {
   content: "";
   position: absolute;
-  right: -2px;
-  bottom: -2px;
+  z-index: 2;
+  right: 0;
+  bottom: 0;
   width: 38px;
   height: 38px;
   background: var(--agh-ink);
@@ -642,8 +691,29 @@
 }
 
 .agh-route-brief {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   background: var(--agh-ink);
   color: var(--agh-paper);
+}
+
+.agh-route-brief::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background-image:
+    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.91) 38%, rgba(17, 47, 44, 0.4) 100%),
+    url("/assets/brand/game-evidence-trail-v2.webp");
+  background-position: center;
+  background-size: cover;
+  pointer-events: none;
+}
+
+.agh-route-brief > * {
+  position: relative;
+  z-index: 1;
 }
 
 .agh-route-heading {
@@ -7929,12 +7999,30 @@
 }
 
 .agh-conductor-head {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(210px, 0.34fr);
   gap: 28px;
   padding: 28px;
   background: var(--agh-coral);
   border-bottom: 2px solid var(--agh-ink);
+}
+
+.agh-conductor-head::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: var(--agh-grain);
+  background-position: center;
+  opacity: 0.18;
+}
+
+.agh-conductor-head > * {
+  position: relative;
+  z-index: 1;
 }
 
 .agh-conductor-kicker,
@@ -8119,6 +8207,123 @@
   background: var(--agh-ink);
   color: var(--agh-paper);
   border-top: 2px solid var(--agh-ink);
+}
+
+.agh-conductor-primary-game {
+  position: relative;
+  isolation: isolate;
+  min-height: 188px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.agh-conductor-primary-game::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background-image:
+    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.35) 100%),
+    url("/assets/brand/game-interrogation-v1.webp");
+  background-position: center;
+  background-size: cover;
+  opacity: 0.84;
+}
+
+.agh-conductor-primary-game > * {
+  position: relative;
+  z-index: 1;
+}
+
+.agh-conductor-game[data-game-id="grilloracle"]::before {
+  background-image:
+    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    url("/assets/brand/game-grill-ritual-v1.webp");
+}
+
+.agh-conductor-game[data-game-id="contraband"]::before {
+  background-image:
+    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    url("/assets/brand/game-bar-ritual-v1.webp");
+}
+
+.agh-conductor-game[data-game-id="soundscape"]::before {
+  background-image:
+    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    url("/assets/brand/game-sound-capture-v1.webp");
+}
+
+.agh-conductor-game[data-game-id="challenge"]::before {
+  background-image:
+    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    url("/assets/brand/game-camera-v1.webp");
+}
+
+.agh-conductor-game[data-game-id="phototunt"]::before {
+  background-image:
+    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    url("/assets/brand/game-photo-hunt-v1.webp");
+}
+
+.agh-conductor-game[data-game-id="trackguess"]::before {
+  background-image:
+    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    url("/assets/brand/game-track-reveal-v1.webp");
+}
+
+.agh-conductor-game[data-game-id="spectrumcourt"]::before {
+  background-image:
+    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    url("/assets/brand/game-spectrum-court-v1.webp");
+}
+
+.agh-conductor-game[data-game-id="whoamong"]::before {
+  background-image:
+    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    url("/assets/brand/game-whoamong-v1.webp");
+}
+
+.agh-conductor-game[data-game-id="impostor"]::before {
+  background-image:
+    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    url("/assets/brand/game-impostor-v1.webp");
+}
+
+.agh-conductor-game[data-game-id="smokescreen"]::before {
+  background-image:
+    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    url("/assets/brand/game-smoke-screen-v1.webp");
+}
+
+.agh-conductor-game[data-game-id="toastsyndicate"]::before {
+  background-image:
+    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    url("/assets/brand/game-toast-syndicate-v1.webp");
+}
+
+.agh-conductor-game[data-game-id="stilllife"]::before {
+  background-image:
+    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    url("/assets/brand/game-still-life-v1.webp");
+}
+
+.agh-conductor-game[data-game-id="sommelier"]::before {
+  background-image:
+    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    url("/assets/brand/game-sommelier-v1.webp");
+}
+
+.agh-conductor-game[data-game-id="crossexamination"]::before {
+  background-image:
+    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    url("/assets/brand/game-cross-examination-v1.webp");
+}
+
+.agh-conductor-game[data-game-id="tongsoftruth"]::before {
+  background-image:
+    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    url("/assets/brand/game-tongs-truth-v1.webp");
 }
 
 .agh-conductor-cue-title,
@@ -8317,25 +8522,51 @@
 
 .agh-conductor-game {
   position: relative;
+  isolation: isolate;
   min-height: 210px;
+  overflow: hidden;
   border-right: 2px solid var(--agh-ink);
   border-bottom: 2px solid var(--agh-ink);
-  background: var(--agh-paper);
-}
-
-.agh-conductor-game.is-recommended {
   background: var(--agh-ink);
   color: var(--agh-paper);
 }
 
+.agh-conductor-game::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background-image: var(--agh-grain);
+  background-position: center;
+  background-size: cover;
+  opacity: 0.84;
+  transition: opacity 180ms ease;
+}
+
+.agh-conductor-game.is-recommended {
+  box-shadow: inset 0 0 0 3px var(--agh-coral);
+}
+
 .agh-conductor-game.is-blocked {
-  opacity: 0.44;
+  opacity: 1;
+}
+
+.agh-conductor-game.is-blocked::before {
+  opacity: 0.48;
+  filter: saturate(0.68);
+}
+
+.agh-conductor-game.is-blocked .agh-conductor-game-action,
+.agh-conductor-game.is-blocked .agh-conductor-game-rules {
+  color: color-mix(in srgb, var(--agh-paper) 76%, var(--agh-ink));
 }
 
 .agh-conductor-game-action {
   width: 100%;
   height: 100%;
   min-height: 210px;
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -8379,6 +8610,7 @@
 
 .agh-conductor-game-rules {
   position: absolute;
+  z-index: 2;
   top: 13px;
   right: 13px;
 }

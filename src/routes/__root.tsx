@@ -12,6 +12,10 @@ import { eventProfile } from "@/lib/event-profile";
 
 import appCss from "../styles.css?url";
 
+const publicOrigin =
+  import.meta.env.VITE_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://ai-game-hub-tau.vercel.app";
+const shareImageUrl = `${publicOrigin}/og/ai-game-hub-share.jpg`;
+
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -89,7 +93,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content: eventProfile.seo.ogDescription,
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: publicOrigin },
+      { property: "og:image", content: shareImageUrl },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:type", content: "image/jpeg" },
+      {
+        property: "og:image:alt",
+        content:
+          "A tactile party scene with a map, camera, recorder and cards on a dark green table",
+      },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: shareImageUrl },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
