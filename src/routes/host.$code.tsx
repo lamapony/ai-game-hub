@@ -49,8 +49,11 @@ import type { GameId, RoomState } from "@/lib/types";
 import type { RoomConnectionStatus } from "@/lib/room";
 import type { HostCommand } from "@/lib/host-command";
 import { HostConductor } from "@/components/host-conductor";
+import { OperatorFailureCoachCard } from "@/components/operator-failure-coach-card";
+import { OperatorNightPackCard } from "@/components/operator-night-pack-card";
 import { QuickStartBriefCard } from "@/components/quick-start-brief-card";
 import { QuickStartLaunchSignal } from "@/components/quick-start-launch-signal";
+import { buildOperatorFailureCoach } from "@/lib/operator-failure-coach";
 import { GameRulesDialogTrigger } from "@/components/game-rules-ui";
 import { publicJoinUrl, publicSpeakerUrl } from "@/lib/public-site";
 import { ActiveHostGameView } from "@/games/host-view-registry";
@@ -622,6 +625,17 @@ function LiveSafetyPanel({
   const aiRemaining = Math.max(0, aiRuntime.limitCredits - aiRuntime.usedCredits);
   const aiPercent = Math.min(100, (aiRuntime.usedCredits / aiRuntime.limitCredits) * 100);
   const launchSignal = getCurrentQuickStartLaunchSignal(state, releaseHealth.status);
+  const failureSymptom =
+    connectionStatus === "offline" ||
+    connectionStatus === "error" ||
+    connectionStatus === "reconnecting"
+      ? ("network-lost" as const)
+      : releaseHealth.status === "degraded" || releaseHealth.status === "error"
+        ? ("backend-not-ready" as const)
+        : aiRemaining === 0 && !manualAi
+          ? ("ai-budget-exhausted" as const)
+          : ("healthy" as const);
+  const failureCoach = buildOperatorFailureCoach(failureSymptom);
   const status = {
     connecting: { label: "connecting", color: "bg-amber-300" },
     live: { label: "live", color: "bg-emerald-300" },
@@ -725,6 +739,8 @@ function LiveSafetyPanel({
           </div>
         )}
       </div>
+
+      <OperatorFailureCoachCard coach={failureCoach} />
 
       <div
         className={`mt-3 rounded-2xl border p-3 ${
@@ -1216,6 +1232,15 @@ function QuickStartReadinessPanel({
         />
       </div>
       <QuickStartBriefCard context="host" input={setup} />
+      <OperatorNightPackCard
+        context="host"
+        input={{
+          venue: setup.venue,
+          targetDurationMinutes: setup.targetDurationMinutes,
+          expectedPlayers: setup.expectedPlayers,
+          storySeedConfigured: Boolean(setup.storySeed),
+        }}
+      />
       {activeInterlude ? (
         <div className="agh-first-cue is-live">
           <span>First cue live</span>

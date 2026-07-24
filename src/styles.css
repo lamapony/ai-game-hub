@@ -438,8 +438,7 @@
   color: var(--agh-paper);
   text-align: left;
   cursor: pointer;
-  transition:
-    color 150ms ease;
+  transition: color 150ms ease;
 }
 
 .agh-venue-options button::before {
@@ -455,25 +454,45 @@
 
 .agh-venue-options button[data-venue="park"]::before {
   background-image:
-    linear-gradient(90deg, rgba(17, 47, 44, 0.96) 0%, rgba(17, 47, 44, 0.82) 42%, rgba(17, 47, 44, 0.28) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 47, 44, 0.96) 0%,
+      rgba(17, 47, 44, 0.82) 42%,
+      rgba(17, 47, 44, 0.28) 100%
+    ),
     url("/assets/brand/venue-park-v2.webp");
 }
 
 .agh-venue-options button[data-venue="bar"]::before {
   background-image:
-    linear-gradient(90deg, rgba(17, 47, 44, 0.96) 0%, rgba(17, 47, 44, 0.8) 42%, rgba(17, 47, 44, 0.28) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 47, 44, 0.96) 0%,
+      rgba(17, 47, 44, 0.8) 42%,
+      rgba(17, 47, 44, 0.28) 100%
+    ),
     url("/assets/brand/venue-bar-v2.webp");
 }
 
 .agh-venue-options button[data-venue="home"]::before {
   background-image:
-    linear-gradient(90deg, rgba(17, 47, 44, 0.96) 0%, rgba(17, 47, 44, 0.8) 42%, rgba(17, 47, 44, 0.28) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 47, 44, 0.96) 0%,
+      rgba(17, 47, 44, 0.8) 42%,
+      rgba(17, 47, 44, 0.28) 100%
+    ),
     url("/assets/brand/venue-home-v2.webp");
 }
 
 .agh-venue-options button[data-venue="festival"]::before {
   background-image:
-    linear-gradient(90deg, rgba(17, 47, 44, 0.96) 0%, rgba(17, 47, 44, 0.8) 42%, rgba(17, 47, 44, 0.28) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 47, 44, 0.96) 0%,
+      rgba(17, 47, 44, 0.8) 42%,
+      rgba(17, 47, 44, 0.28) 100%
+    ),
     url("/assets/brand/venue-festival-v2.webp");
 }
 
@@ -704,7 +723,12 @@
   z-index: 0;
   inset: 0;
   background-image:
-    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.91) 38%, rgba(17, 47, 44, 0.4) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 47, 44, 0.98) 0%,
+      rgba(17, 47, 44, 0.91) 38%,
+      rgba(17, 47, 44, 0.4) 100%
+    ),
     url("/assets/brand/game-evidence-trail-v2.webp");
   background-position: center;
   background-size: cover;
@@ -1257,12 +1281,16 @@
     gap: 28px;
   }
 
-  .agh-create-row > button {
+  .agh-setup .agh-create-row > button {
     min-width: 0;
     min-height: 108px;
-    padding-left: 28px;
-    padding-right: 54px;
-    font-size: 40px;
+    padding: 18px 28px 18px 18px;
+    clip-path: polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%);
+    font-size: clamp(22px, 7.2vw, 34px);
+  }
+
+  .agh-setup .agh-create-row > button span {
+    display: none;
   }
 
   .agh-join {
@@ -1301,6 +1329,41 @@
 
   .agh-footer span {
     text-align: left;
+  }
+
+  .agh-night-pack-heading {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .agh-night-pack-heading > p {
+    max-width: none;
+    text-align: left;
+  }
+
+  .agh-night-pack-next > li,
+  .agh-night-pack-sheet ol > li {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .agh-night-pack-next > li > span,
+  .agh-night-pack-sheet ol > li > span {
+    grid-row: auto;
+  }
+
+  .agh-night-pack-exports {
+    grid-template-columns: 1fr;
+  }
+
+  .agh-night-pack-exports > button {
+    min-height: 48px;
+    border-right: 0;
+    border-bottom: 2px solid var(--agh-paper);
+  }
+
+  .agh-night-pack-exports > button:last-child {
+    border-bottom: 0;
   }
 }
 
@@ -6912,6 +6975,339 @@
   font-weight: 700;
 }
 
+/* Operator Night Pack: authored run-sheet / dispatch card, not a SaaS panel. */
+.agh-night-pack {
+  border-top: 2px solid var(--agh-ink);
+  background: var(--agh-paper);
+  color: var(--agh-ink);
+}
+
+.agh-night-pack--landing {
+  border-top: 2px solid var(--agh-ink);
+  border-bottom: 2px solid var(--agh-ink);
+}
+
+.agh-night-pack--host {
+  border-top: 2px solid var(--agh-paper);
+  background: var(--agh-paper);
+  color: var(--agh-ink);
+}
+
+.agh-night-pack-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 20px;
+  padding: 26px clamp(24px, 3vw, 52px) 20px;
+  border-bottom: 2px solid var(--agh-ink);
+}
+
+.agh-night-pack--host .agh-night-pack-heading {
+  padding: 24px 26px 18px;
+}
+
+.agh-night-pack-heading h2 {
+  margin: 0;
+  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-size: clamp(34px, 4.2vw, 56px);
+  font-weight: 400;
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+
+.agh-night-pack-heading p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.agh-night-pack-heading > p {
+  margin: 0;
+  max-width: 220px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.agh-night-pack-program {
+  display: grid;
+  gap: 8px;
+  padding: 18px clamp(24px, 3vw, 52px);
+  border-bottom: 2px solid var(--agh-ink);
+  background: var(--agh-coral);
+}
+
+.agh-night-pack--host .agh-night-pack-program {
+  padding: 16px 26px;
+}
+
+.agh-night-pack-program p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.agh-night-pack-next,
+.agh-night-pack-sheet ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agh-night-pack-next {
+  border-bottom: 2px solid var(--agh-ink);
+}
+
+.agh-night-pack-next > li,
+.agh-night-pack-sheet ol > li {
+  display: grid;
+  grid-template-columns: minmax(88px, 0.22fr) minmax(0, 1fr);
+  gap: 6px 16px;
+  padding: 16px clamp(24px, 3vw, 52px);
+  border-bottom: 2px solid color-mix(in srgb, var(--agh-ink) 18%, transparent);
+}
+
+.agh-night-pack--host .agh-night-pack-next > li,
+.agh-night-pack--host .agh-night-pack-sheet ol > li {
+  padding-left: 26px;
+  padding-right: 26px;
+}
+
+.agh-night-pack-next > li:last-child,
+.agh-night-pack-sheet ol > li:last-child {
+  border-bottom: 0;
+}
+
+.agh-night-pack-next > li > span,
+.agh-night-pack-sheet ol > li > span {
+  grid-row: 1 / span 2;
+  align-self: start;
+  padding-top: 2px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.agh-night-pack-next > li > strong,
+.agh-night-pack-sheet ol > li > strong {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.agh-night-pack-next > li > p,
+.agh-night-pack-sheet ol > li > p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.agh-night-pack-sheet {
+  border-bottom: 2px solid var(--agh-ink);
+}
+
+.agh-night-pack-sheet summary {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 14px clamp(24px, 3vw, 52px);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.agh-night-pack--host .agh-night-pack-sheet summary {
+  padding-left: 26px;
+  padding-right: 26px;
+}
+
+.agh-night-pack-warning {
+  margin: 0;
+  padding: 0 clamp(24px, 3vw, 52px) 18px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.agh-night-pack--host .agh-night-pack-warning {
+  padding-left: 26px;
+  padding-right: 26px;
+}
+
+.agh-night-pack-block {
+  padding: 18px clamp(24px, 3vw, 52px);
+  border-bottom: 2px solid var(--agh-ink);
+}
+
+.agh-night-pack--host .agh-night-pack-block {
+  padding-left: 26px;
+  padding-right: 26px;
+}
+
+.agh-night-pack-block h3,
+.agh-night-pack-handoff h3 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.agh-night-pack-block ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.agh-night-pack-block li,
+.agh-night-pack-block p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.agh-night-pack-block li:last-child,
+.agh-night-pack-block p:last-child {
+  margin-bottom: 0;
+}
+
+.agh-night-pack-recovery {
+  list-style: none;
+  padding-left: 0;
+}
+
+.agh-night-pack-recovery > li {
+  margin: 0 0 14px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid color-mix(in srgb, var(--agh-ink) 22%, transparent);
+}
+
+.agh-night-pack-recovery > li:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.agh-night-pack-recovery strong {
+  display: block;
+  font-size: 13px;
+}
+
+.agh-night-pack-recovery p {
+  margin: 4px 0;
+}
+
+.agh-night-pack-recovery small {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--agh-ink) 85%, transparent);
+}
+
+.agh-night-pack-handoff {
+  padding: 18px clamp(24px, 3vw, 52px);
+  border-bottom: 2px solid var(--agh-ink);
+  background: color-mix(in srgb, var(--agh-ink) 6%, var(--agh-paper));
+}
+
+.agh-night-pack--host .agh-night-pack-handoff {
+  padding-left: 26px;
+  padding-right: 26px;
+}
+
+.agh-night-pack-handoff p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.agh-night-pack-exports {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-bottom: 2px solid var(--agh-ink);
+}
+
+.agh-night-pack-exports > button {
+  min-height: 52px;
+  padding: 14px 18px;
+  border: 0;
+  border-right: 2px solid var(--agh-ink);
+  background: var(--agh-ink);
+  color: var(--agh-paper);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.agh-night-pack-exports > button:last-child {
+  border-right: 0;
+}
+
+.agh-night-pack-exports > button:hover {
+  background: var(--agh-coral);
+  color: var(--agh-ink);
+}
+
+.agh-night-pack-exports > button:focus-visible {
+  outline: 3px solid var(--agh-coral);
+  outline-offset: -3px;
+}
+
+.agh-night-pack-privacy {
+  margin: 0;
+  padding: 14px clamp(24px, 3vw, 52px) 8px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--agh-ink) 72%, transparent);
+}
+
+.agh-night-pack-status {
+  margin: 0;
+  min-height: 1.4em;
+  padding: 0 clamp(24px, 3vw, 52px) 20px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--agh-ink) 72%, transparent);
+}
+
+.agh-night-pack--host .agh-night-pack-privacy,
+.agh-night-pack--host .agh-night-pack-status {
+  padding-left: 26px;
+  padding-right: 26px;
+}
+
+.agh-failure-coach {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 2px solid color-mix(in srgb, var(--agh-coral) 80%, white);
+  background: color-mix(in srgb, var(--agh-coral) 18%, transparent);
+  color: #fff8ef;
+}
+
+.agh-failure-coach h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.agh-failure-coach p {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.agh-failure-coach strong {
+  font-weight: 800;
+}
+
 .agh-first-cue {
   border-top: 2px solid var(--agh-ink);
 }
@@ -8224,7 +8620,12 @@
   z-index: 0;
   inset: 0;
   background-image:
-    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.35) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 47, 44, 0.98) 0%,
+      rgba(17, 47, 44, 0.9) 48%,
+      rgba(17, 47, 44, 0.35) 100%
+    ),
     url("/assets/brand/game-interrogation-v1.webp");
   background-position: center;
   background-size: cover;
@@ -8238,91 +8639,166 @@
 
 .agh-conductor-game[data-game-id="grilloracle"]::before {
   background-image:
-    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 47, 44, 0.98) 0%,
+      rgba(17, 47, 44, 0.9) 48%,
+      rgba(17, 47, 44, 0.34) 100%
+    ),
     url("/assets/brand/game-grill-ritual-v1.webp");
 }
 
 .agh-conductor-game[data-game-id="contraband"]::before {
   background-image:
-    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 47, 44, 0.98) 0%,
+      rgba(17, 47, 44, 0.9) 48%,
+      rgba(17, 47, 44, 0.34) 100%
+    ),
     url("/assets/brand/game-bar-ritual-v1.webp");
 }
 
 .agh-conductor-game[data-game-id="soundscape"]::before {
   background-image:
-    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 47, 44, 0.98) 0%,
+      rgba(17, 47, 44, 0.9) 48%,
+      rgba(17, 47, 44, 0.34) 100%
+    ),
     url("/assets/brand/game-sound-capture-v1.webp");
 }
 
 .agh-conductor-game[data-game-id="challenge"]::before {
   background-image:
-    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 47, 44, 0.98) 0%,
+      rgba(17, 47, 44, 0.9) 48%,
+      rgba(17, 47, 44, 0.34) 100%
+    ),
     url("/assets/brand/game-camera-v1.webp");
 }
 
 .agh-conductor-game[data-game-id="phototunt"]::before {
   background-image:
-    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 47, 44, 0.98) 0%,
+      rgba(17, 47, 44, 0.9) 48%,
+      rgba(17, 47, 44, 0.34) 100%
+    ),
     url("/assets/brand/game-photo-hunt-v1.webp");
 }
 
 .agh-conductor-game[data-game-id="trackguess"]::before {
   background-image:
-    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 47, 44, 0.98) 0%,
+      rgba(17, 47, 44, 0.9) 48%,
+      rgba(17, 47, 44, 0.34) 100%
+    ),
     url("/assets/brand/game-track-reveal-v1.webp");
 }
 
 .agh-conductor-game[data-game-id="spectrumcourt"]::before {
   background-image:
-    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 47, 44, 0.98) 0%,
+      rgba(17, 47, 44, 0.9) 48%,
+      rgba(17, 47, 44, 0.34) 100%
+    ),
     url("/assets/brand/game-spectrum-court-v1.webp");
 }
 
 .agh-conductor-game[data-game-id="whoamong"]::before {
   background-image:
-    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 47, 44, 0.98) 0%,
+      rgba(17, 47, 44, 0.9) 48%,
+      rgba(17, 47, 44, 0.34) 100%
+    ),
     url("/assets/brand/game-whoamong-v1.webp");
 }
 
 .agh-conductor-game[data-game-id="impostor"]::before {
   background-image:
-    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 47, 44, 0.98) 0%,
+      rgba(17, 47, 44, 0.9) 48%,
+      rgba(17, 47, 44, 0.34) 100%
+    ),
     url("/assets/brand/game-impostor-v1.webp");
 }
 
 .agh-conductor-game[data-game-id="smokescreen"]::before {
   background-image:
-    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 47, 44, 0.98) 0%,
+      rgba(17, 47, 44, 0.9) 48%,
+      rgba(17, 47, 44, 0.34) 100%
+    ),
     url("/assets/brand/game-smoke-screen-v1.webp");
 }
 
 .agh-conductor-game[data-game-id="toastsyndicate"]::before {
   background-image:
-    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 47, 44, 0.98) 0%,
+      rgba(17, 47, 44, 0.9) 48%,
+      rgba(17, 47, 44, 0.34) 100%
+    ),
     url("/assets/brand/game-toast-syndicate-v1.webp");
 }
 
 .agh-conductor-game[data-game-id="stilllife"]::before {
   background-image:
-    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 47, 44, 0.98) 0%,
+      rgba(17, 47, 44, 0.9) 48%,
+      rgba(17, 47, 44, 0.34) 100%
+    ),
     url("/assets/brand/game-still-life-v1.webp");
 }
 
 .agh-conductor-game[data-game-id="sommelier"]::before {
   background-image:
-    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 47, 44, 0.98) 0%,
+      rgba(17, 47, 44, 0.9) 48%,
+      rgba(17, 47, 44, 0.34) 100%
+    ),
     url("/assets/brand/game-sommelier-v1.webp");
 }
 
 .agh-conductor-game[data-game-id="crossexamination"]::before {
   background-image:
-    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 47, 44, 0.98) 0%,
+      rgba(17, 47, 44, 0.9) 48%,
+      rgba(17, 47, 44, 0.34) 100%
+    ),
     url("/assets/brand/game-cross-examination-v1.webp");
 }
 
 .agh-conductor-game[data-game-id="tongsoftruth"]::before {
   background-image:
-    linear-gradient(90deg, rgba(17, 47, 44, 0.98) 0%, rgba(17, 47, 44, 0.9) 48%, rgba(17, 47, 44, 0.34) 100%),
+    linear-gradient(
+      90deg,
+      rgba(17, 47, 44, 0.98) 0%,
+      rgba(17, 47, 44, 0.9) 48%,
+      rgba(17, 47, 44, 0.34) 100%
+    ),
     url("/assets/brand/game-tongs-truth-v1.webp");
 }
 
@@ -9190,13 +9666,40 @@
 
   .agh-host-brief-heading,
   .agh-host-brief-thread,
-  .agh-host-brief-equipment {
+  .agh-host-brief-equipment,
+  .agh-night-pack-heading {
     grid-template-columns: 1fr;
   }
 
   .agh-host-brief-heading > p,
-  .agh-host-brief-equipment > strong {
+  .agh-host-brief-equipment > strong,
+  .agh-night-pack-heading > p {
+    max-width: none;
     text-align: left;
+  }
+
+  .agh-night-pack-next > li,
+  .agh-night-pack-sheet ol > li {
+    grid-template-columns: 1fr;
+  }
+
+  .agh-night-pack-next > li > span,
+  .agh-night-pack-sheet ol > li > span {
+    grid-row: auto;
+  }
+
+  .agh-night-pack-exports {
+    grid-template-columns: 1fr;
+  }
+
+  .agh-night-pack-exports > button {
+    min-height: 48px;
+    border-right: 0;
+    border-bottom: 2px solid var(--agh-paper);
+  }
+
+  .agh-night-pack-exports > button:last-child {
+    border-bottom: 0;
   }
 
   .agh-launch-action {

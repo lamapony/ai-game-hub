@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { eventProfile } from "@/lib/event-profile";
+import { OperatorNightPackCard } from "@/components/operator-night-pack-card";
 import { QuickStartBriefCard } from "@/components/quick-start-brief-card";
 import { PARTY_STORY_SEED_MAX_LENGTH } from "@/lib/party-context";
 import { createRoom, storedPlayerResumes } from "@/lib/room";
@@ -293,6 +294,16 @@ function Landing() {
             {createError}
           </p>
         )}
+
+        <OperatorNightPackCard
+          context="landing"
+          input={{
+            venue,
+            targetDurationMinutes: duration,
+            expectedPlayers,
+            storySeedConfigured: storySeed.trim().length > 0,
+          }}
+        />
       </section>
 
       <section id="join-room" className="agh-join" aria-labelledby="join-room-title">
