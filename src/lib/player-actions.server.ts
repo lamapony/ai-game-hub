@@ -15,6 +15,8 @@ export type PlayerAction =
   | "spectrumcourt-guess"
   | "spectrumcourt-appeal"
   | "whoamong-vote"
+  | "whoamong-exhibit"
+  | "whoamong-plea"
   | "impostor-answer"
   | "impostor-vote";
 
@@ -335,6 +337,56 @@ function whoAmongVoteState(state: RoomState, payload: PlayerActionPayload, now: 
   };
 }
 
+function whoAmongExhibitState(
+  state: RoomState,
+  payload: PlayerActionPayload,
+  now: number,
+): RoomState {
+  const player = requireAuthorizedPlayer(state, payload);
+  const whoamong = state.whoamong;
+  if (state.currentGame !== "whoamong" || !whoamong || whoamong.phase !== "voting") {
+    throw statusError("who among exhibits are closed", 409);
+  }
+  if (whoamong.voteEndsAt && whoamong.voteEndsAt < now) {
+    throw statusError("who among exhibits are closed", 409);
+  }
+  return {
+    ...state,
+    whoamong: {
+      ...whoamong,
+      exhibits: {
+        ...(whoamong.exhibits ?? {}),
+        [player.id]: cleanText(payload.answer, "exhibit", 80),
+      },
+    },
+  };
+}
+
+function whoAmongPleaState(state: RoomState, payload: PlayerActionPayload, now: number): RoomState {
+  const player = requireAuthorizedPlayer(state, payload);
+  const whoamong = state.whoamong;
+  if (state.currentGame !== "whoamong" || !whoamong || whoamong.phase !== "plea") {
+    throw statusError("who among pleas are closed", 409);
+  }
+  if (whoamong.pleaEndsAt && whoamong.pleaEndsAt < now) {
+    throw statusError("who among pleas are closed", 409);
+  }
+  const accused = whoamong.provisionalStarIds ?? [];
+  if (!accused.includes(player.id)) {
+    throw statusError("only the accused may file a plea", 403);
+  }
+  return {
+    ...state,
+    whoamong: {
+      ...whoamong,
+      pleas: {
+        ...(whoamong.pleas ?? {}),
+        [player.id]: cleanText(payload.answer, "plea", 140),
+      },
+    },
+  };
+}
+
 function impostorAnswerState(
   state: RoomState,
   payload: PlayerActionPayload,
@@ -404,6 +456,8 @@ export async function applyPlayerAction(
     return spectrumCourtAppealState(state, payload, now);
   }
   if (payload.action === "whoamong-vote") return whoAmongVoteState(state, payload, now);
+  if (payload.action === "whoamong-exhibit") return whoAmongExhibitState(state, payload, now);
+  if (payload.action === "whoamong-plea") return whoAmongPleaState(state, payload, now);
   if (payload.action === "impostor-answer") return impostorAnswerState(state, payload, now);
   if (payload.action === "impostor-vote") return impostorVoteState(state, payload, now);
   throw statusError("unknown player action", 400);

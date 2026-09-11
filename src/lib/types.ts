@@ -436,7 +436,7 @@ export type SommelierState = {
   crowdFavoriteOwnerId?: string;
 };
 
-export type WhoAmongPhase = "briefing" | "voting" | "reveal" | "results";
+export type WhoAmongPhase = "briefing" | "voting" | "plea" | "reveal" | "results";
 
 export type WhoAmongRoundResult = {
   promptId: string;
@@ -444,6 +444,10 @@ export type WhoAmongRoundResult = {
   starIds: string[];
   voteCounts: Record<string, number>;
   correctVoterIds: string[];
+  votes?: Record<string, string>;
+  exhibits?: Record<string, string>;
+  pleas?: Record<string, string>;
+  lastLash?: boolean;
 };
 
 export type WhoAmongState = {
@@ -455,7 +459,11 @@ export type WhoAmongState = {
   promptId?: string;
   prompt?: string;
   votes?: Record<string, string>;
+  exhibits?: Record<string, string>;
+  provisionalStarIds?: string[];
+  pleas?: Record<string, string>;
   voteEndsAt?: number;
+  pleaEndsAt?: number;
   revealEndsAt?: number;
   roundResults?: WhoAmongRoundResult[];
 };
@@ -588,6 +596,7 @@ export type ImpostorRoundResult = {
   aiAnswerId: string;
   votes: Record<string, string>;
   correctVoterIds: string[];
+  finalFibbage?: boolean;
 };
 
 export type ImpostorState = {

@@ -190,6 +190,8 @@ function mergeActiveRoundPlayerData(current: RoomState, submitted: RoomState): R
       whoamong: {
         ...submitted.whoamong!,
         votes: mergeRecord(current.whoamong?.votes, submitted.whoamong?.votes),
+        exhibits: mergeRecord(current.whoamong?.exhibits, submitted.whoamong?.exhibits),
+        pleas: mergeRecord(current.whoamong?.pleas, submitted.whoamong?.pleas),
       },
     };
   }

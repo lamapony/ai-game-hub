@@ -951,6 +951,7 @@ function formatRoundPhaseLabel(game: GameId | null | undefined, phase: string | 
     whoamong: {
       briefing: "Start",
       voting: "Voting",
+      plea: "Plea",
       reveal: "Reveal",
       results: "Results",
     },
@@ -1755,7 +1756,7 @@ function Lobby({
               emoji="🕵️"
               title="Who Among Us"
               time="~5 rounds"
-              desc="A pointed question appears — secretly vote for the player who fits best."
+              desc="Vote who fits, file a one-line charge, then make the accused testify. Last round doubles."
               disabled={!canWhoAmong}
               disabledHint={!canWhoAmong ? "needs ≥ 3 players" : undefined}
               onClick={() => onLaunchGame("whoamong")}

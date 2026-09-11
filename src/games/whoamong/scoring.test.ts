@@ -103,4 +103,25 @@ describe("who among scoring", () => {
     expect(roundResult).toBeNull();
     expect(teams).toBe(state.teams);
   });
+
+  test("Last Lash doubles star and voter points on the final round", () => {
+    const state = roomState({
+      whoamong: whoAmongState({
+        roundNumber: 5,
+        totalRounds: 5,
+        votes: { p1: "p2", p2: "p2", p3: "p1" },
+        exhibits: { p1: "because the tongs salute him" },
+        pleas: { p2: "I accept the tongs. I deny the crime." },
+      }),
+    });
+
+    const { teams, roundResult } = scoreWhoAmongRound(state, state.whoamong!);
+
+    expect(roundResult?.lastLash).toBe(true);
+    expect(roundResult?.exhibits?.p1).toContain("tongs");
+    expect(roundResult?.pleas?.p2).toContain("deny");
+    expect(teams.find((t) => t.id === "lake")?.score).toBe(10);
+    expect(teams.find((t) => t.id === "forest")?.score).toBe(4);
+    expect(teams.find((t) => t.id === "fire")?.score).toBe(0);
+  });
 });

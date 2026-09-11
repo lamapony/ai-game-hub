@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { IMPOSTOR_QUESTION_CATALOG } from "./impostor/catalog";
-import { SPECTRUM_PROMPTS } from "./spectrumcourt/catalog";
+import { IMPOSTOR_QUESTION_CATALOG, pickImpostorQuestion } from "./impostor/catalog";
+import { pickSpectrumPrompt, SPECTRUM_PROMPTS } from "./spectrumcourt/catalog";
 import { pickBalancedTrackFromPool, TRACK_CATALOG, type CatalogTrack } from "./trackguess/catalog";
 import { isSpotifyUrl } from "./trackguess/spotify";
-import { PROMPT_CATALOG } from "./whoamong/catalog";
+import { pickCatalogPrompt, PROMPT_CATALOG } from "./whoamong/catalog";
 
 function idsAreUnique(items: Array<{ id: string }>) {
   return new Set(items.map((item) => item.id)).size === items.length;
@@ -30,6 +30,17 @@ describe("game content catalogs", () => {
     expect(idsAreUnique(IMPOSTOR_QUESTION_CATALOG)).toBe(true);
     expect(idsAreUnique(SPECTRUM_PROMPTS)).toBe(true);
     expect(idsAreUnique(TRACK_CATALOG)).toBe(true);
+  });
+
+  test("themed pickers prefer grill and bar prompts when an act is set", () => {
+    const grillPrompt = pickCatalogPrompt([], 0.1, { actId: "grill" });
+    expect(grillPrompt.acts?.includes("grill")).toBe(true);
+
+    const barQuestion = pickImpostorQuestion([], 0.1, { actId: "bar" });
+    expect(barQuestion.acts?.includes("bar")).toBe(true);
+
+    const grillScale = pickSpectrumPrompt([], 0.1, { actId: "grill" });
+    expect(grillScale.acts?.includes("grill")).toBe(true);
   });
 
   test("balanced track picker pulls from the underused real/AI side", () => {

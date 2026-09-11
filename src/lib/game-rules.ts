@@ -11,6 +11,7 @@ import {
   SOUND_TOPICS_MS,
   SPECTRUM_COURT_CLUE_MS,
   TRACK_GUESS_LISTEN_MS,
+  WHO_AMONG_PLEA_MS,
   WHO_AMONG_VOTE_MS,
 } from "./host-controls";
 
@@ -31,6 +32,7 @@ const challengeBriefingSec = Math.round(CHALLENGE_BRIEFING_MS / 1000);
 const listenSec = Math.round(TRACK_GUESS_LISTEN_MS / 1000);
 const clueSec = Math.round(SPECTRUM_COURT_CLUE_MS / 1000);
 const voteSec = Math.round(WHO_AMONG_VOTE_MS / 1000);
+const pleaSec = Math.round(WHO_AMONG_PLEA_MS / 1000);
 
 export const GAME_RULES: Record<GameId, GameRules> = {
   soundscape: {
@@ -108,22 +110,22 @@ export const GAME_RULES: Record<GameId, GameRules> = {
       "A question appears — write a funny answer on your phone",
       "AI secretly slips its own answer into the pile",
       "All answers appear anonymously — vote for the bot's one",
-      "Reveal: spot the bot for points, or get mistaken for it",
+      "Reveal: spot the bot, or get mistaken for it. Last round is Final Fibbage (double points)",
     ],
-    scoring: "Spot the bot +3; +1 per vote your answer steals",
+    scoring: "Spot the bot +3; +1 per vote your answer steals. Final Fibbage doubles both",
     minPlayers: "3+ players",
   },
   whoamong: {
     title: "Who Among Us",
     emoji: "🕵️",
-    tagline: "A pointed question — secretly vote for the best fit",
+    tagline: "File a charge, then make the accused testify",
     steps: [
-      `${WHO_AMONG_TOTAL_ROUNDS} rounds — a "who among us..." question appears`,
-      "Secretly choose one player — yourself is allowed",
-      `You get ~${voteSec}s to vote and can change your mind`,
-      "The host reveals the round star and awards points",
+      `${WHO_AMONG_TOTAL_ROUNDS} rounds — vote who fits and file a one-line exhibit`,
+      `You get ~${voteSec}s; last round is Last Lash (double points)`,
+      `The accused get ~${pleaSec}s to confess or deny`,
+      "Host reads the docket — charges, pleas, then the star",
     ],
-    scoring: "Round star +3 to their team; guessing the star +2",
+    scoring: "Star +3 / Last Lash +6; matching the room +2 / +4. Exhibits and pleas are the show",
     minPlayers: "3+ players",
   },
   grilloracle: {

@@ -3,10 +3,23 @@ import type { ImpostorRoundResult, ImpostorState, RoomState, Team } from "@/lib/
 export const IMPOSTOR_SPOTTER_POINTS = 3;
 export const IMPOSTOR_DECOY_POINTS = 1;
 
+export function impostorIsFinalFibbage(
+  imp: Pick<ImpostorState, "roundNumber" | "totalRounds">,
+): boolean {
+  return imp.roundNumber >= imp.totalRounds;
+}
+
+export function impostorPointMultiplier(
+  imp: Pick<ImpostorState, "roundNumber" | "totalRounds">,
+): number {
+  return impostorIsFinalFibbage(imp) ? 2 : 1;
+}
+
 /**
  * Deterministic scoring: +3 to your team if you spotted the AI answer,
  * +1 to a player's team for every vote their (human) answer collected —
  * being mistaken for the bot is a talent too.
+ * Final Fibbage (last round) doubles both payouts — Jackbox Fibbage 3.
  */
 export function scoreImpostorRound(
   state: RoomState,
@@ -18,6 +31,7 @@ export function scoreImpostorRound(
   }
 
   const votes = imp.votes ?? {};
+  const multiplier = impostorPointMultiplier(imp);
   const correctVoterIds = Object.entries(votes)
     .filter(([, answerId]) => answerId === aiAnswerId)
     .map(([voterId]) => voterId);
@@ -30,7 +44,7 @@ export function scoreImpostorRound(
   };
 
   for (const voterId of correctVoterIds) {
-    addPoints(voterId, IMPOSTOR_SPOTTER_POINTS);
+    addPoints(voterId, IMPOSTOR_SPOTTER_POINTS * multiplier);
   }
 
   const answerAuthor = new Map(
@@ -39,7 +53,7 @@ export function scoreImpostorRound(
   for (const [voterId, answerId] of Object.entries(votes)) {
     const authorId = answerAuthor.get(answerId);
     if (!authorId || authorId === voterId) continue;
-    addPoints(authorId, IMPOSTOR_DECOY_POINTS);
+    addPoints(authorId, IMPOSTOR_DECOY_POINTS * multiplier);
   }
 
   const teams = state.teams.map((t) =>
@@ -55,6 +69,7 @@ export function scoreImpostorRound(
       aiAnswerId,
       votes,
       correctVoterIds,
+      finalFibbage: multiplier === 2,
     },
   };
 }

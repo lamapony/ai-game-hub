@@ -161,7 +161,9 @@ export function collectFinaleEvidence(state: RoomState): FinaleEvidenceItem[] {
       russian ? "Кто из нас" : "Who Among Us",
       russian
         ? `${whoAmong.starIds.map((id) => playerName(state, id, russian)).join(" и ")} стали ответом комнаты на вопрос «${whoAmong.prompt}».`
-        : `${whoAmong.starIds.map((id) => playerName(state, id, russian)).join(" and ")} became the room's answer to “${whoAmong.prompt}”.`,
+        : `${whoAmong.starIds.map((id) => playerName(state, id, russian)).join(" and ")} became the room's answer to “${whoAmong.prompt}”.${
+            whoAmong.lastLash ? " Last Lash." : ""
+          }`,
     );
   }
 

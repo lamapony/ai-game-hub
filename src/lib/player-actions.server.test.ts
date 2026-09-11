@@ -359,4 +359,74 @@ describe("player server actions", () => {
       ),
     ).toBe(409);
   });
+
+  test("accepts Who Among exhibits while voting and pleas only from the accused", async () => {
+    const voting = roomState({
+      status: "playing",
+      currentGame: "whoamong",
+      players: [
+        { id: "p1", name: "Ada", teamId: "forest", joinedAt: 1, secretHash: "hash-p1" },
+        { id: "p2", name: "Bo", teamId: "lake", joinedAt: 2, secretHash: "hash-p2" },
+      ],
+      whoamong: {
+        phase: "voting",
+        roundId: "wa_1",
+        roundNumber: 1,
+        totalRounds: 5,
+        usedPromptIds: [],
+        promptId: "chaos",
+        prompt: "Who would cause chaos?",
+        voteEndsAt: 12_000,
+      },
+    });
+
+    const filed = await applyPlayerAction(
+      voting,
+      {
+        action: "whoamong-exhibit",
+        playerId: "p1",
+        playerSecretHash: "hash-p1",
+        answer: "because the tongs salute him",
+      },
+      10_000,
+    );
+    expect(filed.whoamong?.exhibits?.p1).toBe("because the tongs salute him");
+
+    const pleaState = {
+      ...filed,
+      whoamong: {
+        ...filed.whoamong!,
+        phase: "plea" as const,
+        provisionalStarIds: ["p2"],
+        pleaEndsAt: 20_000,
+      },
+    };
+
+    expect(
+      await rejectedStatus(() =>
+        applyPlayerAction(
+          pleaState,
+          {
+            action: "whoamong-plea",
+            playerId: "p1",
+            playerSecretHash: "hash-p1",
+            answer: "I was framed by the zucchini",
+          },
+          15_000,
+        ),
+      ),
+    ).toBe(403);
+
+    const pleaded = await applyPlayerAction(
+      pleaState,
+      {
+        action: "whoamong-plea",
+        playerId: "p2",
+        playerSecretHash: "hash-p2",
+        answer: "I accept the tongs. I deny the crime.",
+      },
+      15_000,
+    );
+    expect(pleaded.whoamong?.pleas?.p2).toContain("deny the crime");
+  });
 });

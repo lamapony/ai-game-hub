@@ -619,6 +619,27 @@ describe("host controls state helpers", () => {
     expect(skipCurrentPhaseState(state, now).whoamong?.voteEndsAt).toBe(now);
   });
 
+  test("skip whoamong plea ends plea timer immediately", () => {
+    const now = 58_000;
+    const state = roomState({
+      currentGame: "whoamong",
+      whoamong: {
+        phase: "plea",
+        roundId: "wa",
+        roundNumber: 1,
+        totalRounds: 5,
+        usedPromptIds: ["sleep-party"],
+        promptId: "sleep-party",
+        prompt: "Who among us would fall asleep?",
+        provisionalStarIds: ["p1"],
+        pleaEndsAt: now + 18_000,
+      },
+    });
+
+    expect(canSkipCurrentPhase(state)).toBe(true);
+    expect(skipCurrentPhaseState(state, now).whoamong?.pleaEndsAt).toBe(now);
+  });
+
   test("skip whoamong reveal ends reveal timer immediately", () => {
     const now = 60_000;
     const state = roomState({
