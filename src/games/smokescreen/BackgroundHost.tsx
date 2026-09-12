@@ -330,6 +330,17 @@ export function SmokeScreenBackgroundHost({ roomId, state }: { roomId: string; s
                   <i aria-hidden="true">
                     {checked ? (locale === "ru" ? "Да" : "Yes") : locale === "ru" ? "Нет" : "No"}
                   </i>
+                  <span className="mt-2 block text-[11px] text-white/50">
+                    {Object.entries(smoke.guessTally?.[reveal.missionId] ?? {})
+                      .sort((left, right) => right[1] - left[1])
+                      .map(([suspectId, count]) => {
+                        const name =
+                          state.players.find((player) => player.id === suspectId)?.name ??
+                          suspectId;
+                        return `${name} ${count}`;
+                      })
+                      .join(" · ") || (locale === "ru" ? "голосов пока нет" : "no votes yet")}
+                  </span>
                 </label>
               );
             })}
