@@ -32,6 +32,7 @@ export const toastSyndicateRequestSchema = z.discriminatedUnion("action", [
       ...playerAddress,
       action: z.literal("catch"),
       guesses: z.array(z.string().trim().min(1).max(80)).max(3),
+      landed: z.boolean().optional(),
     })
     .strict(),
   z.object({ ...address, action: z.literal("finalize") }).strict(),
@@ -107,6 +108,8 @@ export function caughtToastWords(params: {
   ) as Record<string, string[]>;
 }
 
+export const TOAST_LANDED_POINTS = 3;
+
 export function scoreToastRound(params: {
   roundId: string;
   speakerPlayerId: string;
@@ -114,6 +117,9 @@ export function scoreToastRound(params: {
   transcript: string;
   judgment: ToastJudgment;
   caughtByWordId: Record<string, string[]>;
+  lastRound?: boolean;
+  ballotCount?: number;
+  landedVoterIds?: string[];
 }): ToastSyndicateRoundResult {
   const judgedByWord = new Map(
     params.judgment.smuggled.map((entry) => [normalizeToastWord(entry.word), entry]),
@@ -134,6 +140,15 @@ export function scoreToastRound(params: {
       caughtByPlayerIds,
     };
   });
+  const landedVoterIds = [...new Set(params.landedVoterIds ?? [])];
+  const ballotCount = params.ballotCount ?? landedVoterIds.length;
+  const toastLanded = ballotCount > 0 && landedVoterIds.length * 2 > ballotCount;
+  const multiplier = params.lastRound ? 2 : 1;
+  if (params.lastRound) {
+    Object.keys(listenerPoints).forEach((playerId) => {
+      listenerPoints[playerId] = (listenerPoints[playerId] ?? 0) * 2;
+    });
+  }
   return {
     roundId: params.roundId,
     speakerPlayerId: params.speakerPlayerId,
@@ -142,9 +157,14 @@ export function scoreToastRound(params: {
     genreScore: params.judgment.genre_score,
     words,
     speakerPoints:
-      params.judgment.genre_score +
-      words.filter((word) => word.used && word.caughtByPlayerIds.length === 0).length * 5,
+      (params.judgment.genre_score +
+        words.filter((word) => word.used && word.caughtByPlayerIds.length === 0).length * 5 +
+        (toastLanded ? TOAST_LANDED_POINTS : 0)) *
+      multiplier,
     listenerPoints,
     comment: params.judgment.comment,
+    lastRound: Boolean(params.lastRound),
+    toastLanded,
+    landedCount: landedVoterIds.length,
   };
 }

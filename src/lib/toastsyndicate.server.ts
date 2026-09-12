@@ -379,6 +379,7 @@ export async function submitToastSyndicateCatch(params: {
   player: Player;
   roundId: string;
   guesses: string[];
+  landed?: boolean;
   now?: number;
 }) {
   const toast = assertToastRound(params.state, params.roundId);
@@ -386,11 +387,12 @@ export async function submitToastSyndicateCatch(params: {
     throw statusError("speaker cannot inspect their own cargo", 403);
   const guesses = [...new Set(params.guesses.map((guess) => guess.trim()).filter(Boolean))];
   if (guesses.length > 3) throw statusError("submit at most three suspected words", 400);
+  const landed = Boolean(params.landed);
   const key = toastCatchIdempotencyKey(params.roundId, params.player.id);
   const existing = await findPartyRecordByIdempotency(params.roomId, key);
   if (existing) {
     const record = assertCatchRow(existing, params.roundId, params.player.id);
-    if (!sameToastGuesses(record.guesses, guesses)) {
+    if (!sameToastGuesses(record.guesses, guesses) || Boolean(record.landed) !== landed) {
       throw statusError("catch ballot is already sealed", 409);
     }
     if (toast.submittedListenerIds.includes(params.player.id)) return { toast };
@@ -406,7 +408,7 @@ export async function submitToastSyndicateCatch(params: {
         ownerPlayerId: params.player.id,
         kind: TOAST_CATCH_KIND,
         visibility: "player",
-        payload: { version: 1, guesses, submittedAt: params.now ?? Date.now() },
+        payload: { version: 1, guesses, landed, submittedAt: params.now ?? Date.now() },
       },
     });
   }
@@ -553,6 +555,9 @@ export async function finalizeToastSyndicateRound(params: {
       transcript: recordingRecord.transcript,
       judgment,
       caughtByWordId,
+      lastRound: toast.roundNumber === toast.totalRounds,
+      ballotCount: catches.length,
+      landedVoterIds: catches.flatMap(({ playerId, record }) => (record.landed ? [playerId] : [])),
     });
     const created = await createPartyRecord({
       roomId: params.room.id,

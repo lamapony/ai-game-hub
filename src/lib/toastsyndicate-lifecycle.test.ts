@@ -75,6 +75,22 @@ describe("Toast Syndicate lifecycle contract", () => {
     expect(result.speakerPoints).toBe(14);
     expect(result.listenerPoints).toEqual({ p2: 3, p3: 3 });
     expect(result.words[2]?.caughtByPlayerIds).toEqual([]);
+    expect(result.toastLanded).toBe(false);
+
+    const last = scoreToastRound({
+      roundId: "toast_last",
+      speakerPlayerId: "p1",
+      assignment,
+      transcript: "Наша дружба — карбюратор. А там фьорд.",
+      judgment,
+      caughtByWordId: { carburetor: [], fjord: ["p2", "p3"], laminate: ["p2"] },
+      lastRound: true,
+      ballotCount: 3,
+      landedVoterIds: ["p2", "p3"],
+    });
+    expect(last.toastLanded).toBe(true);
+    expect(last.speakerPoints).toBe(34);
+    expect(last.listenerPoints).toEqual({ p2: 6, p3: 6 });
   });
 
   test("accepts an explicit empty listener ballot and rejects more than three guesses", () => {
