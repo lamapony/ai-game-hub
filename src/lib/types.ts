@@ -76,7 +76,9 @@ export type SoundscapeState = {
   voteOpenAt?: number;
 };
 
-export type ChallengePhase = "briefing" | "recording" | "judging" | "results";
+export type ChallengePhase = "briefing" | "recording" | "judging" | "voting" | "results";
+
+export type ChallengeAudienceVote = "boost" | "cut";
 
 export type ChallengeRound = {
   roundId: string;
@@ -99,6 +101,10 @@ export type ChallengeState = {
   recordingEndsAt?: number;
   result?: {
     score: number;
+    awardedScore?: number;
+    audienceAdjustment?: number;
+    audienceBoostCount?: number;
+    audienceCutCount?: number;
     feedback: string;
     videoUrl: string;
     breakdown?: {
@@ -108,6 +114,8 @@ export type ChallengeState = {
       environment: number;
     };
   };
+  audienceVotes?: Record<string, ChallengeAudienceVote>;
+  voteEndsAt?: number;
   aiFallback?: boolean;
   pastOperatorIds?: string[];
 };
@@ -134,6 +142,8 @@ export type GrillOracleMemory = {
   participantIds: string[];
   submittedPlayerIds: string[];
   verifiedPlayerIds: string[];
+  /** guesserId -> ownerId -> how many of the three signs they think land */
+  countGuesses?: Record<string, Record<string, number>>;
   status: GrillOracleMemoryStatus;
 };
 
@@ -156,6 +166,7 @@ export type SmokeScreenState = {
   participantIds: string[];
   assignedPlayerIds: string[];
   submittedVoterIds: string[];
+  guessTally?: Record<string, Record<string, number>>;
   startedAt: number;
   revealedAt?: number;
   completedAt?: number;
@@ -190,6 +201,7 @@ export type ContrabandState = {
     accusedPlayerId: string;
     createdAt: number;
     audioEndsAt?: number;
+    corroboratorIds?: string[];
   };
   lastResolution?: {
     accusationId: string;
@@ -309,6 +321,7 @@ export type CrossExaminationState = {
   recordingEndsAt?: number;
   submittedPlayerIds: string[];
   predictionVoterIds: string[];
+  livePredictionCounts?: Partial<Record<CrossQuestionCategory, number>>;
   result?: CrossExaminationPairResult;
   pairResults: CrossExaminationPairResult[];
   completedAt?: number;
@@ -332,6 +345,9 @@ export type ToastSyndicateRoundResult = {
   speakerPoints: number;
   listenerPoints: Record<string, number>;
   comment: string;
+  lastRound?: boolean;
+  toastLanded?: boolean;
+  landedCount?: number;
 };
 
 /** Public ritual state. Contraband words stay in the speaker's private party record until results. */
@@ -368,6 +384,7 @@ export type StillLifeResultEntry = {
   auctionPriceDkk: number;
   critique: string;
   audienceVotes: number;
+  crowdFavorite?: boolean;
   aiFallback: boolean;
   manualOverride: boolean;
 };
@@ -440,6 +457,8 @@ export type SommelierState = {
   roundResults: SommelierRoundResult[];
   crowdFavoriteEntryId?: string;
   crowdFavoriteOwnerId?: string;
+  clapCounts?: Record<string, number>;
+  clappedPlayerIds?: string[];
 };
 
 export type WhoAmongPhase = "briefing" | "voting" | "plea" | "reveal" | "results";
@@ -474,7 +493,7 @@ export type WhoAmongState = {
   roundResults?: WhoAmongRoundResult[];
 };
 
-export type PhotoHuntPhase = "briefing" | "hunting" | "judging" | "results";
+export type PhotoHuntPhase = "briefing" | "hunting" | "judging" | "voting" | "results";
 
 export type PhotoHuntResultEntry = {
   playerId: string;
@@ -484,6 +503,7 @@ export type PhotoHuntResultEntry = {
   rank: number;
   points: number;
   comment: string;
+  crowdFavorite?: boolean;
 };
 
 export type PhotoHuntState = {
@@ -495,6 +515,9 @@ export type PhotoHuntState = {
   hunterIds?: string[];
   submittedPlayerIds?: string[];
   results?: PhotoHuntResultEntry[];
+  audienceVotes?: Record<string, string>;
+  voteEndsAt?: number;
+  crowdFavoritePlayerId?: string;
   aiFallback?: boolean;
   pastTasks?: string[];
 };

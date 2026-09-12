@@ -1,4 +1,5 @@
 import type { DeviceCheckStatus, RoomState, SpectrumCourtAppeal } from "./types";
+import { markGrillOracleGuessState } from "./game-state";
 import { isGenericPlayerName, normalizePlayerName } from "./player-name";
 import { assertPlayerSecret, cleanId, statusError } from "./player-auth.server";
 import { MAX_ROOM_PLAYERS, roomHasPlayerCapacity } from "./room-capacity";
@@ -10,6 +11,8 @@ export type PlayerAction =
   | "device-check"
   | "soundscape-topic-vote"
   | "challenge-start-recording"
+  | "challenge-vote"
+  | "phototunt-vote"
   | "trackguess-guess"
   | "spectrumcourt-clue"
   | "spectrumcourt-guess"
@@ -18,7 +21,8 @@ export type PlayerAction =
   | "whoamong-exhibit"
   | "whoamong-plea"
   | "impostor-answer"
-  | "impostor-vote";
+  | "impostor-vote"
+  | "oracle-guess";
 
 export type PlayerActionPayload = {
   action: PlayerAction;
@@ -203,6 +207,60 @@ function challengeStartRecordingState(
       phase: "recording",
       briefingEndsAt: undefined,
       recordingEndsAt: now + CHALLENGE_RECORDING_MS,
+    },
+  };
+}
+
+function challengeVoteState(
+  state: RoomState,
+  payload: PlayerActionPayload,
+  now: number,
+): RoomState {
+  const player = requireAuthorizedPlayer(state, payload);
+  const challenge = state.challenge;
+  if (state.currentGame !== "challenge" || !challenge || challenge.phase !== "voting") {
+    throw statusError("challenge voting is closed", 409);
+  }
+  if (challenge.voteEndsAt && challenge.voteEndsAt < now) {
+    throw statusError("challenge voting is closed", 409);
+  }
+  if (challenge.operatorId === player.id) {
+    throw statusError("the operator cannot vote on their own footage", 403);
+  }
+  const vote = payload.answer === "cut" ? "cut" : payload.answer === "boost" ? "boost" : null;
+  if (!vote) throw statusError("challenge vote required", 400);
+  return {
+    ...state,
+    challenge: {
+      ...challenge,
+      audienceVotes: { ...(challenge.audienceVotes ?? {}), [player.id]: vote },
+    },
+  };
+}
+
+function photoHuntVoteState(
+  state: RoomState,
+  payload: PlayerActionPayload,
+  now: number,
+): RoomState {
+  const player = requireAuthorizedPlayer(state, payload);
+  const targetPlayerId = cleanId(payload.targetPlayerId, "targetPlayerId");
+  const phototunt = state.phototunt;
+  if (state.currentGame !== "phototunt" || !phototunt || phototunt.phase !== "voting") {
+    throw statusError("photo hunt voting is closed", 409);
+  }
+  if (phototunt.voteEndsAt && phototunt.voteEndsAt < now) {
+    throw statusError("photo hunt voting is closed", 409);
+  }
+  if (targetPlayerId === player.id) throw statusError("cannot vote for your own photo", 403);
+  if (!phototunt.results?.some((entry) => entry.playerId === targetPlayerId)) {
+    throw statusError("photo not in this round", 409);
+  }
+  return {
+    ...state,
+    phototunt: {
+      ...phototunt,
+      audienceVotes: { ...(phototunt.audienceVotes ?? {}), [player.id]: targetPlayerId },
     },
   };
 }
@@ -412,6 +470,22 @@ function impostorAnswerState(
   };
 }
 
+function oracleGuessState(state: RoomState, payload: PlayerActionPayload): RoomState {
+  const player = requireAuthorizedPlayer(state, payload);
+  const memory = state.oracleMemory;
+  if (!memory || memory.status !== "revealed") {
+    throw statusError("oracle guessing is closed", 409);
+  }
+  const ownerPlayerId = cleanId(payload.targetPlayerId, "targetPlayerId");
+  if (player.id === ownerPlayerId) {
+    throw statusError("the oracle cannot guess their own count", 403);
+  }
+  const count = cleanNumber(payload.value, "value", 0, 3);
+  const next = markGrillOracleGuessState(state, player.id, ownerPlayerId, count);
+  if (!next) throw statusError("oracle guessing is closed", 409);
+  return next;
+}
+
 function impostorVoteState(state: RoomState, payload: PlayerActionPayload, now: number): RoomState {
   const player = requireAuthorizedPlayer(state, payload);
   const answerId = cleanId(payload.answerId, "answerId");
@@ -449,6 +523,8 @@ export async function applyPlayerAction(
   if (payload.action === "challenge-start-recording") {
     return challengeStartRecordingState(state, payload, now);
   }
+  if (payload.action === "challenge-vote") return challengeVoteState(state, payload, now);
+  if (payload.action === "phototunt-vote") return photoHuntVoteState(state, payload, now);
   if (payload.action === "trackguess-guess") return trackGuessGuessState(state, payload, now);
   if (payload.action === "spectrumcourt-clue") return spectrumCourtClueState(state, payload);
   if (payload.action === "spectrumcourt-guess") return spectrumCourtGuessState(state, payload, now);
@@ -460,5 +536,6 @@ export async function applyPlayerAction(
   if (payload.action === "whoamong-plea") return whoAmongPleaState(state, payload, now);
   if (payload.action === "impostor-answer") return impostorAnswerState(state, payload, now);
   if (payload.action === "impostor-vote") return impostorVoteState(state, payload, now);
+  if (payload.action === "oracle-guess") return oracleGuessState(state, payload);
   throw statusError("unknown player action", 400);
 }

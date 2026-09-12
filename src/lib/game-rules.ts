@@ -57,9 +57,10 @@ export const GAME_RULES: Record<GameId, GameRules> = {
       `The operator has ${challengeBriefingSec}s to tap "Open camera"`,
       "25s of filming — everyone else performs the prompt",
       "AI judges the frames and transcribed speech",
+      "The room then votes boost or cut — AI is not the only ranker",
     ],
     scoring:
-      "0–10 points to the operator's team; party acts show scene / creative / energy / environment breakdown before the cap",
+      "AI 0–10 is a roast, not the payout. Majority boost +3, majority cut −1, tie leaves the judge; team points land after the vote",
     minPlayers: "2+ players",
   },
   phototunt: {
@@ -70,10 +71,10 @@ export const GAME_RULES: Record<GameId, GameRules> = {
       "The park spirit puts an absurd prompt on screen",
       "60s to find something and take one photo",
       "Tap once — the photo is submitted, no retakes",
-      "AI ranks the shots and announces the verdict",
+      "AI ranks the shots, then the room votes a crowd favorite",
     ],
     scoring:
-      "Server-ranked places score 5 / 3 / 2 / 1; party acts add a visible +0–5 environment criterion",
+      "AI places score 5 / 3 / 2 / 1; a unique crowd-favorite plurality adds +3 after the vote; ties add nothing",
     minPlayers: "1+ players",
   },
   trackguess: {
@@ -137,10 +138,11 @@ export const GAME_RULES: Record<GameId, GameRules> = {
       "AI reads visible details and writes exactly three predictions",
       "The reading stays private to its owner during capture",
       "At the act transition, the host seals it for a later reveal",
-      "In the bar, the room confirms all three outcomes before the verdict is locked",
+      "In the bar, the host reads the signs; everyone else guesses how many land (0–3)",
+      "The room confirms all three outcomes before the verdict is locked",
     ],
     scoring:
-      "After verification: +5 per fulfilled prediction to the owner; +3 per disproved prediction to each represented opposing team",
+      "After verification: +5 per fulfilled prediction to the owner; +3 per disproved prediction to each represented opposing team; +1 if you guessed the fulfilled count",
     minPlayers: "1+ players",
   },
   smokescreen: {
@@ -151,7 +153,7 @@ export const GAME_RULES: Record<GameId, GameRules> = {
       "AI privately deals one 5 / 10 / 15-point social mission to every player",
       "Carry it out during the act while foreground games continue normally",
       "The host seals the fieldwork, then reveals an anonymous mission list",
-      "Every player maps each mission to a suspected culprit",
+      "Every player maps each mission to a suspected culprit — live anonymous tallies update while the room argues",
       "The host confirms which missions happened and locks the room verdict",
     ],
     scoring:
@@ -166,11 +168,12 @@ export const GAME_RULES: Record<GameId, GameRules> = {
       "Every player privately receives one strange but conversational phrase",
       "Weave it into a real bar conversation while foreground games keep running",
       "Anyone who hears suspicious cargo shouts Contraband and files the alleged quote",
+      "Witnesses can tap I heard it too; when the timer ends the host screen auto-closes the border",
       "The accused confesses or records 8–25 seconds of surrounding context",
       "AI judges only textual organicity; if STT or AI fails, the host rules manually",
     ],
     scoring:
-      "Clean or timer-surviving smuggler +10; successful catcher +5; false accusation −2. The server, never AI, applies the formula",
+      "Clean or timer-surviving smuggler +10; successful catcher +5; false accusation −2; witnesses +1 on a real catch or −1 on a false call. The server, never AI, applies the formula",
     minPlayers: "3–30 players",
   },
   tongsoftruth: {
@@ -196,7 +199,7 @@ export const GAME_RULES: Record<GameId, GameRules> = {
     steps: [
       "The host reviews real party records and excludes anything too sensitive for a callback",
       "Three or four pairs receive four evidence-grounded questions and answer separately",
-      "The audience predicts which category will contain the strongest contradiction",
+      "The audience predicts which category will contain the strongest contradiction — live anonymous counts show the coalition forming",
       "Only short versions and fixed-severity findings become public; full transcripts stay private",
       "The noir verdict feeds the score ledger, then the finale still works if this case is skipped",
     ],
@@ -211,11 +214,11 @@ export const GAME_RULES: Record<GameId, GameRules> = {
     steps: [
       "The speaker privately receives three contraband words; the genre is public",
       "Record a 30–60 second toast while the room listens for suspicious words",
-      "Each listener files up to three catches without seeing the real list",
+      "Each listener files up to three catches and can mark that the toast landed",
       "STT and the AI judge check genre, usage and smoothness; the server locks the score",
     ],
     scoring:
-      "Speaker: genre 0–10 +5 per used word nobody caught; each listener gets +3 per used word they named",
+      "Speaker: genre 0–10 +5 per used word nobody caught; listeners +3 per used word they named; majority landed +3 to the speaker; last round doubles speaker and listener points",
     minPlayers: "3+ players",
   },
   stilllife: {
@@ -228,9 +231,10 @@ export const GAME_RULES: Record<GameId, GameRules> = {
       "One teammate photographs and submits the installation",
       "AI or the host jury scores composition, drama and use of materials",
       "Vote for another team's lot; the room breaks only an exact jury-score tie",
+      "A unique crowd favorite also takes +3, without overturning a higher jury score",
     ],
     scoring:
-      "Composition 0–10 + drama 0–10 + real-environment material bonus 0–5; audience vote breaks an exact tie",
+      "Composition 0–10 + drama 0–10 + real-environment material bonus 0–5; audience vote breaks an exact tie; unique crowd favorite +3",
     minPlayers: "2+ active teams",
   },
   sommelier: {
@@ -241,7 +245,7 @@ export const GAME_RULES: Record<GameId, GameRules> = {
       "Up to 10 selected guests privately photograph the drink already in front of them",
       "AI reads only the glass and bar evidence, then publishes an anonymous roast-profile",
       "Everyone except the real owner secretly guesses whose drink it is",
-      "Reveal the owner, then move through every submitted glass",
+      "Reveal the owner, then clap the portrait that landed; claps nominate, the host still locks the +3 favorite",
       "The host names the one reveal that caused the loudest room reaction",
     ],
     scoring:

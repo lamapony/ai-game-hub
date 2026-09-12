@@ -86,15 +86,30 @@ export function ChallengePlayer({
     );
   }
 
+  if (ch.phase === "voting" && ch.result) {
+    return <ChallengeRoomVote roomId={roomId} state={state} me={me} />;
+  }
+
   if (ch.phase === "results" && ch.result) {
+    const awarded = ch.result.awardedScore ?? ch.result.score;
     return (
       <Card>
         <Pill>Verdict</Pill>
         <div className="font-display text-7xl text-[var(--color-park-bright)] tabular-num">
-          {ch.result.score}
-          <span className="text-white/40 text-3xl">/10</span>
+          {awarded}
+          <span className="text-white/40 text-3xl"> pts</span>
         </div>
         <p className="text-white mt-3">«{ch.result.feedback}»</p>
+        {typeof ch.result.audienceAdjustment === "number" && (
+          <p className="mt-2 text-xs text-white/60">
+            AI {ch.result.score}/10
+            {ch.result.audienceAdjustment > 0
+              ? ` · room boosted +${ch.result.audienceAdjustment}`
+              : ch.result.audienceAdjustment < 0
+                ? ` · room cut ${ch.result.audienceAdjustment}`
+                : " · room split, judge stands"}
+          </p>
+        )}
         {ch.result.breakdown && (
           <p className="mt-2 text-xs text-white/60">
             Scene {ch.result.breakdown.performance} · creative {ch.result.breakdown.creativity} ·
@@ -109,6 +124,77 @@ export function ChallengePlayer({
   return (
     <Card>
       <H>Stand by…</H>
+    </Card>
+  );
+}
+
+function ChallengeRoomVote({
+  roomId,
+  state,
+  me,
+}: {
+  roomId: string;
+  state: RoomState;
+  me: { id: string };
+}) {
+  const ch = state.challenge!;
+  const isOperator = ch.operatorId === me.id;
+  const myVote = ch.audienceVotes?.[me.id];
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function vote(answer: "boost" | "cut") {
+    setBusy(true);
+    setErr(null);
+    try {
+      await postPlayerAction(roomId, {
+        action: "challenge-vote",
+        playerId: me.id,
+        answer,
+      });
+    } catch (error) {
+      setErr(friendlyPlayerActionError(error, "challenge vote"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card>
+      <Pill>The room decides</Pill>
+      <div className="font-display text-6xl text-[var(--color-park-bright)] tabular-num">
+        {ch.result?.score}
+        <span className="text-white/40 text-3xl">/10</span>
+      </div>
+      <p className="text-white mt-3">«{ch.result?.feedback}»</p>
+      {isOperator ? (
+        <P>Sit tight. Everyone else is voting whether that roast landed.</P>
+      ) : myVote ? (
+        <P>{myVote === "boost" ? "You boosted it." : "You cut it."} Waiting on the rest.</P>
+      ) : (
+        <>
+          <P>Did that actually land, or did the judge get generous?</P>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void vote("boost")}
+              className="rounded-2xl bg-[var(--color-park-bright)] px-4 py-3 font-medium text-[oklch(0.16_0.05_160)] disabled:opacity-40"
+            >
+              Boost it +3
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void vote("cut")}
+              className="rounded-2xl bg-white/10 px-4 py-3 font-medium text-white disabled:opacity-40"
+            >
+              Cut it −1
+            </button>
+          </div>
+        </>
+      )}
+      {err && <p className="mt-3 text-sm text-red-300">{err}</p>}
     </Card>
   );
 }

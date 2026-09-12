@@ -249,6 +249,100 @@ describe("player server actions", () => {
     ).toBe(403);
   });
 
+  test("lets the room boost or cut a Challenge roast, but not the operator", async () => {
+    const state = roomState({
+      status: "playing",
+      currentGame: "challenge",
+      players: [
+        { id: "p1", name: "Ada", teamId: "forest", joinedAt: 1, secretHash: "hash-p1" },
+        { id: "p2", name: "Bo", teamId: "lake", joinedAt: 2, secretHash: "hash-p2" },
+      ],
+      challenge: {
+        phase: "voting",
+        roundId: "ch_1",
+        operatorId: "p1",
+        operatorName: "Ada",
+        result: { score: 6, feedback: "Almost.", videoUrl: "" },
+        voteEndsAt: 30_000,
+      },
+    });
+
+    const boosted = await applyPlayerAction(
+      state,
+      { action: "challenge-vote", playerId: "p2", playerSecretHash: "hash-p2", answer: "boost" },
+      12_000,
+    );
+    expect(boosted.challenge?.audienceVotes).toEqual({ p2: "boost" });
+    expect(
+      await rejectedStatus(() =>
+        applyPlayerAction(state, {
+          action: "challenge-vote",
+          playerId: "p1",
+          playerSecretHash: "hash-p1",
+          answer: "boost",
+        }),
+      ),
+    ).toBe(403);
+  });
+
+  test("lets Photo Hunt players vote for another shot, never their own", async () => {
+    const state = roomState({
+      status: "playing",
+      currentGame: "phototunt",
+      players: [
+        { id: "p1", name: "Ada", teamId: "forest", joinedAt: 1, secretHash: "hash-p1" },
+        { id: "p2", name: "Bo", teamId: "lake", joinedAt: 2, secretHash: "hash-p2" },
+      ],
+      phototunt: {
+        phase: "voting",
+        roundId: "ph_1",
+        voteEndsAt: 40_000,
+        results: [
+          {
+            playerId: "p1",
+            playerName: "Ada",
+            teamId: "forest",
+            photoUrl: "https://example.test/a.jpg",
+            rank: 1,
+            points: 5,
+            comment: "Yes.",
+          },
+          {
+            playerId: "p2",
+            playerName: "Bo",
+            teamId: "lake",
+            photoUrl: "https://example.test/b.jpg",
+            rank: 2,
+            points: 3,
+            comment: "Also.",
+          },
+        ],
+      },
+    });
+
+    const voted = await applyPlayerAction(
+      state,
+      {
+        action: "phototunt-vote",
+        playerId: "p1",
+        playerSecretHash: "hash-p1",
+        targetPlayerId: "p2",
+      },
+      12_000,
+    );
+    expect(voted.phototunt?.audienceVotes).toEqual({ p1: "p2" });
+    expect(
+      await rejectedStatus(() =>
+        applyPlayerAction(state, {
+          action: "phototunt-vote",
+          playerId: "p1",
+          playerSecretHash: "hash-p1",
+          targetPlayerId: "p1",
+        }),
+      ),
+    ).toBe(403);
+  });
+
   test("validates Spectrum Court clue, guess, and appeal roles", async () => {
     const base = roomState({
       status: "playing",
@@ -428,5 +522,43 @@ describe("player server actions", () => {
       15_000,
     );
     expect(pleaded.whoamong?.pleas?.p2).toContain("deny the crime");
+  });
+
+  test("lets the room guess how many Grill Oracle signs land, but not the owner", async () => {
+    const state = roomState({
+      status: "playing",
+      currentGame: "grilloracle",
+      players: [
+        { id: "p1", name: "Ada", teamId: "forest", joinedAt: 1, secretHash: "hash-p1" },
+        { id: "p2", name: "Bo", teamId: "lake", joinedAt: 2, secretHash: "hash-p2" },
+      ],
+      oracleMemory: {
+        runId: "oracle_1",
+        participantIds: ["p1", "p2"],
+        submittedPlayerIds: ["p1", "p2"],
+        verifiedPlayerIds: [],
+        status: "revealed",
+      },
+    });
+
+    const guessed = await applyPlayerAction(state, {
+      action: "oracle-guess",
+      playerId: "p2",
+      playerSecretHash: "hash-p2",
+      targetPlayerId: "p1",
+      value: 2,
+    });
+    expect(guessed.oracleMemory?.countGuesses).toEqual({ p2: { p1: 2 } });
+    expect(
+      await rejectedStatus(() =>
+        applyPlayerAction(state, {
+          action: "oracle-guess",
+          playerId: "p1",
+          playerSecretHash: "hash-p1",
+          targetPlayerId: "p1",
+          value: 2,
+        }),
+      ),
+    ).toBe(403);
   });
 });

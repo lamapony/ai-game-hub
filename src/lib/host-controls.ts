@@ -1,3 +1,5 @@
+import { applyChallengeVotingResult, CHALLENGE_VOTE_MS } from "@/games/challenge/scoring";
+import { applyPhotoHuntVotingResult } from "@/games/phototunt/scoring";
 import { normalizePartyContext } from "./party-context";
 import { captureFinaleState, capturePartyEvidenceState } from "./finale-narrative";
 import type { RoomState, SpectrumCourtState, Team } from "./types";
@@ -91,12 +93,14 @@ export function resumeRoomState(state: RoomState, now = Date.now()): RoomState {
           ...state.challenge,
           briefingEndsAt: shiftTime(state.challenge.briefingEndsAt, deltaMs),
           recordingEndsAt: shiftTime(state.challenge.recordingEndsAt, deltaMs),
+          voteEndsAt: shiftTime(state.challenge.voteEndsAt, deltaMs),
         }
       : undefined,
     phototunt: state.phototunt
       ? {
           ...state.phototunt,
           huntEndsAt: shiftTime(state.phototunt.huntEndsAt, deltaMs),
+          voteEndsAt: shiftTime(state.phototunt.voteEndsAt, deltaMs),
         }
       : undefined,
     trackguess: state.trackguess
@@ -327,13 +331,15 @@ export function canSkipCurrentPhase(state: RoomState): boolean {
     return (
       (state.challenge.phase === "briefing" && !!state.challenge.task) ||
       state.challenge.phase === "recording" ||
-      state.challenge.phase === "judging"
+      state.challenge.phase === "judging" ||
+      state.challenge.phase === "voting"
     );
   }
   if (state.currentGame === "phototunt" && state.phototunt) {
     return (
       (state.phototunt.phase === "briefing" && !!state.phototunt.task) ||
-      state.phototunt.phase === "hunting"
+      state.phototunt.phase === "hunting" ||
+      state.phototunt.phase === "voting"
     );
   }
   if (state.currentGame === "trackguess" && state.trackguess) {
@@ -425,25 +431,23 @@ export function skipCurrentPhaseState(state: RoomState, now = Date.now()): RoomS
       };
     }
     if (ch.phase === "judging") {
-      const operator = state.players.find((player) => player.id === ch.operatorId);
-      const teams = state.teams.map((team) =>
-        operator && team.id === operator.teamId
-          ? { ...team, score: team.score + CHALLENGE_JUDGING_FALLBACK_SCORE }
-          : team,
-      );
       return {
         ...state,
-        teams,
         challenge: {
           ...ch,
-          phase: "results",
+          phase: "voting",
           result: {
             score: CHALLENGE_JUDGING_FALLBACK_SCORE,
             feedback: CHALLENGE_JUDGING_FALLBACK_FEEDBACK,
             videoUrl: "",
           },
+          audienceVotes: ch.audienceVotes ?? {},
+          voteEndsAt: now + CHALLENGE_VOTE_MS,
         },
       };
+    }
+    if (ch.phase === "voting") {
+      return applyChallengeVotingResult(state);
     }
   }
 
@@ -465,6 +469,9 @@ export function skipCurrentPhaseState(state: RoomState, now = Date.now()): RoomS
         ...state,
         phototunt: { ...ph, huntEndsAt: now },
       };
+    }
+    if (ph.phase === "voting") {
+      return applyPhotoHuntVotingResult(state);
     }
   }
 

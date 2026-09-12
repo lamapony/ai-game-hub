@@ -440,7 +440,7 @@ describe("host controls state helpers", () => {
     expect(result.soundscape?.recordingEndsAt).toBe(185_000);
   });
 
-  test("skip challenge judging awards fallback score to operator team", () => {
+  test("skip challenge judging opens the room vote without paying yet", () => {
     const state = roomState({
       currentGame: "challenge",
       challenge: {
@@ -453,13 +453,36 @@ describe("host controls state helpers", () => {
     expect(canSkipCurrentPhase(state)).toBe(true);
     const result = skipCurrentPhaseState(state, 9000);
 
-    expect(result.challenge?.phase).toBe("results");
+    expect(result.challenge?.phase).toBe("voting");
     expect(result.challenge?.result).toEqual({
       score: 5,
       feedback: CHALLENGE_JUDGING_FALLBACK_FEEDBACK,
       videoUrl: "",
     });
-    expect(result.teams.find((team) => team.id === "forest")?.score).toBe(5);
+    expect(result.challenge?.voteEndsAt).toBe(29_000);
+    expect(result.teams.find((team) => team.id === "forest")?.score).toBe(0);
+  });
+
+  test("skip challenge voting applies the room adjustment and pays the operator team", () => {
+    const state = roomState({
+      currentGame: "challenge",
+      challenge: {
+        phase: "voting",
+        roundId: "ch",
+        operatorId: "p1",
+        audienceVotes: { p2: "boost" },
+        result: {
+          score: 5,
+          feedback: CHALLENGE_JUDGING_FALLBACK_FEEDBACK,
+          videoUrl: "",
+        },
+      },
+    });
+
+    const result = skipCurrentPhaseState(state, 9000);
+    expect(result.challenge?.phase).toBe("results");
+    expect(result.challenge?.result?.awardedScore).toBe(8);
+    expect(result.teams.find((team) => team.id === "forest")?.score).toBe(8);
   });
 
   test("spectrumCourtFallbackClue prefers prompt then default text", () => {
@@ -525,6 +548,43 @@ describe("host controls state helpers", () => {
 
     expect(result.phototunt?.phase).toBe("hunting");
     expect(result.phototunt?.huntEndsAt).toBe(44_000);
+  });
+
+  test("skip photo hunt voting awards AI ranks plus a unique crowd favorite", () => {
+    const state = roomState({
+      currentGame: "phototunt",
+      phototunt: {
+        phase: "voting",
+        roundId: "ph",
+        audienceVotes: { p2: "p1" },
+        results: [
+          {
+            playerId: "p1",
+            playerName: "One",
+            teamId: "forest",
+            photoUrl: "https://example.test/a.jpg",
+            rank: 1,
+            points: 5,
+            comment: "Yes.",
+          },
+          {
+            playerId: "p2",
+            playerName: "Two",
+            teamId: "lake",
+            photoUrl: "https://example.test/b.jpg",
+            rank: 2,
+            points: 3,
+            comment: "Also.",
+          },
+        ],
+      },
+    });
+
+    const result = skipCurrentPhaseState(state, 44_000);
+    expect(result.phototunt?.phase).toBe("results");
+    expect(result.phototunt?.results?.[0]?.points).toBe(8);
+    expect(result.phototunt?.results?.[0]?.crowdFavorite).toBe(true);
+    expect(result.teams.find((team) => team.id === "forest")?.score).toBe(8);
   });
 
   test("skip trackguess guessing ends vote timer immediately", () => {

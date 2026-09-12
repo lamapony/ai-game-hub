@@ -2,6 +2,8 @@ import type {
   CrossExaminationPair,
   CrossExaminationPairResult,
   CrossExaminationQuestion,
+  CrossQuestionCategory,
+  GrillOracleMemory,
   GrillOracleMemoryStatus,
   RoomState,
   SmokeScreenResultEntry,
@@ -148,6 +150,7 @@ export function openSommelierVotingState(
       totalRounds: params.totalRounds,
       votingEndsAt: (params.now ?? Date.now()) + SOMMELIER_VOTING_MS,
       submittedVoterIds: [],
+      clappedPlayerIds: [],
       result: undefined,
     },
   };
@@ -200,6 +203,34 @@ export function revealSommelierEntryState(
       votingEndsAt: undefined,
       result,
       roundResults: [...sommelier.roundResults, result],
+    },
+  };
+}
+
+export function markSommelierClapState(
+  state: RoomState,
+  params: { sessionId: string; entryId: string; playerId: string },
+): RoomState | null {
+  const sommelier = state.sommelier;
+  if (
+    !sommelier ||
+    sommelier.sessionId !== params.sessionId ||
+    sommelier.phase !== "reveal" ||
+    sommelier.currentEntryId !== params.entryId ||
+    !state.players.some((player) => player.id === params.playerId)
+  ) {
+    return null;
+  }
+  if ((sommelier.clappedPlayerIds ?? []).includes(params.playerId)) return state;
+  return {
+    ...state,
+    sommelier: {
+      ...sommelier,
+      clappedPlayerIds: [...(sommelier.clappedPlayerIds ?? []), params.playerId],
+      clapCounts: {
+        ...(sommelier.clapCounts ?? {}),
+        [params.entryId]: (sommelier.clapCounts?.[params.entryId] ?? 0) + 1,
+      },
     },
   };
 }
@@ -1000,6 +1031,7 @@ export function launchCrossExaminationState(
       currentPairId: pairOrder[0]!.pairId,
       submittedPlayerIds: [],
       predictionVoterIds: [],
+      livePredictionCounts: {},
       pairResults: [],
     },
   };
@@ -1036,6 +1068,7 @@ export function setCrossExaminationQuestionsState(
       questionsAiFallback: params.aiFallback,
       submittedPlayerIds: [],
       predictionVoterIds: [],
+      livePredictionCounts: {},
       recordingEndsAt: undefined,
       result: undefined,
     },
@@ -1067,6 +1100,7 @@ export function markCrossExaminationPredictionState(
   runId: string,
   pairId: string,
   playerId: string,
+  category?: CrossQuestionCategory,
 ): RoomState | null {
   const run = state.crossexamination;
   if (
@@ -1078,11 +1112,16 @@ export function markCrossExaminationPredictionState(
     return null;
   }
   if (run.predictionVoterIds.includes(playerId)) return state;
+  const livePredictionCounts = { ...(run.livePredictionCounts ?? {}) };
+  if (category) {
+    livePredictionCounts[category] = (livePredictionCounts[category] ?? 0) + 1;
+  }
   return {
     ...state,
     crossexamination: {
       ...run,
       predictionVoterIds: [...run.predictionVoterIds, playerId],
+      livePredictionCounts,
     },
   };
 }
@@ -1210,6 +1249,7 @@ export function nextCrossExaminationPairState(
       questionsAiFallback: params.aiFallback,
       submittedPlayerIds: [],
       predictionVoterIds: [],
+      livePredictionCounts: {},
       recordingEndsAt: undefined,
       result: undefined,
     },
@@ -1296,8 +1336,43 @@ export function openContrabandAccusationState(
         accuserPlayerId: params.accuserPlayerId,
         accusedPlayerId: params.accusedPlayerId,
         createdAt: now,
+        corroboratorIds: [],
       },
       lastResolution: undefined,
+    },
+  };
+}
+
+export function markContrabandCorroborationState(
+  state: RoomState,
+  params: { runId: string; accusationId: string; playerId: string },
+): RoomState | null {
+  const run = state.contraband;
+  const active = run?.activeAccusation;
+  if (
+    !run ||
+    run.runId !== params.runId ||
+    !active ||
+    active.accusationId !== params.accusationId ||
+    !["awaiting-response", "awaiting-audio", "review"].includes(run.status)
+  ) {
+    return null;
+  }
+  if (
+    [active.accuserPlayerId, active.accusedPlayerId].includes(params.playerId) ||
+    !run.participantIds.includes(params.playerId)
+  ) {
+    return null;
+  }
+  if ((active.corroboratorIds ?? []).includes(params.playerId)) return state;
+  return {
+    ...state,
+    contraband: {
+      ...run,
+      activeAccusation: {
+        ...active,
+        corroboratorIds: [...(active.corroboratorIds ?? []), params.playerId],
+      },
     },
   };
 }
@@ -1462,6 +1537,7 @@ export function markSmokeScreenVotedState(
   state: RoomState,
   runId: string,
   playerId: string,
+  guesses?: Array<{ missionId: string; ownerPlayerId: string }>,
 ): RoomState | null {
   const smoke = state.smokescreen;
   if (
@@ -1473,11 +1549,18 @@ export function markSmokeScreenVotedState(
     return null;
   }
   if (smoke.submittedVoterIds.includes(playerId)) return state;
+  const guessTally = { ...(smoke.guessTally ?? {}) };
+  (guesses ?? []).forEach((guess) => {
+    const bySuspect = { ...(guessTally[guess.missionId] ?? {}) };
+    bySuspect[guess.ownerPlayerId] = (bySuspect[guess.ownerPlayerId] ?? 0) + 1;
+    guessTally[guess.missionId] = bySuspect;
+  });
   return {
     ...state,
     smokescreen: {
       ...smoke,
       submittedVoterIds: [...smoke.submittedVoterIds, playerId],
+      guessTally,
     },
   };
 }
@@ -1636,6 +1719,48 @@ export function markGrillOracleVerifiedState(
   return updated.oracleMemory?.status === "verified"
     ? completeRunOfShowGameStepState(updated, "grilloracle", "verify")
     : updated;
+}
+
+export function oracleCrowdGuessTally(
+  memory: Pick<GrillOracleMemory, "countGuesses"> | undefined,
+  ownerPlayerId: string,
+): [number, number, number, number] {
+  const tally: [number, number, number, number] = [0, 0, 0, 0];
+  for (const byOwner of Object.values(memory?.countGuesses ?? {})) {
+    const guess = byOwner[ownerPlayerId];
+    if (guess === 0 || guess === 1 || guess === 2 || guess === 3) {
+      tally[guess] += 1;
+    }
+  }
+  return tally;
+}
+
+export function markGrillOracleGuessState(
+  state: RoomState,
+  playerId: string,
+  ownerPlayerId: string,
+  count: number,
+): RoomState | null {
+  const memory = state.oracleMemory;
+  if (!memory || memory.status !== "revealed") return null;
+  if (playerId === ownerPlayerId) return null;
+  if (!memory.submittedPlayerIds.includes(ownerPlayerId)) return null;
+  if (memory.verifiedPlayerIds.includes(ownerPlayerId)) return null;
+  if (!Number.isInteger(count) || count < 0 || count > 3) return null;
+  if (memory.countGuesses?.[playerId]?.[ownerPlayerId] != null) return state;
+  return {
+    ...state,
+    oracleMemory: {
+      ...memory,
+      countGuesses: {
+        ...(memory.countGuesses ?? {}),
+        [playerId]: {
+          ...((memory.countGuesses ?? {})[playerId] ?? {}),
+          [ownerPlayerId]: count,
+        },
+      },
+    },
+  };
 }
 
 export function launchSoundscapeState(state: RoomState, roundId: string): RoomState {
