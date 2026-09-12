@@ -53,6 +53,10 @@ describe("Still Life Survival lifecycle contract", () => {
     });
     expect(result.winningTeamIds).toEqual(["lake"]);
     expect(result.entries.find((entry) => entry.teamId === "lake")?.audienceVotes).toBe(2);
+    expect(result.entries.find((entry) => entry.teamId === "lake")?.crowdFavorite).toBe(true);
+    expect(result.entries.find((entry) => entry.teamId === "lake")?.points).toBe(
+      (result.entries.find((entry) => entry.teamId === "forest")?.points ?? 0) + 3,
+    );
   });
 
   test("a lower jury score cannot be overturned by audience popularity", () => {
@@ -81,6 +85,10 @@ describe("Still Life Survival lifecycle contract", () => {
       })),
     });
     expect(result.winningTeamIds).toEqual(["forest"]);
+    expect(result.entries.find((entry) => entry.teamId === "lake")?.crowdFavorite).toBe(true);
+    expect(
+      result.entries.find((entry) => entry.teamId === "forest")?.crowdFavorite,
+    ).toBeUndefined();
   });
 
   test("validates bounded manual jury scores and strict player ballots", () => {

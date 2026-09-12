@@ -243,6 +243,11 @@ export function StillLifePlayer({
               <div className="mt-2 text-xs text-white/45">
                 C {entry.compositionScore}/10 · D {entry.dramaScore}/10 · Env {entry.materialScore}
                 /5 · {entry.audienceVotes} votes
+                {entry.crowdFavorite
+                  ? locale === "ru"
+                    ? " · любимец зала +3"
+                    : " · crowd favorite +3"
+                  : ""}
               </div>
             </div>
           ))}

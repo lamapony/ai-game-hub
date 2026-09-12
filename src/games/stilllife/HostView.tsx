@@ -464,6 +464,11 @@ function JudgmentGrid({
             )}{" "}
             DKK
             {entry.manualOverride ? " · live jury" : entry.aiFallback ? " · local fallback" : ""}
+            {entry.crowdFavorite
+              ? locale === "ru"
+                ? " · любимец зала +3"
+                : " · crowd favorite +3"
+              : ""}
           </div>
         </article>
       ))}
