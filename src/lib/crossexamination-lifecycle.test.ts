@@ -113,9 +113,10 @@ describe("Cross Examination lifecycle", () => {
     expect((JSON.stringify(state.crossexamination) ?? "").includes("record_1")).toBe(false);
 
     state = openCrossExaminationCaptureState(state, "cross_1", pair.pairId, 1_000)!;
-    state = markCrossExaminationPredictionState(state, "cross_1", pair.pairId, "p2")!;
-    state = markCrossExaminationPredictionState(state, "cross_1", pair.pairId, "p2")!;
+    state = markCrossExaminationPredictionState(state, "cross_1", pair.pairId, "p2", "order")!;
+    state = markCrossExaminationPredictionState(state, "cross_1", pair.pairId, "p2", "order")!;
     expect(state.crossexamination?.predictionVoterIds).toEqual(["p2"]);
+    expect(state.crossexamination?.livePredictionCounts).toEqual({ order: 1 });
 
     state = markCrossExaminationSubmittedState(state, "cross_1", pair.pairId, pair.playerAId)!;
     expect(state.crossexamination?.status).toBe("capturing");

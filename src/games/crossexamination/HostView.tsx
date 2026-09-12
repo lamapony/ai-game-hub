@@ -453,6 +453,14 @@ export function CrossExaminationHost({
           <div className="agh-cross-audience-count">
             {locale === "ru" ? "Прогнозов зала" : "Audience predictions"}:{" "}
             {run.predictionVoterIds.length}
+            <div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.16em] text-white/55">
+              {(Object.keys(CATEGORY_LABELS) as CrossQuestionCategory[]).map((category) => (
+                <span key={category}>
+                  {CATEGORY_LABELS[category][locale === "ru" ? "ru" : "en"]}{" "}
+                  {run.livePredictionCounts?.[category] ?? 0}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       )}
