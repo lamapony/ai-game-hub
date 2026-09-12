@@ -336,7 +336,9 @@ export function SommelierHost({
                     {result.profile.drink_guess}
                   </div>
                   <div className="mt-3 text-xs text-white/40">
-                    {locale === "ru" ? "Отдать +3 за громкость" : "Award +3 for volume"}
+                    {locale === "ru"
+                      ? `Хлопков: ${current.clapCounts?.[result.entryId] ?? 0} · отдать +3`
+                      : `${current.clapCounts?.[result.entryId] ?? 0} claps · award +3`}
                   </div>
                 </button>
               ))}

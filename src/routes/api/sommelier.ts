@@ -14,6 +14,7 @@ import {
   nextSommelierCard,
   prepareSommelierSession,
   revealSommelierCard,
+  clapSommelierReveal,
   sommelierPlayerStatus,
   submitSommelierGuess,
   submitSommelierPhoto,
@@ -52,10 +53,10 @@ export const Route = createFileRoute("/api/sommelier")({
         try {
           let roomId: string;
           let result: unknown;
-          if (["submit-photo", "status", "guess"].includes(body.action)) {
+          if (["submit-photo", "status", "guess", "clap"].includes(body.action)) {
             const playerBody = body as Extract<
               typeof body,
-              { action: "submit-photo" | "status" | "guess" }
+              { action: "submit-photo" | "status" | "guess" | "clap" }
             >;
             const { data, error } = await supabaseAdmin
               .from("rooms")
@@ -87,14 +88,22 @@ export const Route = createFileRoute("/api/sommelier")({
                       player,
                       sessionId: playerBody.sessionId,
                     })
-                  : await submitSommelierGuess({
-                      roomId,
-                      state,
-                      player,
-                      sessionId: playerBody.sessionId,
-                      entryId: playerBody.entryId,
-                      guessedOwnerPlayerId: playerBody.guessedOwnerPlayerId,
-                    });
+                  : playerBody.action === "clap"
+                    ? await clapSommelierReveal({
+                        roomId,
+                        state,
+                        player,
+                        sessionId: playerBody.sessionId,
+                        entryId: playerBody.entryId,
+                      })
+                    : await submitSommelierGuess({
+                        roomId,
+                        state,
+                        player,
+                        sessionId: playerBody.sessionId,
+                        entryId: playerBody.entryId,
+                        guessedOwnerPlayerId: playerBody.guessedOwnerPlayerId,
+                      });
           } else {
             const room = await authorizeHostRoom({
               roomId: body.roomId,
