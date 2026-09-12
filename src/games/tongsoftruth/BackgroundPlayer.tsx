@@ -215,11 +215,7 @@ export function TongsOfTruthBackgroundPlayer({
             {locale === "ru" ? "конкретика" : "specificity"} {run.result.honestyScore}/10 ·{" "}
             {locale === "ru" ? "артистизм" : "stagecraft"} {run.result.artistryScore}/5
             {run.result.environmentUsed ? " · environment +5" : ""}
-            {run.result.dodgeDetected
-              ? locale === "ru"
-                ? " · уклонение −3"
-                : " · dodge −3"
-              : ""}
+            {run.result.dodgeDetected ? (locale === "ru" ? " · уклонение −3" : " · dodge −3") : ""}
           </div>
           {(run.result.audienceDodgeCount ?? 0) + (run.result.audienceStandCount ?? 0) > 0 && (
             <p className="mt-3 text-xs text-white/70">
