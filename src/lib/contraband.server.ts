@@ -24,6 +24,7 @@ import {
   aiOutcome,
   outcomePoints,
   CONTRABAND_CATCHER_POINTS,
+  CONTRABAND_CORROBORATION_POINTS,
   CONTRABAND_FALSE_ACCUSATION_POINTS,
   CONTRABAND_SMUGGLER_POINTS,
 } from "./contraband-lifecycle";
@@ -31,6 +32,7 @@ import {
   disputeContrabandAccusationState,
   finalizeContrabandState,
   markContrabandAssignedState,
+  markContrabandCorroborationState,
   openContrabandAccusationState,
   resolveContrabandAccusationState,
   reviewContrabandAccusationState,
@@ -388,7 +390,59 @@ function scoreEventsForResolution(
       rubric: { outcome: resolution.outcome },
     });
   }
+  const corroboratorIds = state.contraband?.activeAccusation?.corroboratorIds ?? [];
+  const corroborationDelta =
+    resolution.outcome === "caught"
+      ? CONTRABAND_CORROBORATION_POINTS
+      : resolution.outcome === "false-accusation"
+        ? -CONTRABAND_CORROBORATION_POINTS
+        : 0;
+  if (corroborationDelta !== 0) {
+    corroboratorIds.forEach((playerId) => {
+      const witness = state.players.find((player) => player.id === playerId);
+      if (!witness) return;
+      events.push({
+        idempotencyKey: contrabandScoreKey(runId, `${resolution.accusationId}:heard:${playerId}`),
+        runId,
+        gameId: "contraband",
+        teamId: witness.teamId,
+        playerId,
+        points: corroborationDelta,
+        reason:
+          corroborationDelta > 0
+            ? "Heard the Contraband phrase too"
+            : "Backed a false Contraband accusation",
+        source: "vote",
+        rubric: { outcome: resolution.outcome },
+      });
+    });
+  }
   return events;
+}
+
+export async function corroborateContraband(params: {
+  roomId: string;
+  state: RoomState;
+  player: Player;
+  runId: string;
+  accusationId: string;
+}) {
+  const run = assertRun(params.state, params.runId);
+  const active = run.activeAccusation;
+  if (!active || active.accusationId !== params.accusationId) {
+    throw statusError("no live accusation to corroborate", 409);
+  }
+  if ([active.accuserPlayerId, active.accusedPlayerId].includes(params.player.id)) {
+    throw statusError("the two parties cannot corroborate this case", 403);
+  }
+  const updated = await updateContraband(params.roomId, (state) =>
+    markContrabandCorroborationState(state, {
+      runId: params.runId,
+      accusationId: params.accusationId,
+      playerId: params.player.id,
+    }),
+  );
+  return { run: updated.state.contraband! };
 }
 
 async function resolveAccusation(params: {
