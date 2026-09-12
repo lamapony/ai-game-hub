@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ContrabandArbitrationRecord, ContrabandAssignmentRecord } from "./model";
 import {
   assignContrabandClient,
@@ -37,6 +37,7 @@ export function ContrabandBackgroundHost({ roomId, state }: { roomId: string; st
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const closingRef = useRef(false);
 
   useEffect(() => setRun(publicRun), [publicRun]);
   useEffect(() => {
@@ -78,6 +79,18 @@ export function ContrabandBackgroundHost({ roomId, state }: { roomId: string; st
       cancelled = true;
     };
   }, [roomId, run]);
+
+  useEffect(() => {
+    if (!run || run.status !== "active" || run.activeAccusation || !run.endsAt) return;
+    if (now < run.endsAt || busy || closingRef.current) return;
+    closingRef.current = true;
+    void finalizeContrabandClient(roomId, run.runId)
+      .then((result) => setRun(result.run))
+      .catch((actionError) => {
+        closingRef.current = false;
+        setError(friendlyHostActionError(actionError, "Contraband reveal", "complete"));
+      });
+  }, [busy, now, roomId, run]);
 
   if (!run) return null;
   const accusation = run.activeAccusation;
@@ -192,6 +205,13 @@ export function ContrabandBackgroundHost({ roomId, state }: { roomId: string; st
                 </>
               )}
             </div>
+          )}
+          {(accusation.corroboratorIds?.length ?? 0) > 0 && (
+            <p className="mt-3 text-xs text-cyan-100">
+              {locale === "ru"
+                ? `Слышали тоже: ${accusation.corroboratorIds!.length}`
+                : `Also heard it: ${accusation.corroboratorIds!.length}`}
+            </p>
           )}
           <div className="mt-4 flex flex-wrap gap-2">
             <button

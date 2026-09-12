@@ -73,6 +73,7 @@ export const Route = createFileRoute("/api/toastsyndicate")({
                     player,
                     roundId: body.roundId,
                     guesses: body.guesses,
+                    landed: body.landed,
                   })
                 : await submitToastSyndicateRecording({
                     roomId,

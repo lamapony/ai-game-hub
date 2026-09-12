@@ -82,4 +82,18 @@ describe("scoreImpostorRound", () => {
     const { teams } = scoreImpostorRound(state, imp);
     expect(teams.every((t) => t.score === 0)).toBe(true);
   });
+
+  test("Final Fibbage doubles spotter and decoy points on the last round", () => {
+    const state = roomState();
+    const imp = impostorState({
+      roundNumber: 4,
+      totalRounds: 4,
+      votes: { p1: "ai", p2: "ai", p3: "a1" },
+    });
+    const { teams, roundResult } = scoreImpostorRound(state, imp);
+
+    expect(roundResult?.finalFibbage).toBe(true);
+    expect(teams.find((t) => t.id === "forest")!.score).toBe(8);
+    expect(teams.find((t) => t.id === "lake")!.score).toBe(6);
+  });
 });

@@ -71,7 +71,10 @@ export function ImpostorHost({
         const r = await generateImpostorQuestion({
           data: { ...hostPromptAuth(roomId, code), pastQuestions },
         });
-        const fallbackQuestion = pickImpostorQuestion(imp.usedQuestionIds);
+        const fallbackQuestion = pickImpostorQuestion(imp.usedQuestionIds, Math.random(), {
+          actId: state.party?.actId,
+          preferHeat: imp.roundNumber >= imp.totalRounds ? 3 : undefined,
+        });
         const classicExperience = (state.party?.experienceId ?? "classic-park") === "classic-park";
         const useLocalDeck = !r.question || (classicExperience && r.fallback);
         const question = useLocalDeck ? fallbackQuestion.text : r.question;
@@ -244,6 +247,11 @@ export function ImpostorHost({
           </div>
           <h2 className="font-display text-3xl mt-1">
             Round {Math.min(imp.roundNumber, imp.totalRounds)} / {imp.totalRounds}
+            {imp.roundNumber >= imp.totalRounds &&
+            imp.phase !== "briefing" &&
+            imp.phase !== "results" ? (
+              <span className="ml-2 text-lg text-amber-300">Final Fibbage</span>
+            ) : null}
           </h2>
         </div>
         <PhasePill phase={imp.phase} />

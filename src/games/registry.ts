@@ -252,8 +252,8 @@ export const LEGACY_GAME_REGISTRY = {
     title: "Who Among Us",
     localizedTitle: { en: "Who Among Us", ru: "Кто из нас" },
     description: {
-      en: "Secretly vote on pointed questions and find out what the room has noticed about you.",
-      ru: "Тайно голосуйте по острым вопросам и узнайте, что зал успел о вас заметить.",
+      en: "Vote who fits, file a one-line charge, then make the accused confess or deny. Last round is Last Lash.",
+      ru: "Голосуйте, кто подходит, подайте однострочное обвинение — и заставьте обвиняемого сознаться или отпираться. Последний раунд — Last Lash.",
     },
     emoji: "🕵️",
     format: foreground,

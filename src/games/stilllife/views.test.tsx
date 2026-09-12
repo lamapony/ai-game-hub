@@ -55,7 +55,9 @@ function stillLifeState(phase: "building" | "voting" | "results"): RoomState {
           ? {
               roundId: "still_round_1",
               headline: "The Last Cucumber Abandons the Burning Yacht",
-              entries: judgments,
+              entries: judgments.map((entry, index) =>
+                index === 0 ? { ...entry, crowdFavorite: true } : entry,
+              ),
               winningTeamIds: ["forest"],
             }
           : undefined,
@@ -117,6 +119,8 @@ describe("Still Life host and two-player ritual", () => {
     expect(hostHtml).toContain("Forest Lot");
     expect(hostHtml).toContain("8/10");
     expect(forestHtml).toContain("Your lot sold");
+    expect(forestHtml).toContain("crowd favorite +3");
+    expect(hostHtml).toContain("crowd favorite +3");
     expect(lakeHtml).toContain("The art survived you");
   });
 });

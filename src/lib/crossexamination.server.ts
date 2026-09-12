@@ -536,7 +536,13 @@ export async function submitCrossPrediction(params: {
     return { run };
   }
   const updated = await updateCross(params.roomId, (state) =>
-    markCrossExaminationPredictionState(state, params.runId, params.pairId, params.player.id),
+    markCrossExaminationPredictionState(
+      state,
+      params.runId,
+      params.pairId,
+      params.player.id,
+      params.category,
+    ),
   );
   return { run: updated.state.crossexamination! };
 }

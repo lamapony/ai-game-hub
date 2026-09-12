@@ -1,8 +1,12 @@
+import type { PartyActId } from "@/lib/party-context";
+import { pickThemedItem } from "../catalog-pick";
+
 export type SpectrumPrompt = {
   id: string;
   leftLabel: string;
   rightLabel: string;
   prompt: string;
+  acts?: readonly PartyActId[];
 };
 
 export const SPECTRUM_PROMPTS: SpectrumPrompt[] = [
@@ -71,6 +75,7 @@ export const SPECTRUM_PROMPTS: SpectrumPrompt[] = [
     leftLabel: "classy",
     rightLabel: "trash fire",
     prompt: "A bar snack",
+    acts: ["bar"],
   },
   {
     id: "brave-reckless",
@@ -83,12 +88,14 @@ export const SPECTRUM_PROMPTS: SpectrumPrompt[] = [
     leftLabel: "chef",
     rightLabel: "public menace",
     prompt: "A move at the grill",
+    acts: ["grill"],
   },
   {
     id: "minimal-extra",
     leftLabel: "minimal",
     rightLabel: "deeply extra",
     prompt: "A birthday toast",
+    acts: ["bar"],
   },
   {
     id: "honest-toxic",
@@ -137,6 +144,7 @@ export const SPECTRUM_PROMPTS: SpectrumPrompt[] = [
     leftLabel: "refreshing",
     rightLabel: "concerning",
     prompt: "A drink order",
+    acts: ["bar"],
   },
   {
     id: "strategic-petty",
@@ -167,6 +175,7 @@ export const SPECTRUM_PROMPTS: SpectrumPrompt[] = [
     leftLabel: "casual",
     rightLabel: "full ceremony",
     prompt: "Opening a bottle",
+    acts: ["bar"],
   },
   {
     id: "responsible-boring",
@@ -197,14 +206,72 @@ export const SPECTRUM_PROMPTS: SpectrumPrompt[] = [
     leftLabel: "efficient",
     rightLabel: "soulless",
     prompt: "A way to split the bill",
+    acts: ["bar"],
+  },
+  {
+    id: "raw-funeral",
+    leftLabel: "still raw",
+    rightLabel: "a funeral",
+    prompt: "The current state of the meat",
+    acts: ["grill"],
+  },
+  {
+    id: "smoke-signal",
+    leftLabel: "smoke signal",
+    rightLabel: "cry for help",
+    prompt: "The column of smoke over the grill",
+    acts: ["grill"],
+  },
+  {
+    id: "tongs-therapy",
+    leftLabel: "cooking tool",
+    rightLabel: "group therapy prop",
+    prompt: "Whoever is holding the tongs",
+    acts: ["grill"],
+  },
+  {
+    id: "foil-destiny",
+    leftLabel: "practical",
+    rightLabel: "prophecy",
+    prompt: "A crumpled sheet of foil",
+    acts: ["grill"],
+  },
+  {
+    id: "lager-personality",
+    leftLabel: "just a lager",
+    rightLabel: "a whole personality",
+    prompt: "The drink in front of you",
+    acts: ["bar"],
+  },
+  {
+    id: "toast-confession",
+    leftLabel: "a toast",
+    rightLabel: "a confession",
+    prompt: "The next person who stands up",
+    acts: ["bar"],
+  },
+  {
+    id: "one-more-plea",
+    leftLabel: "one more",
+    rightLabel: "a plea bargain",
+    prompt: "The phrase 'shall we?'",
+    acts: ["bar"],
+  },
+  {
+    id: "glass-alibi",
+    leftLabel: "empty glass",
+    rightLabel: "exhibit A",
+    prompt: "The glass left at the far end of the table",
+    acts: ["bar"],
   },
 ];
 
-export function pickSpectrumPrompt(usedIds: string[], random = Math.random()): SpectrumPrompt {
-  const available = SPECTRUM_PROMPTS.filter((prompt) => !usedIds.includes(prompt.id));
-  const pool = available.length > 0 ? available : SPECTRUM_PROMPTS;
-  const index = Math.max(0, Math.min(pool.length - 1, Math.floor(random * pool.length)));
-  return pool[index];
+export function pickSpectrumPrompt(
+  usedIds: string[],
+  random = Math.random(),
+  options?: { actId?: PartyActId },
+): SpectrumPrompt {
+  return pickThemedItem(SPECTRUM_PROMPTS, usedIds, random, options);
 }
 
 export function randomSpectrumTarget(random = Math.random()) {

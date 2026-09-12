@@ -3,7 +3,11 @@ import { Recorder } from "@/games/soundscape/Recorder";
 import type { StoredPlayer } from "@/lib/player-action-client";
 import { friendlyPlayerActionError } from "@/lib/player-action-errors";
 import { uploadPlayerMedia } from "@/lib/player-upload-client";
-import { startTongsRecordingClient, submitTongsAudioClient } from "@/lib/tongsoftruth-client";
+import {
+  startTongsRecordingClient,
+  submitTongsAudioClient,
+  submitTongsAudienceBetClient,
+} from "@/lib/tongsoftruth-client";
 import type { RoomState, TongsOfTruthState } from "@/lib/types";
 
 export function TongsOfTruthBackgroundPlayer({
@@ -24,7 +28,25 @@ export function TongsOfTruthBackgroundPlayer({
   useEffect(() => setRun(publicRun), [publicRun]);
 
   const myTurn = run.speakerPlayerId === me.id && run.status !== "results";
-  const urgent = myTurn || run.status === "reveal";
+  const canBet =
+    !myTurn &&
+    ["question", "recording", "judging"].includes(run.status) &&
+    run.participantIds.includes(me.id);
+  const myBet = run.audienceBets?.[me.id];
+  const urgent = myTurn || canBet || run.status === "reveal";
+
+  async function bet(guess: "dodge" | "stand") {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await submitTongsAudienceBetClient(roomId, run.runId, me.id, guess);
+      setRun(result.run);
+    } catch (actionError) {
+      setError(friendlyPlayerActionError(actionError, "Tongs side bet"));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function start() {
     setBusy(true);
@@ -104,6 +126,49 @@ export function TongsOfTruthBackgroundPlayer({
         </div>
       )}
 
+      {canBet && (
+        <div className="mt-4 rounded-2xl border border-white/10 bg-black/25 p-4">
+          <div className="text-[10px] uppercase tracking-[0.2em] text-orange-200/70">
+            {locale === "ru" ? "Ставка зала" : "Side bet"}
+          </div>
+          <p className="mt-2 text-sm text-white/75">
+            {locale === "ru"
+              ? `Уклонится ли ${run.speakerName}, или ответит по делу?`
+              : `Will ${run.speakerName} dodge, or stand there and answer?`}
+          </p>
+          {myBet ? (
+            <p className="mt-3 text-sm font-semibold text-orange-100">
+              {myBet === "dodge"
+                ? locale === "ru"
+                  ? "Ты ставишь: уклонится"
+                  : "Your call: they'll dodge"
+                : locale === "ru"
+                  ? "Ты ставишь: выстоит"
+                  : "Your call: they'll stand"}
+            </p>
+          ) : (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void bet("dodge")}
+                className="rounded-xl bg-red-300/90 px-3 py-3 text-sm font-bold text-red-950 disabled:opacity-40"
+              >
+                {locale === "ru" ? "Уклонится" : "They'll dodge"}
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void bet("stand")}
+                className="rounded-xl bg-lime-200 px-3 py-3 text-sm font-bold text-lime-950 disabled:opacity-40"
+              >
+                {locale === "ru" ? "Выстоит" : "They'll stand"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {myTurn && run.status === "question" && run.question && (
         <button
           type="button"
@@ -150,7 +215,24 @@ export function TongsOfTruthBackgroundPlayer({
             {locale === "ru" ? "конкретика" : "specificity"} {run.result.honestyScore}/10 ·{" "}
             {locale === "ru" ? "артистизм" : "stagecraft"} {run.result.artistryScore}/5
             {run.result.environmentUsed ? " · environment +5" : ""}
+            {run.result.dodgeDetected ? (locale === "ru" ? " · уклонение −3" : " · dodge −3") : ""}
           </div>
+          {(run.result.audienceDodgeCount ?? 0) + (run.result.audienceStandCount ?? 0) > 0 && (
+            <p className="mt-3 text-xs text-white/70">
+              {locale === "ru"
+                ? `Зал: ${run.result.audienceDodgeCount ?? 0} «уклонится» · ${run.result.audienceStandCount ?? 0} «выстоит».`
+                : `Room: ${run.result.audienceDodgeCount ?? 0} dodge · ${run.result.audienceStandCount ?? 0} stand.`}
+              {run.result.correctBetterIds?.includes(me.id)
+                ? locale === "ru"
+                  ? " Ты угадал — +2."
+                  : " You called it — +2."
+                : myBet
+                  ? locale === "ru"
+                    ? " Мимо."
+                    : " Missed it."
+                  : ""}
+            </p>
+          )}
         </div>
       )}
 

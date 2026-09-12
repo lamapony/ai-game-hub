@@ -3,11 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { postHostArtifact } from "@/lib/host-artifact-client";
 import { updateRoomState, genId, hostPromptAuth } from "@/lib/room";
+import { applyChallengeVotingResult, CHALLENGE_VOTE_MS } from "./scoring";
 import { CHALLENGE_BRIEFING_MS } from "@/lib/host-controls";
 import { generateChallengeTask, judgeChallenge } from "@/lib/ai/challenge.functions";
 import { teamColorClasses, formatClock } from "@/lib/team-style";
 import { speechUrl } from "@/lib/speech-client";
-import type { ChallengeState, RoomState, Team } from "@/lib/types";
+import type { ChallengeState, RoomState } from "@/lib/types";
 
 const RECORDING_MS = 25_000; // 20s record + buffer
 
@@ -42,6 +43,7 @@ export function ChallengeHost({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const spokenForRef = useRef<string | null>(null);
   const judgedForRef = useRef<string | null>(null);
+  const finalizedVoteRef = useRef<string | null>(null);
   const generatingRoundRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -220,25 +222,21 @@ export function ChallengeHost({
         score: r.score,
         feedback: r.feedback,
       });
-      // add points to operator's team
-      const operator = state.players.find((pl) => pl.id === ch.operatorId);
-      const teams: Team[] = state.teams.map((t) =>
-        operator && t.id === operator.teamId ? { ...t, score: t.score + r.score } : t,
-      );
       const written = await updateRoomState(
         roomId,
         {
           ...state,
-          teams,
           challenge: {
             ...ch,
-            phase: "results",
+            phase: "voting",
             result: {
               score: r.score,
               feedback: r.feedback,
               videoUrl: p.videoUrl,
               breakdown: r.breakdown,
             },
+            audienceVotes: {},
+            voteEndsAt: Date.now() + CHALLENGE_VOTE_MS,
             aiFallback: ch.aiFallback || r.fallback,
             pastOperatorIds: [...(ch.pastOperatorIds ?? []), ch.operatorId ?? ""].filter(Boolean),
           },
@@ -283,6 +281,8 @@ export function ChallengeHost({
           operatorId: nextOp.id,
           operatorName: nextOp.name,
           aiFallback: undefined,
+          audienceVotes: {},
+          voteEndsAt: undefined,
           pastOperatorIds: [...(ch.pastOperatorIds ?? []), ch.operatorId ?? ""].filter(Boolean),
         },
       },
@@ -294,6 +294,23 @@ export function ChallengeHost({
     void onBackToHub();
   }
 
+  useEffect(() => {
+    if (state.paused) return;
+    if (ch.phase !== "voting" || !ch.result) return;
+    if (finalizedVoteRef.current === ch.roundId) return;
+    const eligible = state.players.filter((player) => player.id !== ch.operatorId);
+    const allVoted =
+      eligible.length === 0 || eligible.every((player) => ch.audienceVotes?.[player.id]);
+    const timeUp = !ch.voteEndsAt || now >= ch.voteEndsAt;
+    if (!allVoted && !timeUp) return;
+    finalizedVoteRef.current = ch.roundId;
+    void updateRoomState(roomId, applyChallengeVotingResult(state), {
+      gameId: "challenge",
+      roundId: ch.roundId,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.paused, ch.phase, ch.roundId, ch.voteEndsAt, ch.audienceVotes, now]);
+
   const operator = state.players.find((p) => p.id === ch.operatorId);
   const operatorTeam = operator ? state.teams.find((t) => t.id === operator.teamId) : null;
   const remaining =
@@ -301,7 +318,14 @@ export function ChallengeHost({
       ? Math.max(0, (ch.recordingEndsAt ?? now) - now)
       : ch.phase === "briefing" && ch.briefingEndsAt
         ? Math.max(0, ch.briefingEndsAt - now)
-        : 0;
+        : ch.phase === "voting"
+          ? Math.max(0, (ch.voteEndsAt ?? now) - now)
+          : 0;
+  const boostCount = Object.values(ch.audienceVotes ?? {}).filter(
+    (vote) => vote === "boost",
+  ).length;
+  const cutCount = Object.values(ch.audienceVotes ?? {}).filter((vote) => vote === "cut").length;
+  const awarded = ch.result?.awardedScore ?? ch.result?.score;
 
   return (
     <div className="space-y-4">
@@ -371,6 +395,36 @@ export function ChallengeHost({
         </Panel>
       )}
 
+      {ch.phase === "voting" && ch.result && (
+        <Panel>
+          <div className="flex items-baseline justify-between flex-wrap gap-3">
+            <div>
+              <div className="text-xs uppercase tracking-widest text-white/60">AI roast</div>
+              <div className="font-display text-7xl tabular-num text-[var(--color-park-bright)]">
+                {ch.result.score}
+                <span className="text-white/40 text-3xl">/10</span>
+              </div>
+            </div>
+            <div className="font-display text-5xl tabular-num text-white/80">
+              {formatClock(remaining)}
+            </div>
+          </div>
+          <p className="mt-4 text-white text-lg leading-snug">«{ch.result.feedback}»</p>
+          <p className="mt-3 text-sm text-white/70">
+            The room decides if that landed. Majority boost +3, majority cut −1, tie leaves the
+            judge alone.
+          </p>
+          <div className="mt-4 flex gap-3 text-sm">
+            <span className="rounded-full bg-lime-300/20 px-3 py-1 text-lime-100">
+              Boost {boostCount}
+            </span>
+            <span className="rounded-full bg-red-300/20 px-3 py-1 text-red-100">
+              Cut {cutCount}
+            </span>
+          </div>
+        </Panel>
+      )}
+
       {ch.phase === "results" && ch.result && (
         <Panel>
           {ch.aiFallback && <AiFallbackNotice />}
@@ -378,17 +432,27 @@ export function ChallengeHost({
             <div>
               <div className="text-xs uppercase tracking-widest text-white/60">Verdict</div>
               <div className="font-display text-7xl tabular-num text-[var(--color-park-bright)]">
-                {ch.result.score}
-                <span className="text-white/40 text-3xl">/10</span>
+                {awarded}
+                <span className="text-white/40 text-3xl"> pts</span>
               </div>
             </div>
             {operatorTeam && (
               <div className="text-right">
-                <div className="text-xs text-white/60">+{ch.result.score} to team</div>
+                <div className="text-xs text-white/60">+{awarded} to team</div>
                 <div className="font-display text-lg">{operatorTeam.name}</div>
               </div>
             )}
           </div>
+          {typeof ch.result.audienceAdjustment === "number" && (
+            <p className="mt-2 text-sm text-white/65">
+              AI {ch.result.score}/10
+              {ch.result.audienceAdjustment > 0
+                ? ` · room boosted +${ch.result.audienceAdjustment}`
+                : ch.result.audienceAdjustment < 0
+                  ? ` · room cut ${ch.result.audienceAdjustment}`
+                  : " · room split, judge stands"}
+            </p>
+          )}
           <p className="mt-4 text-white text-lg leading-snug">«{ch.result.feedback}»</p>
           {ch.result.breakdown && (
             <div className="mt-4 flex flex-wrap gap-2 text-xs text-white/75">
@@ -425,7 +489,13 @@ export function ChallengeHost({
 }
 
 function phaseTitle(p: ChallengeState["phase"]) {
-  return { briefing: "Task", recording: "Filming", judging: "AI judging", results: "Verdict" }[p];
+  return {
+    briefing: "Task",
+    recording: "Filming",
+    judging: "AI judging",
+    voting: "The room decides",
+    results: "Verdict",
+  }[p];
 }
 
 function Panel({ children }: { children: React.ReactNode }) {

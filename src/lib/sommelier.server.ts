@@ -18,6 +18,7 @@ import { sommelierVisionSpec } from "./ai/sommelier.prompts";
 import {
   beginSommelierAnalysisState,
   finalizeSommelierState,
+  markSommelierClapState,
   markSommelierSubmittedState,
   markSommelierVotedState,
   openSommelierCrowdFavoriteState,
@@ -590,6 +591,30 @@ function sommelierRoundScoreEvents(
     },
   );
   return [...ownerEvent, ...guesserEvents];
+}
+
+export async function clapSommelierReveal(params: {
+  roomId: string;
+  state: RoomState;
+  player: Player;
+  sessionId: string;
+  entryId: string;
+}) {
+  const sommelier = assertSommelierSession(params.state, params.sessionId);
+  if (sommelier.phase !== "reveal" || sommelier.currentEntryId !== params.entryId) {
+    throw statusError("Sommelier claps are closed", 409);
+  }
+  if (!sommelier.participantIds.includes(params.player.id)) {
+    throw statusError("player is not in this tasting", 403);
+  }
+  const updated = await updateSommelierState(params.roomId, (state) =>
+    markSommelierClapState(state, {
+      sessionId: params.sessionId,
+      entryId: params.entryId,
+      playerId: params.player.id,
+    }),
+  );
+  return { sommelier: updated.state.sommelier! };
 }
 
 export async function revealSommelierCard(params: {

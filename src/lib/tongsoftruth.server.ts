@@ -12,9 +12,11 @@ import {
 import { tongsJudgmentSpec, tongsQuestionSpec } from "./ai/tongsoftruth.prompts";
 import { runPromptSpec } from "./ai/prompt-runtime.server";
 import { transcribeWithRoomBudget } from "./ai-budget.server";
+import { TONGS_AUDIENCE_BET_POINTS, scoreTongsAudienceBets } from "@/games/tongsoftruth/scoring";
 import {
   markTongsJudgingState,
   nextTongsRoundState,
+  placeTongsAudienceBetState,
   revealTongsRoundState,
   reviewTongsRoundState,
   setTongsQuestionState,
@@ -38,7 +40,7 @@ import {
   TONGS_MAX_RECORDING_SECONDS,
   TONGS_MIN_RECORDING_SECONDS,
 } from "./tongsoftruth-lifecycle";
-import type { Player, RoomState, TongsOfTruthRoundResult } from "./types";
+import type { Player, RoomState, TongsAudienceBet, TongsOfTruthRoundResult } from "./types";
 
 type Snapshot = { id: string; state: RoomState; updatedAt: string };
 export const TONGS_AUDIO_MAX_BYTES = 5_000_000;
@@ -53,6 +55,8 @@ export const tongsVerdictKey = (runId: string, roundId: string) =>
   key("tongs_verdict", `${runId}:${roundId}`);
 export const tongsScoreKey = (runId: string, roundId: string) =>
   key("tongs_score", `${runId}:${roundId}`);
+export const tongsAudienceBetKey = (runId: string, roundId: string, playerId: string) =>
+  key("tongs_audience", `${runId}:${roundId}:${playerId}`);
 
 function assertRun(state: RoomState, runId: string) {
   const run = state.tongsoftruth;
@@ -192,6 +196,9 @@ function resultFromVerdict(
     points: verdict.points,
     comment: verdict.comment,
     source: verdict.source,
+    audienceDodgeCount: 0,
+    audienceStandCount: 0,
+    correctBetterIds: [],
   };
 }
 
@@ -271,14 +278,86 @@ async function resolveTongsVerdict(params: {
       ],
     });
   }
-  const updated = await updateTongs(params.roomId, (state) =>
-    revealTongsRoundState(
-      state,
-      params.runId,
-      resultFromVerdict(assertRun(state, params.runId), verdict),
-    ),
-  );
+
+  const audienceEvents: Array<{
+    idempotencyKey: string;
+    runId: string;
+    gameId: string;
+    teamId: string;
+    playerId: string;
+    points: number;
+    reason: string;
+    source: "vote";
+    rubric: Record<string, unknown>;
+  }> = [];
+  const updated = await updateTongs(params.roomId, (state) => {
+    const current = assertRun(state, params.runId);
+    const audience = scoreTongsAudienceBets(
+      current.audienceBets,
+      verdict.dodgeDetected,
+      verdict.source === "skipped",
+    );
+    audienceEvents.length = 0;
+    for (const playerId of audience.correctBetterIds) {
+      const better = state.players.find((candidate) => candidate.id === playerId);
+      if (!better) continue;
+      audienceEvents.push({
+        idempotencyKey: tongsAudienceBetKey(params.runId, params.roundId, playerId),
+        runId: params.runId,
+        gameId: "tongsoftruth",
+        teamId: better.teamId,
+        playerId,
+        points: TONGS_AUDIENCE_BET_POINTS,
+        reason: "Tongs audience dodge bet",
+        source: "vote",
+        rubric: {
+          guess: current.audienceBets?.[playerId],
+          dodgeDetected: verdict.dodgeDetected,
+        },
+      });
+    }
+    return revealTongsRoundState(state, params.runId, {
+      ...resultFromVerdict(current, verdict),
+      audienceDodgeCount: audience.audienceDodgeCount,
+      audienceStandCount: audience.audienceStandCount,
+      correctBetterIds: audience.correctBetterIds,
+    });
+  });
+  if (audienceEvents.length > 0) {
+    await awardScoreEvents({
+      roomId: params.roomId,
+      state: updated.state,
+      events: audienceEvents,
+    });
+  }
   return { run: updated.state.tongsoftruth!, verdict };
+}
+
+export async function submitTongsAudienceBet(params: {
+  roomId: string;
+  state: RoomState;
+  player: Player;
+  runId: string;
+  guess: TongsAudienceBet;
+}) {
+  const run = assertRun(params.state, params.runId);
+  if (run.speakerPlayerId === params.player.id) {
+    throw statusError("the speaker cannot bet on their own dodge", 403);
+  }
+  if (!run.participantIds.includes(params.player.id)) {
+    throw statusError("player is not in this Tongs run", 403);
+  }
+  if (!["question", "recording", "judging"].includes(run.status)) {
+    throw statusError("Tongs bets are closed", 409);
+  }
+  const updated = await updateTongs(params.roomId, (state) =>
+    placeTongsAudienceBetState(state, {
+      runId: params.runId,
+      playerId: params.player.id,
+      guess: params.guess,
+    }),
+  );
+  return { run: updated.state.tongsoftruth! };
 }
 
 async function createTestimony(params: {

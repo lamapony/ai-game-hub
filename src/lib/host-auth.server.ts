@@ -114,6 +114,22 @@ function mergeActiveRoundPlayerData(current: RoomState, submitted: RoomState): R
   }
 
   if (
+    current.currentGame === "challenge" &&
+    sameRoundPhase(current.challenge, submitted.challenge)
+  ) {
+    return {
+      ...submitted,
+      challenge: {
+        ...submitted.challenge!,
+        audienceVotes: mergeRecord(
+          current.challenge?.audienceVotes,
+          submitted.challenge?.audienceVotes,
+        ),
+      },
+    };
+  }
+
+  if (
     current.currentGame === "phototunt" &&
     sameRoundPhase(current.phototunt, submitted.phototunt)
   ) {
@@ -124,6 +140,10 @@ function mergeActiveRoundPlayerData(current: RoomState, submitted: RoomState): R
         submittedPlayerIds: mergeArraySet(
           current.phototunt?.submittedPlayerIds,
           submitted.phototunt?.submittedPlayerIds,
+        ),
+        audienceVotes: mergeRecord(
+          current.phototunt?.audienceVotes,
+          submitted.phototunt?.audienceVotes,
         ),
       },
     };
@@ -190,6 +210,8 @@ function mergeActiveRoundPlayerData(current: RoomState, submitted: RoomState): R
       whoamong: {
         ...submitted.whoamong!,
         votes: mergeRecord(current.whoamong?.votes, submitted.whoamong?.votes),
+        exhibits: mergeRecord(current.whoamong?.exhibits, submitted.whoamong?.exhibits),
+        pleas: mergeRecord(current.whoamong?.pleas, submitted.whoamong?.pleas),
       },
     };
   }

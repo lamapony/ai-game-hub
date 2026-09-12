@@ -101,6 +101,18 @@ export const sommelierPlayerStatusClient = (roomId: string, sessionId: string, p
     sessionId,
   });
 
+export const clapSommelierRevealClient = (params: {
+  roomId: string;
+  sessionId: string;
+  entryId: string;
+  playerId: string;
+}) =>
+  postAsPlayer<{ sommelier: SommelierState }>(params.roomId, params.playerId, {
+    action: "clap",
+    sessionId: params.sessionId,
+    entryId: params.entryId,
+  });
+
 export const submitSommelierGuessClient = (params: {
   roomId: string;
   sessionId: string;

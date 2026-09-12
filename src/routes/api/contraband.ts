@@ -12,6 +12,7 @@ import { contrabandRequestSchema } from "@/lib/contraband-lifecycle";
 import {
   accuseContraband,
   assignContrabandPhrases,
+  corroborateContraband,
   contrabandHostCase,
   contrabandPlayerAssignment,
   finalizeContraband,
@@ -22,7 +23,7 @@ import {
 import { logError, logInfo, logWarn } from "@/lib/structured-log";
 import type { RoomState } from "@/lib/types";
 
-const PLAYER_ACTIONS = ["assignment", "accuse", "respond", "submit-audio"] as const;
+const PLAYER_ACTIONS = ["assignment", "accuse", "respond", "submit-audio", "corroborate"] as const;
 
 export const Route = createFileRoute("/api/contraband")({
   server: {
@@ -57,7 +58,7 @@ export const Route = createFileRoute("/api/contraband")({
           if ((PLAYER_ACTIONS as readonly string[]).includes(body.action)) {
             const playerBody = body as Extract<
               typeof body,
-              { action: "assignment" | "accuse" | "respond" | "submit-audio" }
+              { action: "assignment" | "accuse" | "respond" | "submit-audio" | "corroborate" }
             >;
             const { data, error } = await supabaseAdmin
               .from("rooms")
@@ -99,15 +100,23 @@ export const Route = createFileRoute("/api/contraband")({
                         accusationId: playerBody.accusationId,
                         response: playerBody.response,
                       })
-                    : await submitContrabandAudio({
-                        roomId,
-                        state,
-                        player,
-                        runId: playerBody.runId,
-                        accusationId: playerBody.accusationId,
-                        storagePath: playerBody.storagePath,
-                        durationSeconds: playerBody.durationSeconds,
-                      });
+                    : playerBody.action === "corroborate"
+                      ? await corroborateContraband({
+                          roomId,
+                          state,
+                          player,
+                          runId: playerBody.runId,
+                          accusationId: playerBody.accusationId,
+                        })
+                      : await submitContrabandAudio({
+                          roomId,
+                          state,
+                          player,
+                          runId: playerBody.runId,
+                          accusationId: playerBody.accusationId,
+                          storagePath: playerBody.storagePath,
+                          durationSeconds: playerBody.durationSeconds,
+                        });
           } else {
             const room = await authorizeHostRoom({
               roomId: body.roomId,

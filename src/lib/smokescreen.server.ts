@@ -505,7 +505,7 @@ export async function submitSmokeScreenVote(params: {
     payload = assertExistingGuess(created.row, params.runId, params.player.id, params.guesses);
   }
   const updated = await updateSmokeState(params.roomId, (state) =>
-    markSmokeScreenVotedState(state, params.runId, params.player.id),
+    markSmokeScreenVotedState(state, params.runId, params.player.id, params.guesses),
   );
   return { ballot: payload, replayed, smoke: updated.state.smokescreen! };
 }

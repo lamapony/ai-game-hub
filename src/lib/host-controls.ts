@@ -1,3 +1,5 @@
+import { applyChallengeVotingResult, CHALLENGE_VOTE_MS } from "@/games/challenge/scoring";
+import { applyPhotoHuntVotingResult } from "@/games/phototunt/scoring";
 import { normalizePartyContext } from "./party-context";
 import { captureFinaleState, capturePartyEvidenceState } from "./finale-narrative";
 import type { RoomState, SpectrumCourtState, Team } from "./types";
@@ -17,8 +19,9 @@ const SPECTRUM_COURT_CLUE_MS = 60_000;
 const SPECTRUM_COURT_GUESS_MS = 35_000;
 const SPECTRUM_COURT_APPEAL_MS = 18_000;
 const SPECTRUM_COURT_REVEAL_MS = 10_000;
-const WHO_AMONG_VOTE_MS = 25_000;
-const WHO_AMONG_REVEAL_MS = 10_000;
+const WHO_AMONG_VOTE_MS = 40_000;
+const WHO_AMONG_PLEA_MS = 18_000;
+const WHO_AMONG_REVEAL_MS = 14_000;
 const IMPOSTOR_ANSWER_MS = 75_000;
 const IMPOSTOR_VOTE_MS = 45_000;
 const IMPOSTOR_REVEAL_MS = 14_000;
@@ -90,12 +93,14 @@ export function resumeRoomState(state: RoomState, now = Date.now()): RoomState {
           ...state.challenge,
           briefingEndsAt: shiftTime(state.challenge.briefingEndsAt, deltaMs),
           recordingEndsAt: shiftTime(state.challenge.recordingEndsAt, deltaMs),
+          voteEndsAt: shiftTime(state.challenge.voteEndsAt, deltaMs),
         }
       : undefined,
     phototunt: state.phototunt
       ? {
           ...state.phototunt,
           huntEndsAt: shiftTime(state.phototunt.huntEndsAt, deltaMs),
+          voteEndsAt: shiftTime(state.phototunt.voteEndsAt, deltaMs),
         }
       : undefined,
     trackguess: state.trackguess
@@ -119,6 +124,7 @@ export function resumeRoomState(state: RoomState, now = Date.now()): RoomState {
       ? {
           ...state.whoamong,
           voteEndsAt: shiftTime(state.whoamong.voteEndsAt, deltaMs),
+          pleaEndsAt: shiftTime(state.whoamong.pleaEndsAt, deltaMs),
           revealEndsAt: shiftTime(state.whoamong.revealEndsAt, deltaMs),
         }
       : undefined,
@@ -325,13 +331,15 @@ export function canSkipCurrentPhase(state: RoomState): boolean {
     return (
       (state.challenge.phase === "briefing" && !!state.challenge.task) ||
       state.challenge.phase === "recording" ||
-      state.challenge.phase === "judging"
+      state.challenge.phase === "judging" ||
+      state.challenge.phase === "voting"
     );
   }
   if (state.currentGame === "phototunt" && state.phototunt) {
     return (
       (state.phototunt.phase === "briefing" && !!state.phototunt.task) ||
-      state.phototunt.phase === "hunting"
+      state.phototunt.phase === "hunting" ||
+      state.phototunt.phase === "voting"
     );
   }
   if (state.currentGame === "trackguess" && state.trackguess) {
@@ -344,7 +352,7 @@ export function canSkipCurrentPhase(state: RoomState): boolean {
     );
   }
   if (state.currentGame === "whoamong" && state.whoamong) {
-    return ["voting", "reveal"].includes(state.whoamong.phase);
+    return ["voting", "plea", "reveal"].includes(state.whoamong.phase);
   }
   if (state.currentGame === "impostor" && state.impostor) {
     return ["answering", "voting", "reveal"].includes(state.impostor.phase);
@@ -423,25 +431,23 @@ export function skipCurrentPhaseState(state: RoomState, now = Date.now()): RoomS
       };
     }
     if (ch.phase === "judging") {
-      const operator = state.players.find((player) => player.id === ch.operatorId);
-      const teams = state.teams.map((team) =>
-        operator && team.id === operator.teamId
-          ? { ...team, score: team.score + CHALLENGE_JUDGING_FALLBACK_SCORE }
-          : team,
-      );
       return {
         ...state,
-        teams,
         challenge: {
           ...ch,
-          phase: "results",
+          phase: "voting",
           result: {
             score: CHALLENGE_JUDGING_FALLBACK_SCORE,
             feedback: CHALLENGE_JUDGING_FALLBACK_FEEDBACK,
             videoUrl: "",
           },
+          audienceVotes: ch.audienceVotes ?? {},
+          voteEndsAt: now + CHALLENGE_VOTE_MS,
         },
       };
+    }
+    if (ch.phase === "voting") {
+      return applyChallengeVotingResult(state);
     }
   }
 
@@ -463,6 +469,9 @@ export function skipCurrentPhaseState(state: RoomState, now = Date.now()): RoomS
         ...state,
         phototunt: { ...ph, huntEndsAt: now },
       };
+    }
+    if (ph.phase === "voting") {
+      return applyPhotoHuntVotingResult(state);
     }
   }
 
@@ -531,6 +540,12 @@ export function skipCurrentPhaseState(state: RoomState, now = Date.now()): RoomS
         whoamong: { ...wa, voteEndsAt: now },
       };
     }
+    if (wa.phase === "plea") {
+      return {
+        ...state,
+        whoamong: { ...wa, pleaEndsAt: now },
+      };
+    }
     if (wa.phase === "reveal") {
       return {
         ...state,
@@ -587,6 +602,7 @@ export {
   SPECTRUM_COURT_APPEAL_MS,
   SPECTRUM_COURT_REVEAL_MS,
   WHO_AMONG_VOTE_MS,
+  WHO_AMONG_PLEA_MS,
   WHO_AMONG_REVEAL_MS,
   IMPOSTOR_ANSWER_MS,
   IMPOSTOR_VOTE_MS,
