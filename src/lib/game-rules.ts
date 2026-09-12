@@ -181,11 +181,12 @@ export const GAME_RULES: Record<GameId, GameRules> = {
       "Pass the real tongs to the named speaker; compact mode runs five level-3 turns",
       "AI asks one open question at heat level 1, 2 or 3",
       "The speaker records a 10–20 second answer while everyone keeps cooking",
+      "The rest of the room places a Trivia Murder Party-style side bet: will they dodge, or stand",
       "AI scores only transcript specificity, evasiveness and stagecraft — never factual truth",
       "The private transcript is sealed as testimony for later callbacks and Cross Examination",
     ],
     scoring:
-      "Specificity 0–10 + artistry 0–5 −3 for a dodge +5 for meaningful use of a real grill object or event; server cap 20",
+      "Specificity 0–10 + artistry 0–5 −3 for a dodge +5 for a real grill object or event; server cap 20. Correct dodge/stand bets +2; skipped rounds pay nothing",
     minPlayers: "3–30 players",
   },
   crossexamination: {

@@ -918,7 +918,27 @@ export function nextTongsRoundState(
       question: undefined,
       questionAiFallback: undefined,
       recordingEndsAt: undefined,
+      audienceBets: {},
       result: undefined,
+    },
+  };
+}
+
+export function placeTongsAudienceBetState(
+  state: RoomState,
+  params: { runId: string; playerId: string; guess: "dodge" | "stand" },
+): RoomState | null {
+  const run = state.tongsoftruth;
+  if (!run || run.runId !== params.runId) return null;
+  if (!["question", "recording", "judging"].includes(run.status)) return null;
+  if (run.speakerPlayerId === params.playerId) return null;
+  if (!run.participantIds.includes(params.playerId)) return null;
+  if (!state.players.some((player) => player.id === params.playerId)) return null;
+  return {
+    ...state,
+    tongsoftruth: {
+      ...run,
+      audienceBets: { ...(run.audienceBets ?? {}), [params.playerId]: params.guess },
     },
   };
 }

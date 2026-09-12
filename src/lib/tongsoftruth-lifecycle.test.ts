@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { contextForExperience } from "@/experiences/catalog";
+import { scoreTongsAudienceBets } from "@/games/tongsoftruth/scoring";
 import {
   launchTongsOfTruthState,
   markTongsJudgingState,
   nextTongsRoundState,
+  placeTongsAudienceBetState,
   revealTongsRoundState,
   reviewTongsRoundState,
   setTongsQuestionState,
@@ -135,6 +137,96 @@ describe("Tongs of Truth lifecycle", () => {
         artistryScore: 2,
         environmentUsed: false,
         comment: "No.",
+      }).success,
+    ).toBe(false);
+  });
+
+  test("lets the audience bet dodge or stand and clears bets on the next turn", () => {
+    const launched = launchTongsOfTruthState(room(4), "tongs_bet", 0)!;
+    const questioned = setTongsQuestionState(launched, {
+      runId: "tongs_bet",
+      roundId: "tongs_bet_r1",
+      question: "Who burned the first sausage?",
+      aiFallback: false,
+    })!;
+
+    expect(
+      placeTongsAudienceBetState(questioned, {
+        runId: "tongs_bet",
+        playerId: "p1",
+        guess: "dodge",
+      }),
+    ).toBeNull();
+
+    const withBet = placeTongsAudienceBetState(questioned, {
+      runId: "tongs_bet",
+      playerId: "p2",
+      guess: "dodge",
+    })!;
+    expect(withBet.tongsoftruth?.audienceBets).toEqual({ p2: "dodge" });
+    expect(withBet.currentGame).toBe("challenge");
+
+    const changed = placeTongsAudienceBetState(withBet, {
+      runId: "tongs_bet",
+      playerId: "p2",
+      guess: "stand",
+    })!;
+    expect(changed.tongsoftruth?.audienceBets).toEqual({ p2: "stand" });
+
+    const revealed = revealTongsRoundState(changed, "tongs_bet", {
+      roundId: "tongs_bet_r1",
+      speakerPlayerId: "p1",
+      speakerName: "Player 1",
+      level: 1,
+      question: "Who burned the first sausage?",
+      honestyScore: 4,
+      dodgeDetected: true,
+      artistryScore: 1,
+      environmentUsed: false,
+      points: 2,
+      comment: "Slipped the question.",
+      source: "ai",
+      audienceDodgeCount: 0,
+      audienceStandCount: 1,
+      correctBetterIds: [],
+    })!;
+    const next = nextTongsRoundState(revealed, "tongs_bet", 20_000)!;
+    expect(next.tongsoftruth?.audienceBets).toEqual({});
+    expect(next.tongsoftruth?.status).toBe("question");
+  });
+
+  test("scores the dodge side bet and pays nothing on a skipped round", () => {
+    const bets = { p2: "dodge" as const, p3: "stand" as const, p4: "dodge" as const };
+    expect(scoreTongsAudienceBets(bets, true)).toEqual({
+      audienceDodgeCount: 2,
+      audienceStandCount: 1,
+      correctBetterIds: ["p2", "p4"],
+    });
+    expect(scoreTongsAudienceBets(bets, false)).toEqual({
+      audienceDodgeCount: 2,
+      audienceStandCount: 1,
+      correctBetterIds: ["p3"],
+    });
+    expect(scoreTongsAudienceBets(bets, true, true).correctBetterIds).toEqual([]);
+  });
+
+  test("accepts the audience-bet payload", () => {
+    expect(
+      tongsRequestSchema.safeParse({
+        action: "audience-bet",
+        roomId: "room_1",
+        runId: "run_1",
+        playerId: "p2",
+        guess: "dodge",
+      }).success,
+    ).toBe(true);
+    expect(
+      tongsRequestSchema.safeParse({
+        action: "audience-bet",
+        roomId: "room_1",
+        runId: "run_1",
+        playerId: "p2",
+        guess: "flee",
       }).success,
     ).toBe(false);
   });

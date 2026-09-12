@@ -144,6 +144,8 @@ export function TongsOfTruthBackgroundHost({
     artistryScore,
     environmentUsed,
   });
+  const bettorCount = Object.keys(run.audienceBets ?? {}).length;
+  const bettingOpen = ["question", "recording", "judging"].includes(run.status);
   const urgent = run.status !== "results";
 
   return (
@@ -191,6 +193,13 @@ export function TongsOfTruthBackgroundHost({
               ? "AI оценивает конкретику текста, а не знает правду и не читает голос как полиграф."
               : "AI scores textual specificity; it cannot know truth or read a voice like a polygraph."}
           </p>
+          {bettingOpen && (
+            <p className="mt-3 text-xs text-orange-100/80">
+              {locale === "ru"
+                ? `${bettorCount} ставок зала. Расклад запечатан до вердикта.`
+                : `${bettorCount} side bet${bettorCount === 1 ? "" : "s"} in. Split stays sealed until the verdict.`}
+            </p>
+          )}
         </div>
       )}
 
@@ -293,6 +302,13 @@ export function TongsOfTruthBackgroundHost({
             </div>
           </div>
           <p className="mt-3 text-sm leading-relaxed text-white/80">{run.result.comment}</p>
+          {(run.result.audienceDodgeCount ?? 0) + (run.result.audienceStandCount ?? 0) > 0 && (
+            <p className="mt-3 text-xs text-white/70">
+              {locale === "ru"
+                ? `Зал: ${run.result.audienceDodgeCount ?? 0} «уклонится» · ${run.result.audienceStandCount ?? 0} «выстоит» · ${run.result.correctBetterIds?.length ?? 0} угадали (+2).`
+                : `Room: ${run.result.audienceDodgeCount ?? 0} dodge · ${run.result.audienceStandCount ?? 0} stand · ${run.result.correctBetterIds?.length ?? 0} called it (+2).`}
+            </p>
+          )}
           <button
             type="button"
             disabled={busy}

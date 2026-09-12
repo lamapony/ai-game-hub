@@ -52,6 +52,13 @@ export const tongsRequestSchema = z.discriminatedUnion("action", [
   z
     .object({
       ...playerAddress,
+      action: z.literal("audience-bet"),
+      guess: z.enum(["dodge", "stand"]),
+    })
+    .strict(),
+  z
+    .object({
+      ...playerAddress,
       action: z.literal("submit-audio"),
       roundId: z.string().trim().min(2).max(128),
       storagePath: z.string().trim().min(1).max(512),

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   TONGS_AUDIO_MAX_BYTES,
+  tongsAudienceBetKey,
   tongsScoreKey,
   tongsTestimonyKey,
   tongsVerdictKey,
@@ -12,10 +13,12 @@ describe("Tongs of Truth server invariants", () => {
     const testimony = tongsTestimonyKey("tongs_1", `round_${transcript}`);
     const verdict = tongsVerdictKey("tongs_1", "round_1");
     const score = tongsScoreKey("tongs_1", "round_1");
+    const audience = tongsAudienceBetKey("tongs_1", "round_1", "p2");
 
     expect(testimony).toBe(tongsTestimonyKey("tongs_1", `round_${transcript}`));
     expect(testimony.includes("foil")).toBe(false);
-    expect(new Set([testimony, verdict, score]).size).toBe(3);
+    expect(audience.includes("p2")).toBe(false);
+    expect(new Set([testimony, verdict, score, audience]).size).toBe(4);
   });
 
   test("keeps the server audio budget bounded", () => {

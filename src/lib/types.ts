@@ -208,6 +208,8 @@ export type ContrabandState = {
 export type TongsOfTruthStatus =
   "question" | "recording" | "judging" | "review" | "reveal" | "results";
 
+export type TongsAudienceBet = "dodge" | "stand";
+
 export type TongsOfTruthRoundResult = {
   roundId: string;
   speakerPlayerId: string;
@@ -221,6 +223,9 @@ export type TongsOfTruthRoundResult = {
   points: number;
   comment: string;
   source: "ai" | "manual" | "skipped";
+  audienceDodgeCount?: number;
+  audienceStandCount?: number;
+  correctBetterIds?: string[];
 };
 
 /** Public ritual state. Audio paths and verbatim transcripts stay in host-only party_records. */
@@ -238,6 +243,7 @@ export type TongsOfTruthState = {
   question?: string;
   questionAiFallback?: boolean;
   recordingEndsAt?: number;
+  audienceBets?: Record<string, TongsAudienceBet>;
   result?: TongsOfTruthRoundResult;
   roundResults: TongsOfTruthRoundResult[];
   completedAt?: number;
