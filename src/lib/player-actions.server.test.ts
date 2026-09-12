@@ -275,6 +275,20 @@ describe("player server actions", () => {
     expect(boosted.challenge?.audienceVotes).toEqual({ p2: "boost" });
     expect(
       await rejectedStatus(() =>
+        applyPlayerAction(
+          state,
+          {
+            action: "challenge-vote",
+            playerId: "p1",
+            playerSecretHash: "hash-p1",
+            answer: "boost",
+          },
+          12_000,
+        ),
+      ),
+    ).toBe(403);
+    expect(
+      await rejectedStatus(() =>
         applyPlayerAction(state, {
           action: "challenge-vote",
           playerId: "p1",
@@ -331,6 +345,20 @@ describe("player server actions", () => {
       12_000,
     );
     expect(voted.phototunt?.audienceVotes).toEqual({ p1: "p2" });
+    expect(
+      await rejectedStatus(() =>
+        applyPlayerAction(
+          state,
+          {
+            action: "phototunt-vote",
+            playerId: "p1",
+            playerSecretHash: "hash-p1",
+            targetPlayerId: "p1",
+          },
+          12_000,
+        ),
+      ),
+    ).toBe(403);
     expect(
       await rejectedStatus(() =>
         applyPlayerAction(state, {

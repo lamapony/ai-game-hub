@@ -221,11 +221,11 @@ function challengeVoteState(
   if (state.currentGame !== "challenge" || !challenge || challenge.phase !== "voting") {
     throw statusError("challenge voting is closed", 409);
   }
-  if (challenge.voteEndsAt && challenge.voteEndsAt < now) {
-    throw statusError("challenge voting is closed", 409);
-  }
   if (challenge.operatorId === player.id) {
     throw statusError("the operator cannot vote on their own footage", 403);
+  }
+  if (challenge.voteEndsAt && challenge.voteEndsAt < now) {
+    throw statusError("challenge voting is closed", 409);
   }
   const vote = payload.answer === "cut" ? "cut" : payload.answer === "boost" ? "boost" : null;
   if (!vote) throw statusError("challenge vote required", 400);
@@ -249,10 +249,10 @@ function photoHuntVoteState(
   if (state.currentGame !== "phototunt" || !phototunt || phototunt.phase !== "voting") {
     throw statusError("photo hunt voting is closed", 409);
   }
+  if (targetPlayerId === player.id) throw statusError("cannot vote for your own photo", 403);
   if (phototunt.voteEndsAt && phototunt.voteEndsAt < now) {
     throw statusError("photo hunt voting is closed", 409);
   }
-  if (targetPlayerId === player.id) throw statusError("cannot vote for your own photo", 403);
   if (!phototunt.results?.some((entry) => entry.playerId === targetPlayerId)) {
     throw statusError("photo not in this round", 409);
   }
