@@ -44,6 +44,42 @@ describe("Grill Oracle lifecycle server invariants", () => {
     expect(events.every((event) => event.gameId === "grilloracle")).toBe(true);
   });
 
+  test("pays +1 to each guest who guessed the fulfilled count", () => {
+    const state = emptyRoomState("Host");
+    state.players = [
+      { id: "p1", name: "One", teamId: "forest", joinedAt: 1 },
+      { id: "p2", name: "Two", teamId: "lake", joinedAt: 2 },
+      { id: "p3", name: "Three", teamId: "fire", joinedAt: 3 },
+    ];
+    state.oracleMemory = {
+      runId: "oracle_1",
+      participantIds: ["p1", "p2", "p3"],
+      submittedPlayerIds: ["p1", "p2", "p3"],
+      verifiedPlayerIds: [],
+      status: "revealed",
+      countGuesses: {
+        p2: { p1: 2 },
+        p3: { p1: 1 },
+      },
+    };
+
+    const events = buildOracleScoreEvents({
+      state,
+      runId: "oracle_1",
+      playerId: "p1",
+      results: [true, false, true],
+    });
+
+    expect(
+      events.map((event) => [event.teamId, event.playerId, event.points, event.source]),
+    ).toEqual([
+      ["forest", "p1", 10, "deterministic"],
+      ["lake", undefined, 3, "deterministic"],
+      ["fire", undefined, 3, "deterministic"],
+      ["lake", "p2", 1, "vote"],
+    ]);
+  });
+
   test("does not create zero-point events", () => {
     const state = emptyRoomState("Host");
     state.players = [{ id: "p1", name: "One", teamId: "forest", joinedAt: 1 }];

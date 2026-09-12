@@ -5641,6 +5641,7 @@
 .agh-oracle-memory-action:disabled,
 .agh-oracle-verification-lock:disabled,
 .agh-oracle-verification-claims button:disabled,
+.agh-oracle-guess-counts button:disabled,
 .agh-oracle-capture button:disabled {
   cursor: not-allowed;
   opacity: 0.48;
@@ -6234,6 +6235,50 @@
   margin: 20px 24px 24px;
   background: var(--oracle-ink);
   color: var(--oracle-paper);
+}
+
+.agh-oracle-guess-owner {
+  padding: 8px 24px 16px;
+}
+
+.agh-oracle-guess-owner > strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.agh-oracle-guess-counts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 2px solid var(--oracle-ink);
+}
+
+.agh-oracle-guess-counts button {
+  min-height: 56px;
+  border: 0;
+  border-right: 2px solid var(--oracle-ink);
+  border-radius: 0;
+  background: var(--oracle-paper);
+  color: var(--oracle-ink);
+  font-size: 18px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.agh-oracle-guess-counts button:last-child {
+  border-right: 0;
+}
+
+.agh-oracle-guess-counts button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--oracle-coral) 68%, var(--oracle-paper));
+}
+
+.agh-oracle-guess-tally,
+.agh-oracle-guess-locked {
+  margin: 0;
+  padding: 10px 24px 16px;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .agh-oracle-memory-empty {
