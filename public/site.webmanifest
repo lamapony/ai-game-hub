@@ -1,0 +1,28 @@
+{
+  "name": "DIMAS fest",
+  "short_name": "DIMAS fest",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fbe6a0",
+  "theme_color": "#112f2c",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/dimas-fest-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/dimas-fest-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

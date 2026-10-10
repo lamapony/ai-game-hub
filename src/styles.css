@@ -3,6 +3,15 @@
 @import "tw-animate-css";
 
 @font-face {
+  font-family: "Le Murmure Fallback";
+  src: local("Arial"), local("Arimo"), local("Liberation Sans");
+  size-adjust: 44%;
+  ascent-override: 83%;
+  descent-override: 28%;
+  line-gap-override: 0%;
+}
+
+@font-face {
   font-family: "Le Murmure";
   src: url("/assets/fonts/lemurmure-regular.woff2") format("woff2");
   font-style: normal;
@@ -21,7 +30,7 @@
   --radius-3xl: calc(var(--radius) + 12px);
 
   --font-sans: "Helvetica Neue", Arial, system-ui, sans-serif;
-  --font-display: "Le Murmure", "Arial Narrow", sans-serif;
+  --font-display: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -116,7 +125,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* AI Game Hub landing: a live-event poster, not a SaaS card stack. */
+/* DIMAS fest landing: a live-event poster, not a SaaS card stack. */
 .agh-landing {
   --agh-ink: #112f2c;
   --agh-paper: #fbe6a0;
@@ -167,9 +176,14 @@
 .agh-route-heading strong,
 .agh-create-row > div > strong,
 .agh-venue-options strong {
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-weight: 400;
   text-transform: uppercase;
+}
+
+.agh-brand-name,
+.agh-footer strong {
+  text-transform: none;
 }
 
 .agh-masthead {
@@ -241,13 +255,16 @@
 
 .agh-hero-title {
   max-width: 1040px;
+  height: 1.9em;
+  margin: 0;
   font-size: clamp(112px, 14.3vw, 244px);
   line-height: 0.95;
   letter-spacing: 0.005em;
+  white-space: nowrap;
 }
 
 .agh-hero-venue-line {
-  margin-top: clamp(28px, 4vw, 56px);
+  margin: clamp(28px, 4vw, 56px) 0 0;
   font-size: clamp(13px, 1.2vw, 18px);
   font-weight: 800;
   letter-spacing: 0.02em;
@@ -261,6 +278,7 @@
 
 .agh-hero-copy > p {
   max-width: 430px;
+  margin: 0;
   font-size: clamp(18px, 1.55vw, 24px);
   font-weight: 600;
   line-height: 1.22;
@@ -270,7 +288,7 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
-  margin-top: 34px;
+  margin: 34px 0 0;
 }
 
 .agh-hero-facts dt {
@@ -296,7 +314,7 @@
   background: var(--agh-ink);
   color: var(--agh-paper) !important;
   clip-path: polygon(0 0, calc(100% - 32px) 0, 100% 50%, calc(100% - 32px) 100%, 0 100%);
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(34px, 3.6vw, 60px);
   line-height: 0.94;
   white-space: nowrap;
@@ -586,7 +604,7 @@
 }
 
 .agh-duration-fieldset button strong {
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 52px;
   font-weight: 400;
   line-height: 0.75;
@@ -612,7 +630,7 @@
   border-radius: 0;
   background: transparent;
   color: var(--agh-ink);
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 48px;
   text-transform: uppercase;
 }
@@ -627,7 +645,7 @@
 
 .agh-crowd-control > span strong {
   padding-right: clamp(20px, 2.5vw, 40px);
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 46px;
   font-weight: 400;
   line-height: 0.7;
@@ -783,7 +801,7 @@
 }
 
 .agh-route-metrics strong {
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 72px;
   font-weight: 400;
   line-height: 0.72;
@@ -889,7 +907,7 @@
   background: var(--agh-ink);
   color: var(--agh-paper);
   clip-path: polygon(0 0, calc(100% - 36px) 0, 100% 50%, calc(100% - 36px) 100%, 0 100%);
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(40px, 5vw, 78px);
   line-height: 0.94;
   white-space: nowrap;
@@ -968,7 +986,7 @@
   border-radius: 0;
   background: var(--agh-paper);
   color: var(--agh-ink);
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(62px, 6.5vw, 102px);
   letter-spacing: 0.12em;
   line-height: 0.8;
@@ -5425,7 +5443,7 @@
 .agh-oracle-host-copy h2 {
   max-width: 820px;
   margin: 26px 0 18px;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(76px, 9vw, 132px);
   font-weight: 700;
   letter-spacing: -0.035em;
@@ -5452,7 +5470,7 @@
 }
 
 .agh-oracle-host-clock time {
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(74px, 8vw, 116px);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
@@ -5517,7 +5535,7 @@
 .agh-oracle-host-ledger li > strong {
   min-width: 0;
   overflow-wrap: anywhere;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 32px;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -5548,7 +5566,7 @@
 }
 
 .agh-oracle-fallback > header strong {
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(54px, 6vw, 84px);
   font-weight: 700;
   letter-spacing: -0.025em;
@@ -5676,7 +5694,7 @@
 }
 
 .agh-oracle-host-complete > strong {
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(46px, 5vw, 72px);
   font-weight: 700;
   letter-spacing: -0.025em;
@@ -5751,7 +5769,7 @@
 
 .agh-oracle-player-brief > header time {
   flex: 0 0 auto;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 42px;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
@@ -5773,7 +5791,7 @@
 .agh-oracle-player-copy h2 {
   min-width: 0;
   margin: 0;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(66px, 18vw, 96px);
   font-weight: 700;
   letter-spacing: -0.035em;
@@ -5781,7 +5799,7 @@
 }
 
 .agh-oracle-player-copy > span {
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 92px;
   font-weight: 700;
   line-height: 0.7;
@@ -5821,7 +5839,7 @@
   clip-path: polygon(0 0, calc(100% - 28px) 0, 100% 28px, 100% 100%, 0 100%);
   background: var(--oracle-coral);
   color: var(--oracle-ink);
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 36px;
   font-weight: 700;
   letter-spacing: -0.015em;
@@ -5877,7 +5895,7 @@
 .agh-oracle-memory-heading {
   max-width: 760px;
   margin: 28px 0 0;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(62px, 10vw, 96px);
   font-weight: 700;
   letter-spacing: -0.035em;
@@ -5925,7 +5943,7 @@
 .agh-oracle-reading-verdict h2 {
   margin: 0;
   overflow-wrap: anywhere;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(70px, 18vw, 108px);
   font-weight: 700;
   letter-spacing: -0.04em;
@@ -5974,7 +5992,7 @@
 
 .agh-oracle-reading-predictions li > span:first-child,
 .agh-oracle-memory-predictions li > span {
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 28px;
   font-weight: 700;
   line-height: 0.9;
@@ -6004,7 +6022,7 @@
   max-width: 100%;
   margin: 8px 0 34px;
   color: var(--oracle-ink);
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(88px, 20vw, 140px);
   font-weight: 700;
   letter-spacing: -0.045em;
@@ -6094,7 +6112,7 @@
 
 .agh-oracle-memory-host-copy h3 {
   margin: 20px 0 12px;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(62px, 7vw, 96px);
   font-weight: 700;
   letter-spacing: -0.035em;
@@ -6116,7 +6134,7 @@
   clip-path: polygon(24px 0, 100% 0, 100% 100%, 0 100%, 0 24px);
   background: var(--oracle-ink);
   color: var(--oracle-paper);
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(34px, 4vw, 54px);
   line-height: 0.9;
 }
@@ -6133,7 +6151,7 @@
 }
 
 .agh-oracle-memory-locked strong {
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 42px;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -6171,7 +6189,7 @@
 .agh-oracle-verification > header strong {
   min-width: 0;
   overflow-wrap: anywhere;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(46px, 6vw, 72px);
   font-weight: 700;
   letter-spacing: -0.025em;
@@ -6494,7 +6512,7 @@
 .agh-host-brand strong,
 .agh-room-display-brand strong,
 .agh-player-brand strong {
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 31px;
   font-weight: 400;
   line-height: 0.82;
@@ -6531,7 +6549,7 @@
 }
 
 .agh-host-code strong {
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 58px;
   font-weight: 400;
   line-height: 0.72;
@@ -6601,7 +6619,7 @@
 .agh-host-lobby-status > div > strong {
   align-self: end;
   padding-top: 16px;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 76px;
   font-weight: 400;
   line-height: 0.7;
@@ -6679,7 +6697,7 @@
 
 .agh-readiness-head h2 {
   margin: 14px 0 0;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(48px, 6vw, 76px);
   font-weight: 400;
   line-height: 0.82;
@@ -6718,7 +6736,7 @@
 
 .agh-readiness-verdict > strong {
   max-width: 230px;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(36px, 4vw, 54px);
   font-weight: 400;
   line-height: 0.85;
@@ -6798,7 +6816,7 @@
 .agh-host-brief-heading > div > strong {
   display: block;
   margin-top: 6px;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(42px, 5.2vw, 68px);
   font-weight: 400;
   line-height: 0.84;
@@ -6848,7 +6866,7 @@
 }
 
 .agh-host-brief-metrics strong {
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 66px;
   font-weight: 400;
   line-height: 0.7;
@@ -6926,7 +6944,7 @@
 .agh-first-cue > strong {
   display: block;
   margin-top: 6px;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(44px, 5.4vw, 70px);
   font-weight: 400;
   line-height: 0.84;
@@ -7099,7 +7117,7 @@
 
 .agh-host-join-station > header h3 {
   margin: 0;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(56px, 7.5vw, 98px);
   font-weight: 400;
   line-height: 0.76;
@@ -7128,7 +7146,7 @@
 }
 
 .agh-host-code-panel > strong {
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(130px, 18vw, 248px);
   font-weight: 400;
   line-height: 0.62;
@@ -7210,7 +7228,7 @@
 }
 
 .agh-host-speakers > summary span {
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 38px;
   font-weight: 400;
   line-height: 0.8;
@@ -7318,7 +7336,7 @@
 
 .agh-room-display-code > strong {
   align-self: center;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(180px, 22vw, 332px);
   font-weight: 400;
   line-height: 0.58;
@@ -7389,7 +7407,7 @@
 
 .agh-room-display-roster strong {
   padding-top: 10px;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(66px, 8vw, 116px);
   font-weight: 400;
   line-height: 0.72;
@@ -7407,7 +7425,7 @@
 }
 
 .agh-room-display > footer strong {
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(64px, 8vw, 112px);
   font-weight: 400;
   line-height: 0.7;
@@ -7512,7 +7530,7 @@
 .agh-player-loading strong {
   display: block;
   margin-top: 8px;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 54px;
   font-weight: 400;
   line-height: 0.84;
@@ -7543,7 +7561,7 @@
 }
 
 .agh-player-room-mark > strong {
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 70px;
   font-weight: 400;
   line-height: 0.68;
@@ -7559,7 +7577,7 @@
 .agh-player-capacity h1,
 .agh-player-ticket-intro h1 {
   margin: 0;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-weight: 400;
   line-height: 0.8;
   text-transform: uppercase;
@@ -7599,7 +7617,7 @@
   outline: 0;
   background: transparent;
   color: var(--agh-ink);
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 72px;
   font-weight: 400;
   line-height: 0.8;
@@ -7680,7 +7698,7 @@
 }
 
 .agh-player-capacity-count strong {
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 94px;
   font-weight: 400;
   line-height: 0.64;
@@ -7725,7 +7743,7 @@
 }
 
 .agh-player-ticket-code strong {
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 54px;
   font-weight: 400;
   line-height: 0.68;
@@ -7760,7 +7778,7 @@
   outline: 0;
   background: transparent;
   color: var(--agh-ink);
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 48px;
   font-weight: 400;
   line-height: 0.82;
@@ -7856,7 +7874,7 @@
 
 .agh-player-team-list button strong {
   display: block;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 34px;
   font-weight: 400;
   line-height: 0.78;
@@ -7926,7 +7944,7 @@
 
 .agh-live-controls-title strong {
   min-width: 0;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(42px, 5.4vw, 70px);
   font-weight: 400;
   line-height: 0.76;
@@ -8037,7 +8055,7 @@
 .agh-conductor-head h2 {
   max-width: 760px;
   margin: 24px 0 0;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(58px, 7.7vw, 104px);
   font-weight: 400;
   line-height: 0.82;
@@ -8330,7 +8348,7 @@
 .agh-conductor-primary-game > div > div {
   max-width: 760px;
   margin-top: 12px;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(48px, 6vw, 78px);
   font-weight: 400;
   line-height: 0.82;
@@ -8586,7 +8604,7 @@
 
 .agh-conductor-game-action > strong {
   margin-top: 18px;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 36px;
   font-weight: 400;
   line-height: 0.8;
@@ -8671,7 +8689,7 @@
 .agh-player-session-identity > div:first-child > strong {
   display: block;
   margin-top: 5px;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 46px;
   font-weight: 400;
   line-height: 0.76;
@@ -8685,7 +8703,7 @@
 .agh-player-session-room strong {
   display: block;
   margin-top: 4px;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 34px;
   font-weight: 400;
   line-height: 0.75;
@@ -8734,7 +8752,7 @@
 .agh-player-state-panel > strong {
   display: block;
   margin-top: 10px;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: clamp(58px, 16vw, 76px);
   font-weight: 400;
   line-height: 0.82;
@@ -8769,7 +8787,7 @@
 .agh-player-waiting-head > strong {
   display: block;
   margin-top: 10px;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 56px;
   font-weight: 400;
   line-height: 0.82;
@@ -8850,7 +8868,7 @@
 
 .agh-rules-browser-detail > strong {
   display: block;
-  font-family: "Le Murmure", "Arial Narrow", sans-serif;
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
   font-size: 34px;
   font-weight: 400;
   line-height: 0.8;

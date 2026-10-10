@@ -443,8 +443,8 @@ function HostInner({
     <main className="agh-host min-h-dvh bg-background text-foreground">
       <header className="agh-host-masthead">
         <div className="agh-host-masthead-inner">
-          <Link to="/" className="agh-host-brand" aria-label="AI Game Hub home">
-            <strong>AI GAME HUB</strong>
+          <Link to="/" className="agh-host-brand" aria-label={`${eventProfile.title} home`}>
+            <strong>{eventProfile.title}</strong>
             <span>
               Live party
               <br />
@@ -1792,7 +1792,7 @@ function SetupFullscreen({
     <div data-testid="setup-fullscreen-qr" className="agh-room-display">
       <header>
         <div className="agh-room-display-brand">
-          <strong>AI GAME HUB</strong>
+          <strong>{eventProfile.title}</strong>
           <span>
             Live party
             <br />
@@ -2243,7 +2243,7 @@ function PartyFinale({
     >
       <div className="agh-party-finale-hero">
         <TapeReel label="MASTER · TONIGHT" />
-        <div className="agh-party-finale-label">AI GAME HUB · LAST REEL</div>
+        <div className="agh-party-finale-label">{eventProfile.title} · LAST REEL</div>
         {winners.length === 1 ? (
           <>
             <h2>THE NIGHT, AS RECORDED.</h2>

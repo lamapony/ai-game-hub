@@ -1,4 +1,5 @@
 import { getExperienceRoute } from "@/experiences/catalog";
+import { eventProfile } from "./event-profile";
 import { normalizeAiRuntimeState, type AiUsageKind, type AiUsageStatus } from "./ai-budget";
 import { summarizePlayerDeviceChecks } from "./device-readiness";
 import {
@@ -422,7 +423,7 @@ function recordLine(value: Record<string, number>) {
 }
 
 export function formatFieldReportMarkdown(report: FieldReport) {
-  return `# AI Game Hub field report
+  return `# ${eventProfile.title} field report
 
 - Generated: ${report.generatedAt}
 - Room code: ${display(report.event.roomCode)}

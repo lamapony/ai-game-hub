@@ -17,6 +17,13 @@ describe("event profile", () => {
     expect(lastPlayerRoomStorageKey()).toBe("dimas:last-player-room");
   });
 
+  test("names the public product DIMAS fest without a dash in the title", () => {
+    expect(eventProfile.title).toBe("DIMAS fest");
+    expect(eventProfile.seo.title).toBe("DIMAS fest: live AI party director");
+    expect(eventProfile.seo.title.includes("—")).toBe(false);
+    expect(eventProfile.seo.title.includes("–")).toBe(false);
+  });
+
   test("defines the five speaker slots used by room state and AI prompts", () => {
     expect(Object.keys(eventProfile.speakerSlots).length).toBe(5);
     expect(eventProfile.speakerSlots[1]).toBe("Main Stage");

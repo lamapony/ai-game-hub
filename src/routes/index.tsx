@@ -19,12 +19,13 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "AI Game Hub · live party operating system" },
+      { title: `${eventProfile.title}: live party operating system` },
       {
         name: "description",
         content: eventProfile.seo.description,
       },
-      { property: "og:title", content: "AI Game Hub" },
+      { property: "og:title", content: eventProfile.title },
+      { property: "og:site_name", content: eventProfile.title },
       {
         property: "og:description",
         content: eventProfile.seo.ogDescription,
@@ -83,8 +84,8 @@ function Landing() {
   return (
     <main id="top" className="agh-landing">
       <header className="agh-masthead">
-        <a className="agh-brand" href="#top" aria-label="AI Game Hub home">
-          <span className="agh-brand-name">AI GAME HUB</span>
+        <a className="agh-brand" href="#top" aria-label={`${eventProfile.title} home`}>
+          <span className="agh-brand-name">{eventProfile.title}</span>
           <span className="agh-brand-role">
             LIVE PARTY
             <br />
@@ -338,7 +339,7 @@ function Landing() {
       </section>
 
       <footer className="agh-footer">
-        <strong>AI GAME HUB</strong>
+        <strong>{eventProfile.title}</strong>
         <span>People become the cast. The venue becomes the evidence.</span>
       </footer>
     </main>
