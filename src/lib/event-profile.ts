@@ -42,7 +42,7 @@ export const eventProfile: EventProfile = {
     5: "Forest Echo",
   },
   seo: {
-    title: "DIMAS fest — live AI party director",
+    title: "DIMAS fest: live AI party director",
     description:
       "Build a complete 2–4 hour live AI party for 8–30 people in a park, bar, home or festival. One host screen, every phone joins.",
     ogDescription:

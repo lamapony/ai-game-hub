@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="DIMAS fest">
+  <rect width="32" height="32" fill="#112f2c"/>
+  <rect y="29" width="32" height="3" fill="#f48067"/>
+  <g transform="translate(16 15.2) scale(0.0115 -0.0115) translate(-325 -700)">
+    <path fill="#fbe6a0" d="M273 1661Q425 1661 504.0 1593.0Q583 1525 583 1374V307Q583 226 556.0 165.5Q529 105 481.5 69.5Q434 34 374.5 17.0Q315 0 243 0H239H68V1661ZM412 284V1318Q412 1427 378.0 1466.5Q344 1506 257 1506H239V155H273Q352 155 382.0 187.0Q412 219 412 284Z"/>
+  </g>
+</svg>

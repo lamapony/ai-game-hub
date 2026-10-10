@@ -1,0 +1,340 @@
+/* Above-the-fold landing paint. Values match src/styles.css so the full sheet can arrive later. */
+@font-face {
+  font-family: "Le Murmure Fallback";
+  src: local("Arial"), local("Arimo"), local("Liberation Sans");
+  size-adjust: 44%;
+  ascent-override: 83%;
+  descent-override: 28%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Le Murmure";
+  src: url("/assets/fonts/lemurmure-regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  margin: 0;
+  min-width: 320px;
+  background: #112f2c;
+}
+
+body {
+  color: #fbe6a0;
+  font-family: "Helvetica Neue", Arial, system-ui, sans-serif;
+}
+
+.agh-landing {
+  --agh-ink: #112f2c;
+  --agh-paper: #fbe6a0;
+  --agh-coral: #f48067;
+  --agh-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.92' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.045'/%3E%3C/svg%3E");
+  min-height: 100dvh;
+  overflow-x: clip;
+  background-color: var(--agh-paper);
+  color: var(--agh-ink);
+  font-family: "Helvetica Neue", Arial, system-ui, sans-serif;
+}
+
+.agh-landing *,
+.agh-landing *::before,
+.agh-landing *::after {
+  box-sizing: border-box;
+}
+
+.agh-landing h1,
+.agh-landing h2,
+.agh-landing p,
+.agh-landing dl,
+.agh-landing dd {
+  margin: 0;
+}
+
+.agh-landing a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.agh-display,
+.agh-brand-name {
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
+  font-weight: 400;
+  text-transform: uppercase;
+}
+
+.agh-brand-name {
+  text-transform: none;
+}
+
+.agh-masthead {
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 22px clamp(24px, 3vw, 52px);
+  background-color: var(--agh-paper);
+  background-image: var(--agh-grain);
+  border-bottom: 2px solid var(--agh-ink);
+}
+
+.agh-brand {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.agh-brand-name {
+  font-size: 30px;
+  line-height: 0.9;
+  letter-spacing: 0.01em;
+}
+
+.agh-brand-role {
+  max-width: 130px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.agh-entry-nav {
+  display: flex;
+  align-items: center;
+  gap: clamp(20px, 3vw, 48px);
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.agh-entry-nav a {
+  padding: 10px 0;
+}
+
+.agh-hero {
+  min-height: calc(100svh - 100px);
+  display: grid;
+  grid-template-columns: minmax(0, 1.75fr) minmax(300px, 0.7fr);
+  grid-template-rows: 1fr auto auto;
+  column-gap: clamp(36px, 5vw, 88px);
+  padding: clamp(34px, 4.5vw, 72px) clamp(24px, 3vw, 52px) 0;
+  background-color: var(--agh-paper);
+  background-image: var(--agh-grain);
+}
+
+.agh-hero-title-block {
+  grid-row: 1 / 3;
+  align-self: center;
+  min-width: 0;
+  padding: 18px 0 38px;
+}
+
+.agh-hero-title {
+  max-width: 1040px;
+  height: 1.9em;
+  font-size: clamp(112px, 14.3vw, 244px);
+  line-height: 0.95;
+  letter-spacing: 0.005em;
+  white-space: nowrap;
+}
+
+.agh-hero-venue-line {
+  margin: clamp(28px, 4vw, 56px) 0 0;
+  font-size: clamp(13px, 1.2vw, 18px);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.agh-hero-copy {
+  grid-column: 2;
+  align-self: end;
+  padding: 0 0 clamp(32px, 4vw, 56px);
+}
+
+.agh-hero-copy > p {
+  max-width: 430px;
+  font-size: clamp(18px, 1.55vw, 24px);
+  font-weight: 600;
+  line-height: 1.22;
+}
+
+.agh-hero-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin: 34px 0 0;
+}
+
+.agh-hero-facts dt {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.agh-hero-facts dd {
+  margin-top: 5px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.agh-primary-link {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  min-height: 92px;
+  padding: 24px 56px 24px 32px;
+  background: var(--agh-ink);
+  color: var(--agh-paper);
+  clip-path: polygon(0 0, calc(100% - 32px) 0, 100% 50%, calc(100% - 32px) 100%, 0 100%);
+  font-family: "Le Murmure", "Le Murmure Fallback", "Arial Narrow", sans-serif;
+  font-size: clamp(34px, 3.6vw, 60px);
+  line-height: 0.94;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+.agh-primary-link span {
+  flex: 0 0 auto;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 34px;
+}
+
+.agh-story-track {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 64px;
+  margin: clamp(32px, 4vw, 58px) clamp(-52px, -3vw, -24px) 0;
+  padding: 16px clamp(24px, 3vw, 52px);
+  background: var(--agh-coral);
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+@media (max-width: 900px) {
+  .agh-masthead {
+    min-height: 84px;
+  }
+
+  .agh-brand-role {
+    display: none;
+  }
+
+  .agh-entry-nav {
+    gap: 18px;
+    font-size: 11px;
+  }
+
+  .agh-hero {
+    min-height: calc(100svh - 84px);
+    display: flex;
+    flex-direction: column;
+    padding-top: 38px;
+  }
+
+  .agh-hero-title-block {
+    padding: 0;
+  }
+
+  .agh-hero-title {
+    font-size: clamp(82px, 24vw, 138px);
+  }
+
+  .agh-hero-copy {
+    padding: 34px 0 28px;
+  }
+
+  .agh-primary-link {
+    width: min(100%, 540px);
+    margin-top: auto;
+    font-size: clamp(42px, 11vw, 64px);
+  }
+
+  .agh-story-track {
+    width: calc(100% + clamp(48px, 6vw, 104px));
+    margin-left: clamp(-52px, -3vw, -24px);
+    margin-right: clamp(-52px, -3vw, -24px);
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 600px) {
+  .agh-masthead {
+    align-items: flex-start;
+    gap: 18px;
+    padding-top: 18px;
+    padding-bottom: 18px;
+  }
+
+  .agh-brand-name {
+    font-size: 24px;
+  }
+
+  .agh-entry-nav {
+    align-items: flex-end;
+    flex-direction: column;
+    gap: 3px;
+    line-height: 1.1;
+  }
+
+  .agh-entry-nav a {
+    padding: 2px 0;
+  }
+
+  .agh-hero {
+    min-height: calc(100svh - 84px);
+    padding-top: 32px;
+  }
+
+  .agh-hero-title {
+    font-size: clamp(76px, 24.5vw, 112px);
+  }
+
+  .agh-hero-venue-line {
+    margin-top: 22px;
+    font-size: 11px;
+  }
+
+  .agh-hero-copy > p {
+    font-size: 17px;
+  }
+
+  .agh-hero-facts {
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  .agh-hero-facts dt {
+    font-size: 9px;
+  }
+
+  .agh-hero-facts dd {
+    font-size: 12px;
+  }
+
+  .agh-primary-link {
+    min-height: 78px;
+    padding: 20px 48px 20px 24px;
+    clip-path: polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%);
+  }
+
+  .agh-story-track {
+    gap: 8px 12px;
+    min-height: 76px;
+    margin-top: 26px;
+    font-size: 10px;
+  }
+}

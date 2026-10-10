@@ -22,6 +22,7 @@ import {
   listHostScoreEventsClient,
 } from "@/lib/score-events-client";
 import type { ScoreEventView, ScoreLedgerSummary } from "@/lib/score-events";
+import { eventProfile } from "@/lib/event-profile";
 import type { RoomState } from "@/lib/types";
 
 const EMPTY_OBSERVATIONS: FieldReportObservations = {
@@ -607,7 +608,9 @@ export function FieldReportPanel({
                 className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white"
               >
                 <option value="unknown">Host experience: choose</option>
-                <option value="first-time">Host experience: first time using AI Game Hub</option>
+                <option value="first-time">
+                  Host experience: first time using {eventProfile.title}
+                </option>
                 <option value="returning">Host experience: returning</option>
               </select>
               <select

@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { eventProfile } from "@/lib/event-profile";
 import { roomLookupRecoveryCopy } from "@/lib/room-entry-errors";
 
 export function RoomLoadRecovery({
@@ -45,7 +46,7 @@ export function RoomLoadRecovery({
         {retrying ? "Checking…" : "Check room again"}
       </button>
       <Link to="/" className="mt-5 inline-block text-sm text-white/65 hover:text-white">
-        Back to AI Game Hub
+        Back to {eventProfile.title}
       </Link>
     </section>
   );

@@ -22,6 +22,7 @@ import { SmokeScreenBackgroundPlayer } from "@/games/smokescreen/BackgroundPlaye
 import { ContrabandBackgroundPlayer } from "@/games/contraband/BackgroundPlayer";
 import { TongsOfTruthBackgroundPlayer } from "@/games/tongsoftruth/BackgroundPlayer";
 import type { RoomConnectionStatus } from "@/lib/room";
+import { eventProfile } from "@/lib/event-profile";
 import { isValidRoomCode, normalizeRoomCodeInput } from "@/lib/room-code";
 import { guestRoomFailureKind, type GuestRoomFailureKind } from "@/lib/guest-room-recovery";
 import { MAX_ROOM_PLAYERS, roomHasPlayerCapacity } from "@/lib/room-capacity";
@@ -190,7 +191,7 @@ function GuestRoomRecovery({
         </button>
       </form>
       <Link to="/" className="agh-player-home-link">
-        Back to AI Game Hub
+        Back to {eventProfile.title}
       </Link>
     </div>
   );
@@ -266,7 +267,7 @@ function JoinForm({
             place opens.
           </p>
           <Link to="/" className="agh-player-home-link">
-            Back to AI Game Hub
+            Back to {eventProfile.title}
           </Link>
         </div>
       </PlayShell>
@@ -704,8 +705,8 @@ function PlayShell({
       className={`agh-player-shell ${celebratory ? "is-celebratory" : ""}`}
     >
       <header className="agh-player-masthead">
-        <Link to="/" className="agh-player-brand" aria-label="AI Game Hub home">
-          <strong>AI GAME HUB</strong>
+        <Link to="/" className="agh-player-brand" aria-label={`${eventProfile.title} home`}>
+          <strong>{eventProfile.title}</strong>
           <span>Live party operating system</span>
         </Link>
         <div className="agh-player-signal">
