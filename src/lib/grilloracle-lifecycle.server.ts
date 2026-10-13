@@ -219,6 +219,7 @@ async function createOracleVerdict(params: {
     visibility: "revealed",
     payload: params.payload,
     idempotency_key: idempotencyKey,
+    session_started_at: params.room.state.party?.sessionStartedAt ?? 0,
     revealed_at: new Date(params.payload.verifiedAt).toISOString(),
   };
   const inserted = await supabaseAdmin
