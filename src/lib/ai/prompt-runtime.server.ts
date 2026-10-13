@@ -50,7 +50,11 @@ export async function runPromptSpec<TInput, TOutput>(params: {
   context: PartyContext;
   temperature?: number;
   model?: string;
-  budget?: { roomId: string; operationId: string };
+  budget?: {
+    roomId: string;
+    operationId: string;
+    onReplay?: () => Promise<{ output: unknown; usedFallback: boolean }>;
+  };
 }): Promise<{ output: TOutput; usedFallback: boolean }> {
   const { spec, input, context } = params;
   if (shouldUseManualAiFallback(context)) {
@@ -66,8 +70,9 @@ export async function runPromptSpec<TInput, TOutput>(params: {
   const user = spec.buildUser(input, context);
   let budgetKey: string | undefined;
   if (params.budget) {
+    let reservation: Awaited<ReturnType<typeof reserveRoomAiBudget>>;
     try {
-      const reservation = await reserveRoomAiBudget({
+      reservation = await reserveRoomAiBudget({
         roomId: params.budget.roomId,
         operationId: params.budget.operationId,
         operation: spec.id,
@@ -75,18 +80,20 @@ export async function runPromptSpec<TInput, TOutput>(params: {
           Array.isArray(user) && user.some((part) => part.type === "image_url") ? "vision" : "text",
         credits: estimatePromptCredits(user),
       });
-      if (reservation.status !== "reserved") {
-        logWarn("ai.prompt.budget_fallback", {
-          promptId: spec.id,
-          promptVersion: spec.version,
-          gameId: spec.gameId,
-          actId: context.actId,
-          budgetStatus: reservation.status,
-        });
-        return promptFallback(spec, input, context);
-      }
-      budgetKey = reservation.key;
     } catch (error) {
+      if (
+        params.budget.onReplay &&
+        error &&
+        typeof error === "object" &&
+        "status" in error &&
+        error.status === 409
+      ) {
+        const replay = await params.budget.onReplay();
+        return {
+          output: spec.outputSchema.parse(replay.output),
+          usedFallback: replay.usedFallback,
+        };
+      }
       logWarn("ai.prompt.budget_unavailable", {
         promptId: spec.id,
         promptVersion: spec.version,
@@ -96,6 +103,24 @@ export async function runPromptSpec<TInput, TOutput>(params: {
       });
       return promptFallback(spec, input, context);
     }
+    if (reservation.status !== "reserved") {
+      if (reservation.status === "replayed" && params.budget.onReplay) {
+        const replay = await params.budget.onReplay();
+        return {
+          output: spec.outputSchema.parse(replay.output),
+          usedFallback: replay.usedFallback,
+        };
+      }
+      logWarn("ai.prompt.budget_fallback", {
+        promptId: spec.id,
+        promptVersion: spec.version,
+        gameId: spec.gameId,
+        actId: context.actId,
+        budgetStatus: reservation.status,
+      });
+      return promptFallback(spec, input, context);
+    }
+    budgetKey = reservation.key;
   }
   let usage: AiGatewayUsage | undefined;
   try {

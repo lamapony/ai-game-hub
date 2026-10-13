@@ -69,6 +69,27 @@ async function generatePrewarmOutput(params: {
   const budget = {
     roomId: params.room.id,
     operationId: `prewarm:${params.cacheKey}`,
+    onReplay: async () => {
+      // Budget reservation is the durable claim across hosts/processes. Only its owner writes
+      // the prepared record; duplicates await that record instead of racing an early fallback.
+      const deadline = Date.now() + 45_000;
+      while (Date.now() < deadline) {
+        const existing = await findPartyRecordByIdempotency(
+          params.room.id,
+          prewarmIdempotencyKey(params.cacheKey),
+        );
+        if (existing) {
+          const record = assertPrewarmRow(existing.payload, {
+            cacheKey: params.cacheKey,
+            gameId: params.gameId,
+            targetActId: params.context.actId,
+          });
+          return { output: record.output, usedFallback: record.usedFallback };
+        }
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      throw statusError("AI preparation is still in progress; try again", 409);
+    },
   };
   const seed = seedFromCacheKey(params.cacheKey);
   if (params.gameId === "smokescreen") {
