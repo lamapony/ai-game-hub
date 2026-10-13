@@ -8,7 +8,11 @@ describe("host state write guard", () => {
       gameId: "challenge",
       roundId: "ch_1",
     });
-    expect(parseHostStateWriteGuard({ gameId: "soundscape", roundId: "snd_1" })).toBeUndefined();
+    expect(parseHostStateWriteGuard({ gameId: "soundscape", roundId: "snd_1" })).toEqual({
+      gameId: "soundscape",
+      roundId: "snd_1",
+    });
+    expect(parseHostStateWriteGuard({ gameId: "smokescreen", roundId: "sm_1" })).toBeUndefined();
     expect(parseHostStateWriteGuard({ gameId: "phototunt", roundId: "" })).toBeUndefined();
   });
 

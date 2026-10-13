@@ -78,11 +78,7 @@ export function PhotoHuntHost({
   }, [roomId, ph.roundId]);
 
   const update = (patch: Partial<PhotoHuntState>) =>
-    updateRoomState(
-      roomId,
-      { ...state, phototunt: { ...ph, ...patch } },
-      { gameId: "phototunt", roundId: ph.roundId },
-    );
+    updateRoomState(roomId, { ...state, phototunt: { ...ph, ...patch } }, state);
 
   // Briefing → auto-generate task
   useEffect(() => {
@@ -169,7 +165,7 @@ export function PhotoHuntHost({
   async function runJudgement(judgingPhotos: PhotoRow[]) {
     setBusy("AI is reviewing the photos…");
     try {
-      await update({ phase: "judging" });
+      if (!(await update({ phase: "judging" }))) return;
       const r = await judgePhotos({
         data: {
           ...hostPromptAuth(roomId, code),
@@ -200,20 +196,6 @@ export function PhotoHuntHost({
         })
         .sort((a, b) => a.rank - b.rank);
 
-      await postHostArtifact(roomId, {
-        action: "photo-results",
-        results: results
-          .map((res) => {
-            const row = judgingPhotos.find((p) => p.player_id === res.playerId);
-            return row
-              ? { id: row.id, rank: res.rank, comment: res.comment, points: res.points }
-              : null;
-          })
-          .filter((row): row is { id: string; rank: number; comment: string; points: number } =>
-            Boolean(row),
-          ),
-      });
-
       // Award points per team
       const teamDelta = new Map<string, number>();
       results.forEach((res) => {
@@ -236,9 +218,22 @@ export function PhotoHuntHost({
             pastTasks: [...(ph.pastTasks ?? []), ph.task ?? ""].filter(Boolean),
           },
         },
-        { gameId: "phototunt", roundId: ph.roundId },
+        state,
       );
       if (!written) return;
+      await postHostArtifact(roomId, {
+        action: "photo-results",
+        results: results
+          .map((res) => {
+            const row = judgingPhotos.find((p) => p.player_id === res.playerId);
+            return row
+              ? { id: row.id, rank: res.rank, comment: res.comment, points: res.points }
+              : null;
+          })
+          .filter((row): row is { id: string; rank: number; comment: string; points: number } =>
+            Boolean(row),
+          ),
+      });
       speak(r.verdict);
     } catch (e) {
       console.error(e);
@@ -269,7 +264,7 @@ export function PhotoHuntHost({
           pastTasks: [...(ph.pastTasks ?? []), ph.task ?? ""].filter(Boolean),
         },
       },
-      { gameId: "phototunt", roundId: ph.roundId },
+      state,
     );
   }
 

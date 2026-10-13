@@ -49,7 +49,7 @@ export function SpectrumCourtHost({
   }, []);
 
   const update = (patch: Partial<SpectrumCourtState>) =>
-    updateRoomState(roomId, { ...state, spectrumcourt: { ...sc, ...patch } });
+    updateRoomState(roomId, { ...state, spectrumcourt: { ...sc, ...patch } }, state);
 
   function startRound() {
     const teams = activeTeams(state);
@@ -147,16 +147,20 @@ export function SpectrumCourtHost({
       return;
     }
     speak(`Court verdict. Target was ${sc.target} out of 100.`, roomId);
-    void updateRoomState(roomId, {
-      ...state,
-      teams: scored.teams,
-      spectrumcourt: {
-        ...sc,
-        phase: "reveal",
-        roundResults: [...(sc.roundResults ?? []), scored.roundResult],
-        revealEndsAt: Date.now() + SPECTRUM_COURT_REVEAL_MS,
+    void updateRoomState(
+      roomId,
+      {
+        ...state,
+        teams: scored.teams,
+        spectrumcourt: {
+          ...sc,
+          phase: "reveal",
+          roundResults: [...(sc.roundResults ?? []), scored.roundResult],
+          revealEndsAt: Date.now() + SPECTRUM_COURT_REVEAL_MS,
+        },
       },
-    });
+      state,
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.paused, sc.phase, sc.appealEndsAt, now]);
 

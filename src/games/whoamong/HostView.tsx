@@ -33,7 +33,7 @@ export function WhoAmongHost({
   }, []);
 
   const update = (patch: Partial<WhoAmongState>) =>
-    updateRoomState(roomId, { ...state, whoamong: { ...wa, ...patch } });
+    updateRoomState(roomId, { ...state, whoamong: { ...wa, ...patch } }, state);
 
   function startRound(nowMs = Date.now()) {
     const prompt = pickCatalogPrompt(wa.usedPromptIds);
@@ -95,16 +95,20 @@ export function WhoAmongHost({
       speak("Nobody got votes this round.", roomId);
     }
 
-    void updateRoomState(roomId, {
-      ...state,
-      teams: scored.teams,
-      whoamong: {
-        ...wa,
-        phase: "reveal",
-        roundResults: [...(wa.roundResults ?? []), scored.roundResult],
-        revealEndsAt,
+    void updateRoomState(
+      roomId,
+      {
+        ...state,
+        teams: scored.teams,
+        whoamong: {
+          ...wa,
+          phase: "reveal",
+          roundResults: [...(wa.roundResults ?? []), scored.roundResult],
+          revealEndsAt,
+        },
       },
-    });
+      state,
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.paused, wa.phase, wa.voteEndsAt, wa.votes, now]);
 
@@ -124,20 +128,24 @@ export function WhoAmongHost({
     }
 
     const prompt = pickCatalogPrompt(wa.usedPromptIds);
-    void updateRoomState(roomId, {
-      ...state,
-      whoamong: {
-        ...wa,
-        phase: "voting",
-        roundNumber: wa.roundNumber + 1,
-        promptId: prompt.id,
-        prompt: prompt.text,
-        usedPromptIds: [...wa.usedPromptIds, prompt.id],
-        votes: {},
-        voteEndsAt: Date.now() + WHO_AMONG_VOTE_MS,
-        revealEndsAt: undefined,
+    void updateRoomState(
+      roomId,
+      {
+        ...state,
+        whoamong: {
+          ...wa,
+          phase: "voting",
+          roundNumber: wa.roundNumber + 1,
+          promptId: prompt.id,
+          prompt: prompt.text,
+          usedPromptIds: [...wa.usedPromptIds, prompt.id],
+          votes: {},
+          voteEndsAt: Date.now() + WHO_AMONG_VOTE_MS,
+          revealEndsAt: undefined,
+        },
       },
-    });
+      state,
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.paused, wa.phase, wa.revealEndsAt, wa.roundNumber, now]);
 

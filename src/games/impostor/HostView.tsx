@@ -53,7 +53,7 @@ export function ImpostorHost({
   }, []);
 
   const update = (patch: Partial<ImpostorState>) =>
-    updateRoomState(roomId, { ...state, impostor: { ...imp, ...patch } });
+    updateRoomState(roomId, { ...state, impostor: { ...imp, ...patch } }, state);
 
   const roundKey = `${imp.roundId}:${imp.roundNumber}`;
 
@@ -175,16 +175,20 @@ export function ImpostorHost({
         await update({ phase: "reveal", revealEndsAt });
         return;
       }
-      await updateRoomState(roomId, {
-        ...state,
-        teams: scored.teams,
-        impostor: {
-          ...imp,
-          phase: "reveal",
-          roundResults: [...(imp.roundResults ?? []), scored.roundResult],
-          revealEndsAt,
+      await updateRoomState(
+        roomId,
+        {
+          ...state,
+          teams: scored.teams,
+          impostor: {
+            ...imp,
+            phase: "reveal",
+            roundResults: [...(imp.roundResults ?? []), scored.roundResult],
+            revealEndsAt,
+          },
         },
-      });
+        state,
+      );
       try {
         const aiAnswer = imp.shuffled!.find((a) => a.id === imp.aiAnswerId)?.text ?? "";
         const r = await impostorRevealComment({

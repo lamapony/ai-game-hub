@@ -112,11 +112,7 @@ export function ChallengeHost({
   }, [roomId, ch.roundId]);
 
   const update = (patch: Partial<ChallengeState>) =>
-    updateRoomState(
-      roomId,
-      { ...state, challenge: { ...ch, ...patch } },
-      { gameId: "challenge", roundId: ch.roundId },
-    );
+    updateRoomState(roomId, { ...state, challenge: { ...ch, ...patch } }, state);
 
   // Auto-generate task on briefing entry
   useEffect(() => {
@@ -204,7 +200,7 @@ export function ChallengeHost({
   }) {
     setBusy("AI is watching the video…");
     try {
-      await update({ phase: "judging" });
+      if (!(await update({ phase: "judging" }))) return;
       const r = await judgeChallenge({
         data: {
           ...hostPromptAuth(roomId, code),
@@ -213,12 +209,6 @@ export function ChallengeHost({
           frames: p.frames,
           operatorName: p.operatorName,
         },
-      });
-      await postHostArtifact(roomId, {
-        action: "challenge-result",
-        roundId: p.roundId,
-        score: r.score,
-        feedback: r.feedback,
       });
       // add points to operator's team
       const operator = state.players.find((pl) => pl.id === ch.operatorId);
@@ -243,9 +233,15 @@ export function ChallengeHost({
             pastOperatorIds: [...(ch.pastOperatorIds ?? []), ch.operatorId ?? ""].filter(Boolean),
           },
         },
-        { gameId: "challenge", roundId: ch.roundId },
+        state,
       );
       if (!written) return;
+      await postHostArtifact(roomId, {
+        action: "challenge-result",
+        roundId: p.roundId,
+        score: r.score,
+        feedback: r.feedback,
+      });
       if (spokenForRef.current !== p.roundId) {
         spokenForRef.current = p.roundId;
         speak(r.verdict);
@@ -286,7 +282,7 @@ export function ChallengeHost({
           pastOperatorIds: [...(ch.pastOperatorIds ?? []), ch.operatorId ?? ""].filter(Boolean),
         },
       },
-      { gameId: "challenge", roundId: ch.roundId },
+      state,
     );
   }
 

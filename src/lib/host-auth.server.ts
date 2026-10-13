@@ -1,6 +1,11 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { mergeRecentHostCommandIds } from "./host-command";
-import { hostStateWriteGuardMatches, type HostStateWriteGuard } from "./host-state-write-guard";
+import {
+  hostStateWriteGuardMatches,
+  hostStateWriteShouldSkip,
+  type HostStateWriteGuard,
+} from "./host-state-write-guard";
+import { hostScoreBaseline, type HostScoreBaseline } from "./host-score-baseline";
 import { migrateRoomState } from "./room-state-migration";
 import { updateRoomStateWithOptimisticRetry } from "./room-state-retry.server";
 import { statusError } from "./player-auth.server";
@@ -282,7 +287,11 @@ export async function authorizeHostRoom(params: {
   };
 }
 
-type HostStateWriteOptions = { updatedAt?: string; guard?: HostStateWriteGuard };
+type HostStateWriteOptions = {
+  updatedAt?: string;
+  guard?: HostStateWriteGuard;
+  scoreBaseline?: HostScoreBaseline;
+};
 
 export async function writeAuthorizedRoomState(
   roomId: string,
@@ -303,7 +312,8 @@ export async function writeAuthorizedRoomStateResult(
     currentState && options.updatedAt
       ? { id: roomId, state: currentState, updatedAt: options.updatedAt }
       : undefined;
-  let scoreBaseline = currentState;
+  let scoreBaseline =
+    options.scoreBaseline ?? (currentState && hostScoreBaseline(currentState.teams));
   const result = await updateRoomStateWithOptimisticRetry({
     loadSnapshot: async () => {
       if (authorizedSnapshot) {
@@ -325,20 +335,26 @@ export async function writeAuthorizedRoomStateResult(
       };
     },
     applyUpdate: async (snapshot) => {
-      if (options.guard && !hostStateWriteGuardMatches(snapshot.state, options.guard)) {
+      if (
+        options.guard &&
+        (!hostStateWriteGuardMatches(snapshot.state, options.guard) ||
+          hostStateWriteShouldSkip(snapshot.state, state, options.guard))
+      ) {
         return { state: snapshot.state, value: { skipped: true } };
       }
-      scoreBaseline ??= snapshot.state;
-      const baselineById = new Map(scoreBaseline.teams.map((team) => [team.id, team.score]));
-      const currentById = new Map(snapshot.state.teams.map((team) => [team.id, team.score]));
+      scoreBaseline ??= hostScoreBaseline(snapshot.state.teams);
+      const currentPhase = options.guard && snapshot.state[options.guard.gameId]?.phase;
+      const outcomeCommitted = currentPhase === "reveal" || currentPhase === "results";
+      const baselineById = new Map(Object.entries(scoreBaseline));
+      const submittedById = new Map(state.teams.map((team) => [team.id, team.score]));
       const rebased = {
         ...state,
-        teams: state.teams.map((team) => {
+        teams: snapshot.state.teams.map((team) => {
           const baselineScore = baselineById.get(team.id);
-          const currentScore = currentById.get(team.id);
-          return baselineScore === undefined || currentScore === undefined
+          const submittedScore = submittedById.get(team.id);
+          return outcomeCommitted || baselineScore === undefined || submittedScore === undefined
             ? team
-            : { ...team, score: currentScore + team.score - baselineScore };
+            : { ...team, score: team.score + submittedScore - baselineScore };
         }),
       };
       const next = mergeHostSubmittedState(snapshot.state, rebased);

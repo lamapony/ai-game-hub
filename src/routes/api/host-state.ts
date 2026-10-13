@@ -4,6 +4,7 @@ import { logError, logInfo, logWarn } from "@/lib/structured-log";
 import { migrateRoomState } from "@/lib/room-state-migration";
 import { hostStateWriteGuardMatches, parseHostStateWriteGuard } from "@/lib/host-state-write-guard";
 import type { RoomState } from "@/lib/types";
+import { parseHostScoreBaseline } from "@/lib/host-score-baseline";
 
 export const Route = createFileRoute("/api/host-state")({
   server: {
@@ -16,10 +17,15 @@ export const Route = createFileRoute("/api/host-state")({
           hostSecret?: unknown;
           state?: unknown;
           guard?: unknown;
+          scoreBaseline?: unknown;
         };
         if (!body.state || typeof body.state !== "object") {
           logWarn("api.host_state.invalid", { durationMs: Date.now() - startedAt, status: 400 });
           return new Response("state required", { status: 400 });
+        }
+        const scoreBaseline = parseHostScoreBaseline(body.scoreBaseline);
+        if (!scoreBaseline) {
+          return new Response("Refresh the host screen before saving this round.", { status: 400 });
         }
 
         const { authorizeHostRoom, hostSecretFromRequest, writeAuthorizedRoomStateResult } =
@@ -60,6 +66,7 @@ export const Route = createFileRoute("/api/host-state")({
             {
               updatedAt: room.updatedAt,
               guard,
+              scoreBaseline,
             },
           );
           if (guard && skipped) {

@@ -3,6 +3,7 @@ import { Buffer } from "node:buffer";
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright-core";
 import { cleanupRoomById } from "../src/lib/cleanup.server";
 import { fetchRoomByCode } from "../src/lib/room";
+import { supabase } from "../src/integrations/supabase/client";
 import {
   browserSmokeScenarioLabel,
   parseBrowserSmokeOptions,
@@ -851,10 +852,12 @@ const PHOTO_SMOKE_SVG = `
 
 async function runPhotoHuntCaptureFlow(params: {
   hostPage: Page;
+  hostFault: NetworkFaultState;
   player: BrowserPlayer;
+  room: CreatedRoom;
   scenarioLabel: string;
 }) {
-  const { hostPage, player, scenarioLabel } = params;
+  const { hostPage, hostFault, player, room, scenarioLabel } = params;
   const launch = hostPage.getByTestId("route-launch-game");
   await launch.waitFor({ state: "visible", timeout: DEFAULT_TIMEOUT_MS });
   const gameId = await launch.getAttribute("data-game-id");
@@ -875,6 +878,8 @@ async function runPhotoHuntCaptureFlow(params: {
 
   const startHunt = hostPage.getByTestId("phototunt-start-hunt");
   await startHunt.waitFor({ state: "visible", timeout: DEFAULT_TIMEOUT_MS });
+  const before = await fetchRoomByCode(room.code);
+  if (!before?.state.phototunt) throw new Error("Photo Hunt state missing before capture");
   await startHunt.click();
   await playerSessionLocator(player.page, playerId, playerTeamId, "phototunt", false).waitFor({
     state: "visible",
@@ -907,6 +912,77 @@ async function runPhotoHuntCaptureFlow(params: {
   });
   console.log(
     `ok ${scenarioLabel} Photo Hunt capture downscaled and uploaded an image with stable identity`,
+  );
+
+  const nextHunt = hostPage.getByRole("button", { name: "Next hunt", exact: false });
+  await nextHunt.waitFor({ state: "visible", timeout: READINESS_TIMEOUT_MS });
+  const judged = await fetchRoomByCode(room.code);
+  const results = judged?.state.phototunt?.results;
+  if (
+    judged?.state.phototunt?.phase !== "results" ||
+    results?.length !== 1 ||
+    results[0]?.playerId !== playerId ||
+    results[0].points < 1 ||
+    results[0].points > 5
+  ) {
+    throw new Error("Photo Hunt did not commit the captured player's scored verdict");
+  }
+  // Either host may win; verify the persisted annotation rather than one browser's response.
+  let annotationsMatched = false;
+  const annotationDeadline = Date.now() + DEFAULT_TIMEOUT_MS;
+  while (Date.now() < annotationDeadline) {
+    const { data, error } = await supabase
+      .from("photos")
+      .select("rank, points, ai_comment")
+      .eq("room_id", room.id)
+      .eq("round_id", judged.state.phototunt.roundId)
+      .eq("player_id", playerId)
+      .maybeSingle();
+    if (error) throw error;
+    if (
+      data?.rank === results[0].rank &&
+      data.points === results[0].points &&
+      data.ai_comment === results[0].comment.trim().slice(0, 800)
+    ) {
+      annotationsMatched = true;
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  if (!annotationsMatched)
+    throw new Error("Photo annotations differ from the accepted room verdict");
+  for (const team of judged.state.teams) {
+    const initialScore = before.state.teams.find((entry) => entry.id === team.id)?.score;
+    const points = results
+      .filter((result) => result.teamId === team.id)
+      .reduce((total, result) => total + result.points, 0);
+    if (initialScore === undefined || team.score !== initialScore + points) {
+      throw new Error("Photo Hunt scores do not match the accepted verdict");
+    }
+  }
+  const expectedScore = judged.state.teams.find((team) => team.id === playerTeamId)!.score;
+  await player.page.waitForFunction(
+    (score) => {
+      const text = document.querySelector(
+        '[data-testid="player-session"] .agh-player-session-score strong',
+      )?.textContent;
+      return Number(text?.match(/\d+/)?.[0]) === score;
+    },
+    expectedScore,
+    { timeout: DEFAULT_TIMEOUT_MS },
+  );
+  await reloadDuringExpectedNavigation(hostPage, hostFault, () =>
+    nextHunt.waitFor({ state: "visible", timeout: DEFAULT_TIMEOUT_MS }),
+  );
+  const restored = await fetchRoomByCode(room.code);
+  if (
+    JSON.stringify(restored?.state.teams) !== JSON.stringify(judged.state.teams) ||
+    JSON.stringify(restored?.state.phototunt?.results) !== JSON.stringify(results)
+  ) {
+    throw new Error("Host refresh changed the accepted Photo Hunt scores or verdict");
+  }
+  console.log(
+    `ok ${scenarioLabel} Photo Hunt awarded ${results[0].points} points once; player and refreshed host retained the verdict`,
   );
 
   await runWithCommittedHostCommand(hostPage, () =>
@@ -1504,7 +1580,7 @@ async function runActiveGameResilienceChecks(params: {
   console.log(`ok ${scenarioLabel} hub return advanced route ${routeStepId} → ${nextRouteStepId}`);
   if (media) {
     await runChallengeCameraFlow({ baseUrl, hostPage, players, scenarioLabel });
-    await runPhotoHuntCaptureFlow({ hostPage, player, scenarioLabel });
+    await runPhotoHuntCaptureFlow({ hostPage, hostFault, player, room, scenarioLabel });
   }
 }
 

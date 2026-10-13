@@ -55,7 +55,7 @@ export function TrackGuessHost({
   }, []);
 
   const update = (patch: Partial<TrackGuessState>) =>
-    updateRoomState(roomId, { ...state, trackguess: { ...tg, ...patch } });
+    updateRoomState(roomId, { ...state, trackguess: { ...tg, ...patch } }, state);
 
   function saveTracks(next: CustomRealTrack[]) {
     setCustomTracks(next);
@@ -137,17 +137,21 @@ export function TrackGuessHost({
       roomId,
     );
 
-    void updateRoomState(roomId, {
-      ...state,
-      teams,
-      trackguess: {
-        ...tg,
-        phase: "reveal",
-        isAi: roundResult.isAi,
-        roundResults: [...(tg.roundResults ?? []), roundResult],
-        revealEndsAt,
+    void updateRoomState(
+      roomId,
+      {
+        ...state,
+        teams,
+        trackguess: {
+          ...tg,
+          phase: "reveal",
+          isAi: roundResult.isAi,
+          roundResults: [...(tg.roundResults ?? []), roundResult],
+          revealEndsAt,
+        },
       },
-    });
+      state,
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.paused, tg.phase, tg.guessEndsAt, now]);
 
@@ -167,14 +171,18 @@ export function TrackGuessHost({
     }
 
     const track = pickHostTrack();
-    void updateRoomState(roomId, {
-      ...state,
-      trackguess: {
-        ...tg,
-        roundNumber: tg.roundNumber + 1,
-        ...roundTrackPatch(track, Date.now()),
+    void updateRoomState(
+      roomId,
+      {
+        ...state,
+        trackguess: {
+          ...tg,
+          roundNumber: tg.roundNumber + 1,
+          ...roundTrackPatch(track, Date.now()),
+        },
       },
-    });
+      state,
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.paused, tg.phase, tg.revealEndsAt, tg.roundNumber, now]);
 

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { ROOM_STATE_SCHEMA_VERSION } from "./party-context";
 import type { RoomState } from "./types";
 import { emptyRoomState } from "./types";
+import { hostScoreBaseline } from "./host-score-baseline";
 
 type SupabaseError = { message: string; status?: number };
 type QueryResult<T> = { data: T | null; error: SupabaseError | null };
@@ -348,7 +349,9 @@ describe("room helpers", () => {
     installHostSecret();
     mockFetch.response = new Response("write rejected", { status: 500 });
     expect(
-      await rejectedMessage(() => updateRoomState("room_1", emptyRoomState("Host"))),
+      await rejectedMessage(() =>
+        updateRoomState("room_1", emptyRoomState("Host"), emptyRoomState("Host")),
+      ),
     ).toContain("write rejected");
     expect(logEvents.some((entry) => entry.event === "room.fetch.failure")).toBe(true);
     expect(logEvents.some((entry) => entry.event === "room.update.failure")).toBe(true);
@@ -366,7 +369,9 @@ describe("room helpers", () => {
     mockFetch.response = new Response("write rejected", { status: 500 });
 
     try {
-      await rejectedMessage(() => updateRoomState("room_1", emptyRoomState("Host")));
+      await rejectedMessage(() =>
+        updateRoomState("room_1", emptyRoomState("Host"), emptyRoomState("Host")),
+      );
     } finally {
       window.removeEventListener(HOST_ACTION_ERROR_EVENT, listener);
     }
@@ -382,7 +387,7 @@ describe("room helpers", () => {
 
     const state = emptyRoomState("Host");
 
-    await updateRoomState("room_1", state);
+    await updateRoomState("room_1", state, state);
 
     expect(mockFetch.calls.length).toBe(1);
     expect(String(mockFetch.calls[0]?.input)).toBe("/api/host-state");
@@ -392,6 +397,7 @@ describe("room helpers", () => {
     expect(JSON.parse(String(mockFetch.calls[0]?.init?.body))).toEqual({
       roomId: "room_1",
       state,
+      scoreBaseline: hostScoreBaseline(state.teams),
     });
     expect(logEvents.some((entry) => entry.event === "room.update.success")).toBe(true);
   });
@@ -402,19 +408,52 @@ describe("room helpers", () => {
     mockFetch.response = Response.json({ skipped: true });
 
     const state = emptyRoomState("Host");
-    const written = await updateRoomState("room_1", state, {
-      gameId: "challenge",
-      roundId: "ch_old",
-    });
+    const source = {
+      ...state,
+      currentGame: "challenge" as const,
+      challenge: { roundId: "ch_old", phase: "judging" as const },
+    };
+    const written = await updateRoomState("room_1", state, source);
 
     expect(written).toBe(false);
     expect(JSON.parse(String(mockFetch.calls[0]?.init?.body))).toEqual({
       roomId: "room_1",
       state,
-      guard: { gameId: "challenge", roundId: "ch_old" },
+      scoreBaseline: hostScoreBaseline(source.teams),
+      guard: { gameId: "challenge", roundId: "ch_old", phase: "judging" },
     });
     expect(logEvents.some((entry) => entry.event === "room.update.stale_skipped")).toBe(true);
     expect(logEvents.some((entry) => entry.event === "room.update.failure")).toBe(false);
+  });
+
+  test("a scored write carries its original scores and numbered round, not the submitted totals", async () => {
+    resetTestState();
+    installHostSecret();
+    const source = {
+      ...emptyRoomState("Host"),
+      currentGame: "whoamong" as const,
+      whoamong: {
+        phase: "voting" as const,
+        roundId: "wa_1",
+        roundNumber: 2,
+        totalRounds: 3,
+        usedPromptIds: [],
+      },
+    };
+    source.teams[0]!.score = 2;
+    const next = structuredClone(source) as RoomState;
+    next.teams[0]!.score = 7;
+    next.whoamong!.phase = "reveal";
+    await updateRoomState("room_1", next, source);
+    const body = JSON.parse(String(mockFetch.calls[0]!.init!.body));
+    expect(body.scoreBaseline[source.teams[0]!.id]).toBe(2);
+    expect(body.state.teams[0].score).toBe(7);
+    expect(body.guard).toEqual({
+      gameId: "whoamong",
+      roundId: "wa_1",
+      roundNumber: 2,
+      phase: "voting",
+    });
   });
 
   test("sendHostCommand sends a typed command instead of a room snapshot", async () => {

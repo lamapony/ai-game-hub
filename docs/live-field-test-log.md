@@ -13,8 +13,35 @@ launch within 120 seconds, an independent host, no manual state repair, and no l
       closed game, a replacement round, a newly joined player/live cue, a concurrent score award,
       a foreground award combined with positive/negative concurrent score changes, and a legitimate
       next-round write that must not be reported stale. The retry
-      preserves the score delta relative to the authorized snapshot; this does not establish
-      correctness for every stale client snapshot or duplicate legacy scoring request.
+      initially preserved the score delta relative to the authorized snapshot. The follow-up below
+      covers screens that were already stale before authorization and repeated legacy outcomes.
+- [x] Local follow-up 2026-10-13: all eighteen full-state writes across the seven legacy host views
+      now send the source snapshot's team scores and active game/round/phase. Numbered games also
+      send the round number because their session id spans multiple rounds. Server retries apply
+      only the source-to-submitted score delta to the latest canonical teams. An already committed
+      outcome cannot be replaced or reopened; advancing from it cannot award points again.
+      Sixteen host-write regression cases cover stale screens, positive/negative ledger changes,
+      all seven games, duplicate outcomes before authorization and during CAS, and valid advances.
+      Challenge/Photo Hunt claim the judging step once and persist artifact annotations only after
+      their room outcome is accepted. A media run with two active hosts reproduced duplicate
+      judging: a replayed-budget fallback arrived before the provider result. The accepted outcome
+      stayed intact and the loser did not annotate it; the duplicate judging claim is now rejected
+      before calling AI. The initial browser check incorrectly awaited an artifact response on the
+      primary host only, although either host can win; it now checks the persisted photo metadata.
+      Older host tabs without the source-score payload receive a refresh error, so a future release
+      must update client and server together. The complete local suite passes 605 tests; lint,
+      TypeScript and build pass. This is local evidence, with no new CI/deployment/physical proof.
+- [x] Local follow-up resilience room `RK3R` reached readiness with eight isolated players in
+      13.096 seconds and passed refresh, team switch, offline/resume, late joins, pause/resume,
+      provider-prepared Soundscape topics and route advancement. Its exact room was removed.
+      Local media room `X8BV` repeated this with two active hosts, microphone/camera denial and
+      successful retries. One synthetic photo went through the normal 60-second hunt and judging,
+      received five points, and its persisted rank/points/comment matched the accepted room verdict.
+      The player displayed the same score; a host refresh preserved the teams and result exactly.
+      The route then advanced from Photo Hunt to the picnic and the exact room was removed.
+      This proves one browser scoring flow and annotations, not every foreground game, real phones,
+      a full three-hour evening, or independent human hosting. The initial timed-out room `NUAD`
+      was also removed.
 - [x] The same local run reproduced empty Smoke Screen ballots despite successful reveal responses:
       direct reveal/result and Oracle-verdict inserts omitted `session_started_at`, so current-session
       reads excluded them. All three inserts now carry the current session. A fake REST integration

@@ -97,7 +97,7 @@ export function SoundscapeHost({
   }, [roomId, snd.roundId]);
 
   const update = (patch: Partial<SoundscapeState>) =>
-    updateRoomState(roomId, { ...state, soundscape: { ...snd, ...patch } });
+    updateRoomState(roomId, { ...state, soundscape: { ...snd, ...patch } }, state);
 
   const teamsWithClips = useMemo(() => {
     const map: Record<string, SubmissionRow[]> = {};
@@ -315,11 +315,15 @@ export function SoundscapeHost({
         ...t,
         score: t.score + (perTeam[t.id] ?? 0),
       }));
-      await updateRoomState(roomId, {
-        ...state,
-        teams: newTeams,
-        soundscape: { ...snd, phase: "results", mixes: updatedMixes },
-      });
+      await updateRoomState(
+        roomId,
+        {
+          ...state,
+          teams: newTeams,
+          soundscape: { ...snd, phase: "results", mixes: updatedMixes },
+        },
+        state,
+      );
     } catch (e) {
       console.error(e);
     } finally {

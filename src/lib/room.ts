@@ -9,7 +9,8 @@ import {
   playerStoragePrefix,
 } from "./event-profile";
 import { emitHostActionError } from "./host-action-errors";
-import type { HostStateWriteGuard } from "./host-state-write-guard";
+import { hostStateWriteGuardFromState } from "./host-state-write-guard";
+import { hostScoreBaseline } from "./host-score-baseline";
 import type { HostCommand } from "./host-command";
 import { isValidPlayerName, normalizePlayerName } from "./player-name";
 import { migrateRoomState } from "./room-state-migration";
@@ -163,8 +164,10 @@ export async function fetchRoomByCode(code: string): Promise<RoomRow | null> {
 export async function updateRoomState(
   id: string,
   state: RoomState,
-  guard?: HostStateWriteGuard,
+  sourceState: RoomState,
 ): Promise<boolean> {
+  const guard = hostStateWriteGuardFromState(sourceState);
+  const scoreBaseline = hostScoreBaseline(sourceState.teams);
   const secrets = hostSecretCandidates(id);
   if (secrets.length === 0) {
     const error = new Error("host authorization required");
@@ -187,7 +190,7 @@ export async function updateRoomState(
           "content-type": "application/json",
           "x-host-secret": secret,
         },
-        body: JSON.stringify({ roomId: id, state, ...(guard ? { guard } : {}) }),
+        body: JSON.stringify({ roomId: id, state, scoreBaseline, ...(guard ? { guard } : {}) }),
       });
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
