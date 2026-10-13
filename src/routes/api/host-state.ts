@@ -22,7 +22,7 @@ export const Route = createFileRoute("/api/host-state")({
           return new Response("state required", { status: 400 });
         }
 
-        const { authorizeHostRoom, hostSecretFromRequest, writeAuthorizedRoomState } =
+        const { authorizeHostRoom, hostSecretFromRequest, writeAuthorizedRoomStateResult } =
           await import("@/lib/host-auth.server");
 
         try {
@@ -53,7 +53,27 @@ export const Route = createFileRoute("/api/host-state")({
             return Response.json({ state: room.state, skipped: true });
           }
           const nextState = migrateRoomState(body.state as RoomState);
-          const writtenState = await writeAuthorizedRoomState(room.id, nextState, room.state);
+          const { state: writtenState, skipped } = await writeAuthorizedRoomStateResult(
+            room.id,
+            nextState,
+            room.state,
+            {
+              updatedAt: room.updatedAt,
+              guard,
+            },
+          );
+          if (guard && skipped) {
+            logInfo("api.host_state.stale_skipped", {
+              durationMs: Date.now() - startedAt,
+              status: 200,
+              skipped: true,
+              roomId: room.id,
+              gameId: guard.gameId,
+              roundId: guard.roundId,
+              currentGame: writtenState.currentGame ?? undefined,
+            });
+            return Response.json({ state: writtenState, skipped: true });
+          }
           logInfo("api.host_state.success", {
             durationMs: Date.now() - startedAt,
             status: 200,

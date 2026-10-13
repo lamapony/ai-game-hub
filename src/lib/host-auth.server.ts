@@ -1,6 +1,8 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { mergeRecentHostCommandIds } from "./host-command";
+import { hostStateWriteGuardMatches, type HostStateWriteGuard } from "./host-state-write-guard";
 import { migrateRoomState } from "./room-state-migration";
+import { updateRoomStateWithOptimisticRetry } from "./room-state-retry.server";
 import { statusError } from "./player-auth.server";
 import type { RoomState } from "./types";
 
@@ -280,16 +282,80 @@ export async function authorizeHostRoom(params: {
   };
 }
 
+type HostStateWriteOptions = { updatedAt?: string; guard?: HostStateWriteGuard };
+
 export async function writeAuthorizedRoomState(
   roomId: string,
   state: RoomState,
   currentState?: RoomState,
+  options: HostStateWriteOptions = {},
 ) {
-  const stateToWrite = currentState ? mergeHostSubmittedState(currentState, state) : state;
-  const { error } = await supabaseAdmin
-    .from("rooms")
-    .update({ state: stateToWrite as never })
-    .eq("id", roomId);
-  if (error) throw error;
-  return stateToWrite;
+  return (await writeAuthorizedRoomStateResult(roomId, state, currentState, options)).state;
+}
+
+export async function writeAuthorizedRoomStateResult(
+  roomId: string,
+  state: RoomState,
+  currentState?: RoomState,
+  options: HostStateWriteOptions = {},
+) {
+  let authorizedSnapshot =
+    currentState && options.updatedAt
+      ? { id: roomId, state: currentState, updatedAt: options.updatedAt }
+      : undefined;
+  let scoreBaseline = currentState;
+  const result = await updateRoomStateWithOptimisticRetry({
+    loadSnapshot: async () => {
+      if (authorizedSnapshot) {
+        const snapshot = authorizedSnapshot;
+        authorizedSnapshot = undefined;
+        return snapshot;
+      }
+      const { data, error } = await supabaseAdmin
+        .from("rooms")
+        .select("id, state, updated_at")
+        .eq("id", roomId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw statusError("room not found", 404);
+      return {
+        id: data.id,
+        state: migrateRoomState(data.state as unknown as RoomState),
+        updatedAt: data.updated_at,
+      };
+    },
+    applyUpdate: async (snapshot) => {
+      if (options.guard && !hostStateWriteGuardMatches(snapshot.state, options.guard)) {
+        return { state: snapshot.state, value: { skipped: true } };
+      }
+      scoreBaseline ??= snapshot.state;
+      const baselineById = new Map(scoreBaseline.teams.map((team) => [team.id, team.score]));
+      const currentById = new Map(snapshot.state.teams.map((team) => [team.id, team.score]));
+      const rebased = {
+        ...state,
+        teams: state.teams.map((team) => {
+          const baselineScore = baselineById.get(team.id);
+          const currentScore = currentById.get(team.id);
+          return baselineScore === undefined || currentScore === undefined
+            ? team
+            : { ...team, score: currentScore + team.score - baselineScore };
+        }),
+      };
+      const next = mergeHostSubmittedState(snapshot.state, rebased);
+      return { state: next, value: { skipped: false } };
+    },
+    writeSnapshot: async (snapshot, next) => {
+      if (next === snapshot.state) return true;
+      const { data, error } = await supabaseAdmin
+        .from("rooms")
+        .update({ state: next as never })
+        .eq("id", snapshot.id)
+        .eq("updated_at", snapshot.updatedAt)
+        .select("id")
+        .maybeSingle();
+      if (error) throw error;
+      return !!data;
+    },
+  });
+  return { state: result.state, skipped: result.value.skipped };
 }
