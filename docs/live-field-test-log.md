@@ -1,9 +1,50 @@
 # Release 7 field-test log
 
-Copy the **Evening record** section once per full event. Release 7 passes only after two records are
-complete with no manual SQL/JSON repair and no lost score or secret data.
+Copy the **Evening record** section once per full event. The active independence goal requires at
+least four physical records across two different dates, covering park/bar/home/festival and
+120/180/240-minute scenarios. Every run needs at least eight real phones, group connection and
+launch within 120 seconds, an independent host, no manual state repair, and no lost scores/secrets.
 
 ## Programmatic preflight (required, not a substitute for physical devices)
+
+- [x] Local 2026-10-13 reliability work on `codex/field-pilot-reliability`, based on
+      `3b9d514b4563bfc3213a5b30207f14e1c6abc5d4`: late guarded host-state writes now use a room
+      revision check and recheck the active round after conflicts. Six regression cases cover a
+      closed game, a replacement round, a newly joined player/live cue, a concurrent score award,
+      a foreground award combined with positive/negative concurrent score changes, and a legitimate
+      next-round write that must not be reported stale. The retry
+      preserves the score delta relative to the authorized snapshot; this does not establish
+      correctness for every stale client snapshot or duplicate legacy scoring request.
+- [x] The same local run reproduced empty Smoke Screen ballots despite successful reveal responses:
+      direct reveal/result and Oracle-verdict inserts omitted `session_started_at`, so current-session
+      reads excluded them. All three inserts now carry the current session. A fake REST integration
+      fixture verifies player-visible anonymous reveals, the results and Oracle verdict, while the
+      player's original sealed mission stays redacted. The fixture runs in a separate process because
+      the cleanup suite replaces the shared Supabase client module.
+- [x] Local browser room `KGWH` reached ready state with eight isolated browser players in 16.715
+      seconds, dealt eight private missions, sealed/revealed them, submitted a synthetic ballot,
+      retained two detective points through the finale, and showed the same bounded public callback
+      on host and player. Report drafts survived refresh and backup-host recovery; download remained
+      privacy-safe. The exact room was removed. The final local suite passed 593 tests in 119 files;
+      lint, TypeScript and production build passed. This is local source/build/browser evidence,
+      without CI, deployment or physical-phone proof. Foreground games are closed using the supported
+      **Back to hub** recovery control; this does not prove playing every foreground game or conducting
+      a real two-hour party without assistance.
+- [x] Primary and backup hosts no longer race an early fallback into an AI-prepared record when a
+      budget reservation is replayed or exhausts its room-revision retries. Duplicate preparation
+      waits for the persisted result for up to 45 seconds; timeout reports a pending conflict without
+      writing fallback content. A separate-process fixture holds the fake provider open and verifies
+      success, genuine provider failure, three consecutive revision conflicts, and timeout. The
+      duplicate shares the one provider result, including its actual fallback flag.
+- [x] Local resilience room `332U` reached readiness in 10.179 seconds and passed host/player refresh,
+      team switch, offline/resume, late joins up to ten players, launch-time refresh, pause/resume,
+      a second network fault, and route advancement. Soundscape retained provider-generated topics
+      rather than fallback content. The exact room was removed. These are virtual browser devices;
+      real-phone and independent-host evidence remains open.
+- [x] After the AI preparation fixes, local `7MVQ` repeated the scored park-120m-8p journey through
+      all eight pre-finale route steps and the completed host/player finale. The same early public
+      Soundscape evidence and two detective points survived. Its exact room was removed. This still
+      uses virtual players and recovery controls for foreground games, with the scope limits above.
 
 - [x] `bun run test:rehearsal` passes all 24 routes: park/bar/home/festival × 120/180/240 minutes ×
       8/30 players.

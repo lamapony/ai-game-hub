@@ -561,11 +561,12 @@ async function reloadDuringExpectedNavigation(
   page: Page,
   fault: NetworkFaultState,
   afterReload: () => Promise<void>,
+  waitUntil: "networkidle" | "domcontentloaded" = "networkidle",
 ) {
   fault.active = true;
   fault.mode = "navigation";
   try {
-    await page.reload({ waitUntil: "networkidle", timeout: DEFAULT_TIMEOUT_MS });
+    await page.reload({ waitUntil, timeout: DEFAULT_TIMEOUT_MS });
     await afterReload();
   } finally {
     fault.active = false;
@@ -992,6 +993,80 @@ async function launchFirstForegroundRouteGame(hostPage: Page) {
   throw new Error("Could not reach a foreground route game in 12 route actions");
 }
 
+async function dealJourneySmokeScreen(hostPage: Page, players: BrowserPlayer[]) {
+  const smoke = hostPage.locator('.agh-smoke-host[data-status="assigning"]');
+  await smoke.waitFor({ state: "visible", timeout: DEFAULT_TIMEOUT_MS });
+  await smoke.getByRole("button", { name: "Deal privately", exact: true }).click();
+  await hostPage.locator('.agh-smoke-host[data-status="active"]').waitFor({
+    state: "visible",
+    timeout: READINESS_TIMEOUT_MS,
+  });
+  for (const player of players) {
+    await player.page.locator(".agh-smoke-assignment strong").waitFor({
+      state: "visible",
+      timeout: DEFAULT_TIMEOUT_MS,
+    });
+  }
+}
+
+async function revealJourneySmokeScreen(hostPage: Page, player: BrowserPlayer, room: CreatedRoom) {
+  const smoke = hostPage.locator(".agh-smoke-host");
+  await smoke.getByRole("button", { name: "Close fieldwork", exact: true }).click();
+  await hostPage.locator('.agh-smoke-host[data-status="sealed"]').waitFor({
+    state: "visible",
+    timeout: DEFAULT_TIMEOUT_MS,
+  });
+  await smoke.getByRole("button", { name: "Reveal anonymously", exact: true }).click();
+  const ballot = player.page.locator('.agh-smoke-file[data-state="revealed"]');
+  const suspects = ballot.getByRole("combobox");
+  try {
+    await suspects.first().waitFor({ state: "visible", timeout: DEFAULT_TIMEOUT_MS });
+  } catch (error) {
+    const snapshot = await fetchRoomByCode(room.code);
+    console.error("Smoke Screen reveal diagnostics", {
+      roomStatus: snapshot?.state.status,
+      currentGame: snapshot?.state.currentGame,
+      smokeStatus: snapshot?.state.smokescreen?.status,
+      participantCount: snapshot?.state.smokescreen?.participantIds.length,
+      hostStatus: await smoke.getAttribute("data-status"),
+      playerFiles: await player.page.locator(".agh-smoke-file").evaluateAll((files) =>
+        files.map((file) => ({
+          state: file.getAttribute("data-state"),
+          selects: file.querySelectorAll("select").length,
+          heading: file.querySelector("h2, strong")?.textContent,
+        })),
+      ),
+    });
+    throw error;
+  }
+  const playerId = await player.page.getByTestId("player-joined").getAttribute("data-player-id");
+  if (!playerId) throw new Error("Smoke Screen voter did not retain their player identity");
+  const suspectPlayerId = await suspects
+    .first()
+    .locator("option")
+    .evaluateAll(
+      (options, voterId) =>
+        options
+          .map((option) => (option as HTMLOptionElement).value)
+          .find((value) => value && value !== voterId),
+      playerId,
+    );
+  if (!suspectPlayerId) throw new Error("Smoke Screen ballot did not expose another participant");
+  // A synthetic ballot, never physical completion evidence: choose another participant for every file.
+  // Exactly that participant's file earns detective points; leave every mission completion unchecked.
+  for (const suspect of await suspects.all()) await suspect.selectOption(suspectPlayerId);
+  await ballot.getByRole("button", { name: "File ballot", exact: true }).click();
+  await ballot.getByRole("heading", { name: "Ballot filed.", exact: true }).waitFor({
+    state: "visible",
+    timeout: DEFAULT_TIMEOUT_MS,
+  });
+  await smoke.getByRole("button", { name: "Lock reveal + scores", exact: true }).click();
+  await hostPage.locator('.agh-smoke-host[data-status="results"]').waitFor({
+    state: "visible",
+    timeout: READINESS_TIMEOUT_MS,
+  });
+}
+
 async function runFullJourneyChecks(params: {
   hostPage: Page;
   players: BrowserPlayer[];
@@ -1033,8 +1108,14 @@ async function runFullJourneyChecks(params: {
 
     const callback = hostPage.getByTestId("route-story-callback");
     if (await callback.isVisible()) {
-      callbackEvidenceId = (await callback.getAttribute("data-evidence-id")) ?? "";
-      if (!callbackEvidenceId) throw new Error("Route callback did not expose its evidence id");
+      const source = await callback.getAttribute("data-story-source");
+      if (source === "evidence") {
+        const evidenceId = (await callback.getAttribute("data-evidence-id")) ?? "";
+        if (!evidenceId) throw new Error("Route callback did not expose its evidence id");
+        callbackEvidenceId ||= evidenceId;
+      } else if (source !== "seed") {
+        throw new Error(`Route callback used an unknown story source: ${source || "none"}`);
+      }
     }
 
     if (routeStepKind === "finale") {
@@ -1052,39 +1133,52 @@ async function runFullJourneyChecks(params: {
         );
       }
 
+      const currentRoom = await fetchRoomByCode(room.code);
+      if (!currentRoom) throw new Error("Journey lost its room before the finale");
+      const totalScore = currentRoom.state.teams.reduce((sum, team) => sum + team.score, 0);
+      if (totalScore !== 2 || currentRoom.state.smokescreen?.status !== "results") {
+        throw new Error(`Journey did not preserve its scored Smoke Screen result: ${totalScore}`);
+      }
       const finaleTrigger = hostPage.getByTestId("party-finale-trigger");
-      if ((await finaleTrigger.getAttribute("data-has-scores")) !== "false") {
-        throw new Error(
-          "Journey unexpectedly earned points while only exercising route transitions",
-        );
+      if ((await finaleTrigger.getAttribute("data-has-scores")) !== "true") {
+        throw new Error("Journey finale did not expose the earned score");
       }
       await finaleTrigger.click();
       await hostPage
         .locator('[data-testid="host-runtime"][data-party-status="finished"]')
         .waitFor({ state: "attached", timeout: DEFAULT_TIMEOUT_MS });
       await hostPage
-        .locator('[data-testid="host-party-finale"][data-total-score="0"]')
+        .locator(`[data-testid="host-party-finale"][data-total-score="${totalScore}"]`)
         .waitFor({ state: "visible", timeout: DEFAULT_TIMEOUT_MS });
       await player.page
-        .locator('[data-testid="player-party-finale"][data-total-score="0"]')
+        .locator(`[data-testid="player-party-finale"][data-total-score="${totalScore}"]`)
         .waitFor({ state: "visible", timeout: DEFAULT_TIMEOUT_MS });
 
-      const hostNarrative = hostPage.locator(
-        '[data-testid="party-finale-narrative"][data-callback-count="1"]',
-      );
+      const hostNarrative = hostPage.getByTestId("party-finale-narrative");
       await hostNarrative.waitFor({ state: "visible", timeout: READINESS_TIMEOUT_MS });
       await hostNarrative
         .locator(`[data-testid="party-finale-callback"][data-evidence-id="${callbackEvidenceId}"]`)
         .waitFor({ state: "visible", timeout: DEFAULT_TIMEOUT_MS });
-      const playerNarrative = player.page.locator(
-        '[data-testid="party-finale-narrative"][data-callback-count="1"]',
-      );
+      const playerNarrative = player.page.getByTestId("party-finale-narrative");
       await playerNarrative.waitFor({ state: "visible", timeout: DEFAULT_TIMEOUT_MS });
       await playerNarrative
         .locator(`[data-testid="party-finale-callback"][data-evidence-id="${callbackEvidenceId}"]`)
         .waitFor({ state: "visible", timeout: DEFAULT_TIMEOUT_MS });
+      const callbackIds = async (page: Page) =>
+        page
+          .getByTestId("party-finale-callback")
+          .evaluateAll((items) => items.map((item) => item.getAttribute("data-evidence-id")));
+      const hostCallbackIds = await callbackIds(hostPage);
+      const playerCallbackIds = await callbackIds(player.page);
+      if (
+        hostCallbackIds.length < 1 ||
+        hostCallbackIds.length > 3 ||
+        JSON.stringify(hostCallbackIds) !== JSON.stringify(playerCallbackIds)
+      ) {
+        throw new Error("Host and player finales did not share the same bounded callbacks");
+      }
       console.log(
-        `ok ${scenarioLabel} full journey crossed ${completed} route steps and returned ${callbackEvidenceId} in host + player finale (${launchedGames.join(" → ")})`,
+        `ok ${scenarioLabel} full journey crossed ${completed} route steps, kept ${totalScore} points and returned ${callbackEvidenceId} in host + player finale (${launchedGames.join(" → ")})`,
       );
       return;
     }
@@ -1103,6 +1197,15 @@ async function runFullJourneyChecks(params: {
       continue;
     }
 
+    if (routeStepKind === "reveal") {
+      await revealJourneySmokeScreen(hostPage, player, room);
+      await waitForNextRouteStep(hostPage, routeStepId);
+      console.log(
+        `ok ${scenarioLabel} journey completed ${routeStepId} with a submitted ballot and persisted scores`,
+      );
+      continue;
+    }
+
     const launch = hostPage.getByTestId("route-launch-game");
     await launch.waitFor({ state: "visible", timeout: DEFAULT_TIMEOUT_MS });
     const gameId = await launch.getAttribute("data-game-id");
@@ -1117,6 +1220,10 @@ async function runFullJourneyChecks(params: {
     await launch.click();
     launchedGames.push(gameId);
     if (gameFormat !== "foreground") {
+      if (gameId === "smokescreen") {
+        await dealJourneySmokeScreen(hostPage, players);
+        console.log(`ok ${scenarioLabel} journey privately dealt ${players.length} missions`);
+      }
       await waitForNextRouteStep(hostPage, routeStepId);
       continue;
     }
@@ -1435,14 +1542,15 @@ async function runResilienceChecks(params: {
   const initialTeamId = await initialPlayerPanel.getAttribute("data-team-id");
   if (!playerId || !initialTeamId) throw new Error("Joined player identity was not rendered");
 
-  await hostPage.reload({ waitUntil: "networkidle", timeout: DEFAULT_TIMEOUT_MS });
-  await readinessLocator(hostPage, scenario, scenario.playerCount).waitFor({
-    state: "attached",
-    timeout: DEFAULT_TIMEOUT_MS,
-  });
-  await liveSafetyLocator(hostPage, "live").waitFor({
-    state: "visible",
-    timeout: DEFAULT_TIMEOUT_MS,
+  await reloadDuringExpectedNavigation(hostPage, hostFault, async () => {
+    await readinessLocator(hostPage, scenario, scenario.playerCount).waitFor({
+      state: "attached",
+      timeout: DEFAULT_TIMEOUT_MS,
+    });
+    await liveSafetyLocator(hostPage, "live").waitFor({
+      state: "visible",
+      timeout: DEFAULT_TIMEOUT_MS,
+    });
   });
   console.log(`ok ${scenarioLabel} host refresh preserved authorization and readiness`);
 
@@ -1594,7 +1702,8 @@ async function verifyHostHandoff({
   const backupContext = await browser.newContext();
   contexts.push(backupContext);
   const backupPage = await backupContext.newPage();
-  observePage(backupPage, `${scenarioLabel}-backup-host`, errors, { active: false });
+  const backupFault: NetworkFaultState = { active: false };
+  observePage(backupPage, `${scenarioLabel}-backup-host`, errors, backupFault);
   await backupPage.goto(backupUrl, {
     waitUntil: "domcontentloaded",
     timeout: DEFAULT_TIMEOUT_MS,
@@ -1610,18 +1719,22 @@ async function verifyHostHandoff({
     throw new Error("Backup host credential remained in the address bar after verification");
   }
   console.log(`ok ${scenarioLabel} verified host handoff on an isolated backup device`);
-  return backupPage;
+  return { page: backupPage, fault: backupFault };
 }
 
 async function verifyFieldReportDownload({
   backupHostPage,
+  backupHostFault,
   hostPage,
+  hostFault,
   room,
   scenario,
   players,
 }: {
   backupHostPage: Page;
+  backupHostFault: NetworkFaultState;
   hostPage: Page;
+  hostFault: NetworkFaultState;
   room: CreatedRoom;
   scenario: BrowserSmokeScenario;
   players: BrowserPlayer[];
@@ -1665,11 +1778,17 @@ async function verifyFieldReportDownload({
   await waitForDraftState(panel, "saving");
   await waitForDraftState(panel, "saved");
 
-  await hostPage.reload({ waitUntil: "domcontentloaded", timeout: DEFAULT_TIMEOUT_MS });
-  await hostPage.getByTestId("host-runtime").waitFor({
-    state: "attached",
-    timeout: DEFAULT_TIMEOUT_MS,
-  });
+  await reloadDuringExpectedNavigation(
+    hostPage,
+    hostFault,
+    async () => {
+      await hostPage.getByTestId("host-runtime").waitFor({
+        state: "attached",
+        timeout: DEFAULT_TIMEOUT_MS,
+      });
+    },
+    "domcontentloaded",
+  );
   panel = await openPanel(hostPage);
   await waitForDraftState(panel, "recovered");
   if (
@@ -1682,11 +1801,17 @@ async function verifyFieldReportDownload({
   }
   console.log(`ok ${browserSmokeScenarioLabel(scenario)} field report draft survived host refresh`);
 
-  await backupHostPage.reload({ waitUntil: "domcontentloaded", timeout: DEFAULT_TIMEOUT_MS });
-  await backupHostPage.getByTestId("host-runtime").waitFor({
-    state: "attached",
-    timeout: DEFAULT_TIMEOUT_MS,
-  });
+  await reloadDuringExpectedNavigation(
+    backupHostPage,
+    backupHostFault,
+    async () => {
+      await backupHostPage.getByTestId("host-runtime").waitFor({
+        state: "attached",
+        timeout: DEFAULT_TIMEOUT_MS,
+      });
+    },
+    "domcontentloaded",
+  );
   const backupPanel = await openPanel(backupHostPage);
   await waitForDraftState(backupPanel, "recovered");
   if (
@@ -1859,7 +1984,7 @@ async function runBrowserSmokeScenario(
         `ok ${scenarioLabel} self-serve host brief persisted and INVITE signal opened the QR`,
       );
     } else {
-      const backupHostPage = await verifyHostHandoff({
+      const { page: backupHostPage, fault: backupHostFault } = await verifyHostHandoff({
         baseUrl,
         browser,
         contexts,
@@ -1968,7 +2093,15 @@ async function runBrowserSmokeScenario(
           throw new Error(`Quick start did not expose the live opening cue: ${liveCueText.trim()}`);
         }
         console.log(`ok ${scenarioLabel} party started with persisted cue ${firstStepId}`);
-        await verifyFieldReportDownload({ backupHostPage, hostPage, room, scenario, players });
+        await verifyFieldReportDownload({
+          backupHostPage,
+          backupHostFault,
+          hostPage,
+          hostFault,
+          room,
+          scenario,
+          players,
+        });
       }
       if (pageErrors.length > 0) {
         throw new Error(`Uncaught browser errors:\n${pageErrors.join("\n")}`);
