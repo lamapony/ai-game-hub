@@ -239,6 +239,51 @@ describe("mergeHostSubmittedState", () => {
     expect(mergeHostSubmittedState(current, submitted).smokescreen).toEqual(current.smokescreen);
   });
 
+  test("unions Smoke Screen voter ids and holds guessTally until results", () => {
+    const submitted = baseState({
+      currentGame: "challenge",
+      challenge: { phase: "briefing", roundId: "challenge_1" },
+      smokescreen: {
+        runId: "smoke_1",
+        status: "revealed",
+        participantIds: ["p1", "p2", "p3"],
+        assignedPlayerIds: ["p1", "p2", "p3"],
+        submittedVoterIds: ["p2"],
+        startedAt: 1,
+        revealedAt: 2,
+        guessTally: { m1: { p3: 1 } },
+      },
+    });
+    const current = baseState({
+      smokescreen: {
+        runId: "smoke_1",
+        status: "revealed",
+        participantIds: ["p1", "p2", "p3"],
+        assignedPlayerIds: ["p1", "p2", "p3"],
+        submittedVoterIds: ["p1"],
+        startedAt: 1,
+        revealedAt: 2,
+      },
+    });
+
+    const merged = mergeHostSubmittedState(current, submitted);
+    expect(merged.smokescreen?.submittedVoterIds).toEqual(["p2", "p1"]);
+    expect(merged.smokescreen?.guessTally).toBeUndefined();
+    expect(
+      mergeHostSubmittedState(
+        {
+          ...current,
+          smokescreen: {
+            ...current.smokescreen!,
+            status: "results",
+            guessTally: { m1: { p3: 2 } },
+          },
+        },
+        submitted,
+      ).smokescreen?.guessTally,
+    ).toEqual({ m1: { p3: 2 } });
+  });
+
   test("preserves a live Contraband case during stale foreground writes", () => {
     const submitted = baseState({
       currentGame: "toastsyndicate",

@@ -51,8 +51,8 @@ import type { ScoreAwardInput } from "./score-events";
 import {
   caughtToastWords,
   normalizeToastWord,
-  sameToastGuesses,
   scoreToastRound,
+  toastCatchReplayConflicts,
 } from "./toastsyndicate-lifecycle";
 import { migrateRoomState } from "./room-state-migration";
 import type { Player, RoomState } from "./types";
@@ -392,7 +392,7 @@ export async function submitToastSyndicateCatch(params: {
   const existing = await findPartyRecordByIdempotency(params.roomId, key);
   if (existing) {
     const record = assertCatchRow(existing, params.roundId, params.player.id);
-    if (!sameToastGuesses(record.guesses, guesses) || Boolean(record.landed) !== landed) {
+    if (toastCatchReplayConflicts(record, guesses, landed)) {
       throw statusError("catch ballot is already sealed", 409);
     }
     if (toast.submittedListenerIds.includes(params.player.id)) return { toast };

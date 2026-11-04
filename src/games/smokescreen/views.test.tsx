@@ -34,6 +34,50 @@ describe("venue-neutral Smoke Screen views", () => {
     expect(html.includes("opens in the bar act")).toBe(false);
   });
 
+  test("revealed host does not render a leaked live histogram", () => {
+    const state = sealedHomeState();
+    state.smokescreen = {
+      ...state.smokescreen!,
+      status: "revealed",
+      revealedAt: 2,
+      guessTally: { m1: { p2: 1 } },
+    };
+    const html = renderToStaticMarkup(
+      <SmokeScreenBackgroundHost roomId="room_home" state={state} />,
+    );
+
+    expect(html).toContain("Verdict open");
+    expect(html.includes("Max 1")).toBe(false);
+    expect(html.includes("no votes yet")).toBe(false);
+  });
+
+  test("results host shows the locked histogram", () => {
+    const state = sealedHomeState();
+    state.smokescreen = {
+      ...state.smokescreen!,
+      status: "results",
+      completedAt: 3,
+      recap: "The smoke cleared.",
+      guessTally: { m1: { p2: 2 } },
+      results: [
+        {
+          missionId: "m1",
+          ownerPlayerId: "p1",
+          tier: 1,
+          completed: true,
+          caught: false,
+          correctDetectiveIds: [],
+          ownerPoints: 5,
+        },
+      ],
+    };
+    const html = renderToStaticMarkup(
+      <SmokeScreenBackgroundHost roomId="room_home" state={state} />,
+    );
+
+    expect(html).toContain("Max 2");
+  });
+
   test("sealed player copy promises a later reveal, not a different venue", () => {
     const html = renderToStaticMarkup(
       <SmokeScreenBackgroundPlayer

@@ -94,6 +94,17 @@ export function sameToastGuesses(left: string[], right: string[]) {
   return normalized(left) === normalized(right);
 }
 
+export function toastCatchReplayConflicts(
+  record: Pick<ToastCatchRecord, "guesses" | "landed">,
+  guesses: string[],
+  landed: boolean,
+) {
+  return (
+    !sameToastGuesses(record.guesses, guesses) ||
+    (record.landed !== undefined && Boolean(record.landed) !== landed)
+  );
+}
+
 export function caughtToastWords(params: {
   assignment: ToastAssignment;
   catches: Array<{ playerId: string; record: ToastCatchRecord }>;

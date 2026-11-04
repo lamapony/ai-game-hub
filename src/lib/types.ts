@@ -166,6 +166,7 @@ export type SmokeScreenState = {
   participantIds: string[];
   assignedPlayerIds: string[];
   submittedVoterIds: string[];
+  /** Published only after results lock so a live room-state diff cannot pair a new voter with their guesses. */
   guessTally?: Record<string, Record<string, number>>;
   startedAt: number;
   revealedAt?: number;

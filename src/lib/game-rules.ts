@@ -153,7 +153,7 @@ export const GAME_RULES: Record<GameId, GameRules> = {
       "AI privately deals one 5 / 10 / 15-point social mission to every player",
       "Carry it out during the act while foreground games continue normally",
       "The host seals the fieldwork, then reveals an anonymous mission list",
-      "Every player maps each mission to a suspected culprit — live anonymous tallies update while the room argues",
+      "Every player maps each mission to a suspected culprit — ballots stay sealed until the host locks the room verdict",
       "The host confirms which missions happened and locks the room verdict",
     ],
     scoring:

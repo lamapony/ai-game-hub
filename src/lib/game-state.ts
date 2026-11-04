@@ -1537,7 +1537,6 @@ export function markSmokeScreenVotedState(
   state: RoomState,
   runId: string,
   playerId: string,
-  guesses?: Array<{ missionId: string; ownerPlayerId: string }>,
 ): RoomState | null {
   const smoke = state.smokescreen;
   if (
@@ -1549,18 +1548,12 @@ export function markSmokeScreenVotedState(
     return null;
   }
   if (smoke.submittedVoterIds.includes(playerId)) return state;
-  const guessTally = { ...(smoke.guessTally ?? {}) };
-  (guesses ?? []).forEach((guess) => {
-    const bySuspect = { ...(guessTally[guess.missionId] ?? {}) };
-    bySuspect[guess.ownerPlayerId] = (bySuspect[guess.ownerPlayerId] ?? 0) + 1;
-    guessTally[guess.missionId] = bySuspect;
-  });
+  const { guessTally: _heldTally, ...publicSmoke } = smoke;
   return {
     ...state,
     smokescreen: {
-      ...smoke,
+      ...publicSmoke,
       submittedVoterIds: [...smoke.submittedVoterIds, playerId],
-      guessTally,
     },
   };
 }
@@ -1572,6 +1565,7 @@ export function finalizeSmokeScreenState(
     results: SmokeScreenResultEntry[];
     recap: string;
     aiFallback: boolean;
+    guessTally?: Record<string, Record<string, number>>;
     now?: number;
   },
 ): RoomState | null {
@@ -1591,6 +1585,7 @@ export function finalizeSmokeScreenState(
           recap: params.recap,
           aiFallback: params.aiFallback,
           completedAt,
+          ...(params.guessTally ? { guessTally: params.guessTally } : {}),
         },
       },
       "smokescreen",

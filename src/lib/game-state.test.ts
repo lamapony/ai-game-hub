@@ -278,10 +278,22 @@ describe("game state launch helpers", () => {
       status: "revealed",
       now: 2_000,
     })!;
+    const leakedTally = markSmokeScreenVotedState(
+      {
+        ...revealed,
+        smokescreen: {
+          ...revealed.smokescreen!,
+          guessTally: { m1: { p2: 1 } },
+        },
+      },
+      "smoke_1",
+      "p1",
+    )!;
     const voted = markSmokeScreenVotedState(revealed, "smoke_1", "p1")!;
     const replay = markSmokeScreenVotedState(voted, "smoke_1", "p1");
     const finished = finalizeSmokeScreenState(voted, {
       runId: "smoke_1",
+      guessTally: { m1: { p3: 1 } },
       results: [
         {
           missionId: "m1",
@@ -301,9 +313,13 @@ describe("game state launch helpers", () => {
     expect(active.smokescreen?.status).toBe("active");
     expect(sealed.smokescreen?.status).toBe("sealed");
     expect(revealed.smokescreen?.revealedAt).toBe(2_000);
+    expect(leakedTally.smokescreen?.submittedVoterIds).toEqual(["p1"]);
+    expect(leakedTally.smokescreen?.guessTally).toBeUndefined();
     expect(voted.smokescreen?.submittedVoterIds).toEqual(["p1"]);
+    expect(voted.smokescreen?.guessTally).toBeUndefined();
     expect(replay).toBe(voted);
     expect(finished.smokescreen?.status).toBe("results");
+    expect(finished.smokescreen?.guessTally).toEqual({ m1: { p3: 1 } });
     expect(finished.smokescreen?.completedAt).toBe(3_000);
     expect(finished.finale?.evidence.at(-1)?.gameId).toBe("smokescreen");
     expect(finished.party?.storyEvidence?.at(-1)?.gameId).toBe("smokescreen");

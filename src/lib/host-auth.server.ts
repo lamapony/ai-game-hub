@@ -70,7 +70,23 @@ function mergeArraySet(current: string[] | undefined, submitted: string[] | unde
   return [...new Set([...(submitted ?? []), ...current])];
 }
 
-function mergeActiveRoundPlayerData(current: RoomState, submitted: RoomState): RoomState {
+function mergeSmokeScreenProgress(
+  current: RoomState["smokescreen"],
+  submitted: RoomState["smokescreen"],
+): RoomState["smokescreen"] {
+  if (!current) return submitted;
+  if (!submitted || submitted.runId !== current.runId) return current;
+  const { guessTally, ...safeCurrent } = current;
+  return {
+    ...safeCurrent,
+    submittedVoterIds:
+      mergeArraySet(current.submittedVoterIds, submitted.submittedVoterIds) ??
+      current.submittedVoterIds,
+    ...(current.status === "results" && guessTally ? { guessTally } : {}),
+  };
+}
+
+function mergeForegroundRoundPlayerData(current: RoomState, submitted: RoomState): RoomState {
   if (current.currentGame !== submitted.currentGame) return submitted;
 
   if (
@@ -230,6 +246,14 @@ function mergeActiveRoundPlayerData(current: RoomState, submitted: RoomState): R
   return submitted;
 }
 
+function mergeActiveRoundPlayerData(current: RoomState, submitted: RoomState): RoomState {
+  const next = mergeForegroundRoundPlayerData(current, submitted);
+  return {
+    ...next,
+    smokescreen: mergeSmokeScreenProgress(current.smokescreen, next.smokescreen),
+  };
+}
+
 export function mergeHostSubmittedState(current: RoomState, submitted: RoomState): RoomState {
   const mergedActiveRound = mergeActiveRoundPlayerData(current, submitted);
   return {
@@ -241,7 +265,7 @@ export function mergeHostSubmittedState(current: RoomState, submitted: RoomState
     runOfShow: current.runOfShow ?? mergedActiveRound.runOfShow,
     finale: current.finale ?? mergedActiveRound.finale,
     oracleMemory: current.oracleMemory ?? mergedActiveRound.oracleMemory,
-    smokescreen: current.smokescreen ?? mergedActiveRound.smokescreen,
+    smokescreen: mergedActiveRound.smokescreen,
     contraband: current.contraband ?? mergedActiveRound.contraband,
     tongsoftruth: current.tongsoftruth ?? mergedActiveRound.tongsoftruth,
     crossexamination:

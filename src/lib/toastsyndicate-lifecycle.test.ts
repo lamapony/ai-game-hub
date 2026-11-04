@@ -4,6 +4,7 @@ import {
   caughtToastWords,
   sameToastGuesses,
   scoreToastRound,
+  toastCatchReplayConflicts,
   toastGuessMatchesWord,
   toastSyndicateRequestSchema,
   transcriptIncludesToastWord,
@@ -45,6 +46,10 @@ describe("Toast Syndicate lifecycle contract", () => {
   test("keeps listener ballots order-insensitive and immutable-friendly", () => {
     expect(sameToastGuesses(["Фьорд", "карбюратор"], ["карбюратор", "фьорд"])).toBe(true);
     expect(sameToastGuesses(["фьорд"], ["ламинат"])).toBe(false);
+    expect(toastCatchReplayConflicts({ guesses: ["фьорд"] }, ["фьорд"], true)).toBe(false);
+    expect(toastCatchReplayConflicts({ guesses: ["фьорд"], landed: true }, ["фьорд"], false)).toBe(
+      true,
+    );
   });
 
   test("attributes catches to each listener without exposing the assignment", () => {
