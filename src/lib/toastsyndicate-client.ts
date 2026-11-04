@@ -67,11 +67,13 @@ export const submitToastCatchClient = (params: {
   roundId: string;
   playerId: string;
   guesses: string[];
+  landed?: boolean;
 }) =>
   postAsPlayer<{ toast: ToastSyndicateState }>(params.roomId, params.playerId, {
     action: "catch",
     roundId: params.roundId,
     guesses: params.guesses,
+    landed: params.landed,
   });
 
 export async function listToastRecordsForPlayer(params: {

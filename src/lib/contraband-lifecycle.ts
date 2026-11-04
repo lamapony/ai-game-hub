@@ -5,6 +5,7 @@ export const CONTRABAND_AUDIO_WINDOW_MS = 90_000;
 export const CONTRABAND_SMUGGLER_POINTS = 10;
 export const CONTRABAND_CATCHER_POINTS = 5;
 export const CONTRABAND_FALSE_ACCUSATION_POINTS = -2;
+export const CONTRABAND_CORROBORATION_POINTS = 1;
 
 const address = {
   roomId: z.string().trim().min(1).max(128),
@@ -43,6 +44,13 @@ export const contrabandRequestSchema = z.discriminatedUnion("action", [
       action: z.literal("respond"),
       accusationId: z.string().trim().min(2).max(128),
       response: z.enum(["confess", "dispute"]),
+    })
+    .strict(),
+  z
+    .object({
+      ...playerAddress,
+      action: z.literal("corroborate"),
+      accusationId: z.string().trim().min(2).max(128),
     })
     .strict(),
   z

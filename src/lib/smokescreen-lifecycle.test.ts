@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { SmokeScreenGuessRecord, SmokeScreenMissionRecord } from "@/games/smokescreen/model";
 import {
+  buildSmokeScreenGuessTally,
   sameSmokeScreenGuesses,
   scoreSmokeScreen,
   smokeScreenDetectivePoints,
@@ -95,6 +96,24 @@ describe("Smoke Screen lifecycle contract", () => {
         }),
       ),
     ).toContain("outside");
+  });
+
+  test("builds a public histogram only from sealed ballots", () => {
+    expect(
+      buildSmokeScreenGuessTally([
+        ballot([
+          { missionId: "m1", ownerPlayerId: "p2" },
+          { missionId: "m2", ownerPlayerId: "p1" },
+        ]),
+        ballot([
+          { missionId: "m1", ownerPlayerId: "p2" },
+          { missionId: "m2", ownerPlayerId: "p3" },
+        ]),
+      ]),
+    ).toEqual({
+      m1: { p2: 2 },
+      m2: { p1: 1, p3: 1 },
+    });
   });
 
   test("locks ballots by semantic content rather than array order", () => {

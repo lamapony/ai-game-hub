@@ -7,6 +7,7 @@ import { friendlyPlayerActionError } from "@/lib/player-action-errors";
 import type { StoredPlayer } from "@/lib/player-action-client";
 import { uploadPlayerMedia } from "@/lib/player-upload-client";
 import {
+  clapSommelierRevealClient,
   sommelierPlayerStatusClient,
   submitSommelierGuessClient,
   submitSommelierPhotoClient,
@@ -288,6 +289,34 @@ export function SommelierPlayer({
                   : "The evidence was nearby. The theory was not."}
           </div>
         </div>
+        {sommelier.currentEntryId && (
+          <button
+            type="button"
+            disabled={busy || (sommelier.clappedPlayerIds ?? []).includes(me.id)}
+            onClick={() => {
+              setBusy(true);
+              void clapSommelierRevealClient({
+                roomId,
+                sessionId: sommelier.sessionId,
+                entryId: sommelier.currentEntryId!,
+                playerId: me.id,
+              })
+                .catch((clapError) =>
+                  setError(friendlyPlayerActionError(clapError, "sommelier clap")),
+                )
+                .finally(() => setBusy(false));
+            }}
+            className="mt-4 w-full rounded-2xl bg-fuchsia-200 px-4 py-3 text-sm font-bold text-fuchsia-950 disabled:opacity-40"
+          >
+            {(sommelier.clappedPlayerIds ?? []).includes(me.id)
+              ? locale === "ru"
+                ? "Хлопок учтён"
+                : "Clap counted"
+              : locale === "ru"
+                ? "Хлопать этому портрету"
+                : "Clap this portrait"}
+          </button>
+        )}
       </SommelierCard>
     );
   }

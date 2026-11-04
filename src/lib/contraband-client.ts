@@ -97,6 +97,18 @@ export const accuseContrabandClient = (params: {
     suspectedQuote: params.suspectedQuote,
   });
 
+export const corroborateContrabandClient = (params: {
+  roomId: string;
+  runId: string;
+  playerId: string;
+  accusationId: string;
+}) =>
+  postAsPlayer<{ run: ContrabandState }>(params.roomId, params.playerId, {
+    action: "corroborate",
+    runId: params.runId,
+    accusationId: params.accusationId,
+  });
+
 export const respondContrabandClient = (params: {
   roomId: string;
   runId: string;

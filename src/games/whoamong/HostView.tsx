@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { updateRoomState } from "@/lib/room";
 import { teamColorClasses, formatClock } from "@/lib/team-style";
-import { WHO_AMONG_REVEAL_MS, WHO_AMONG_VOTE_MS } from "@/lib/host-controls";
-import type { RoomState, WhoAmongState } from "@/lib/types";
+import { WHO_AMONG_PLEA_MS, WHO_AMONG_REVEAL_MS, WHO_AMONG_VOTE_MS } from "@/lib/host-controls";
+import type { RoomState, WhoAmongRoundResult, WhoAmongState } from "@/lib/types";
 import { pickCatalogPrompt } from "./catalog";
-import { scoreWhoAmongRound } from "./scoring";
+import { scoreWhoAmongRound, tallyWhoAmongVotes, whoAmongIsLastLash } from "./scoring";
 import { speechUrl } from "@/lib/speech-client";
 
 function speak(text: string, roomId: string) {
@@ -24,6 +24,7 @@ export function WhoAmongHost({
   const wa = state.whoamong!;
   const [now, setNow] = useState(Date.now());
   const introSpokenRef = useRef(false);
+  const pleaOpenedRef = useRef<string | null>(null);
   const scoredRoundRef = useRef<string | null>(null);
   const advancedRoundRef = useRef<string | null>(null);
 
@@ -35,15 +36,30 @@ export function WhoAmongHost({
   const update = (patch: Partial<WhoAmongState>) =>
     updateRoomState(roomId, { ...state, whoamong: { ...wa, ...patch } });
 
+  function nextPrompt(lastLash: boolean) {
+    return pickCatalogPrompt(wa.usedPromptIds, Math.random(), {
+      actId: state.party?.actId,
+      preferHeat: lastLash ? 3 : undefined,
+    });
+  }
+
   function startRound(nowMs = Date.now()) {
-    const prompt = pickCatalogPrompt(wa.usedPromptIds);
+    const lastLash = whoAmongIsLastLash({
+      roundNumber: wa.roundNumber,
+      totalRounds: wa.totalRounds,
+    });
+    const prompt = nextPrompt(lastLash);
     void update({
       phase: "voting",
       promptId: prompt.id,
       prompt: prompt.text,
       usedPromptIds: [...wa.usedPromptIds, prompt.id],
       votes: {},
+      exhibits: {},
+      pleas: {},
+      provisionalStarIds: [],
       voteEndsAt: nowMs + WHO_AMONG_VOTE_MS,
+      pleaEndsAt: undefined,
       revealEndsAt: undefined,
     });
   }
@@ -55,7 +71,7 @@ export function WhoAmongHost({
     if (introSpokenRef.current) return;
     introSpokenRef.current = true;
     speak(
-      `Who Among Us. ${wa.totalRounds} rounds. A spicy question on screen — secretly vote for whoever fits best.`,
+      `Who Among Us. ${wa.totalRounds} rounds. Vote who fits, file a one-line charge, then the accused testify. Last round is Last Lash — double points.`,
       roomId,
     );
     const t = window.setTimeout(() => startRound(), 3500);
@@ -63,7 +79,7 @@ export function WhoAmongHost({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.paused, wa.phase]);
 
-  // voting → reveal
+  // voting → plea (or empty reveal)
   useEffect(() => {
     if (state.paused) return;
     if (wa.phase !== "voting") return;
@@ -71,6 +87,48 @@ export function WhoAmongHost({
     const allVoted = state.players.length > 0 && voted >= state.players.length;
     const timerExpired = !!wa.voteEndsAt && now >= wa.voteEndsAt;
     if (!allVoted && !timerExpired) return;
+
+    const key = `${wa.roundId}:${wa.roundNumber}:${wa.promptId}:plea`;
+    if (pleaOpenedRef.current === key) return;
+    pleaOpenedRef.current = key;
+
+    const { starIds } = tallyWhoAmongVotes(wa.votes);
+    if (starIds.length === 0) {
+      const revealKey = `${wa.roundId}:${wa.roundNumber}:${wa.promptId}`;
+      scoredRoundRef.current = revealKey;
+      void update({
+        phase: "reveal",
+        provisionalStarIds: [],
+        revealEndsAt: Date.now() + WHO_AMONG_REVEAL_MS,
+        voteEndsAt: undefined,
+        pleaEndsAt: undefined,
+      });
+      speak("Nobody filed a charge. The docket is empty.", roomId);
+      return;
+    }
+
+    const starNames = starIds
+      .map((id) => state.players.find((p) => p.id === id)?.name)
+      .filter(Boolean);
+    speak(`The docket is open. ${starNames.join(" and ")}, confess or deny.`, roomId);
+    void update({
+      phase: "plea",
+      provisionalStarIds: starIds,
+      pleas: {},
+      voteEndsAt: undefined,
+      pleaEndsAt: Date.now() + WHO_AMONG_PLEA_MS,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.paused, wa.phase, wa.voteEndsAt, wa.votes, now]);
+
+  // plea → score → reveal
+  useEffect(() => {
+    if (state.paused) return;
+    if (wa.phase !== "plea") return;
+    const accused = wa.provisionalStarIds ?? [];
+    const pleaded = accused.length > 0 && accused.every((id) => Boolean(wa.pleas?.[id]?.trim()));
+    const timerExpired = !!wa.pleaEndsAt && now >= wa.pleaEndsAt;
+    if (!pleaded && !timerExpired) return;
 
     const key = `${wa.roundId}:${wa.roundNumber}:${wa.promptId}`;
     if (scoredRoundRef.current === key) return;
@@ -80,17 +138,18 @@ export function WhoAmongHost({
     const revealEndsAt = Date.now() + WHO_AMONG_REVEAL_MS;
 
     if (!scored.roundResult) {
-      void update({ phase: "reveal", revealEndsAt });
+      void update({ phase: "reveal", revealEndsAt, pleaEndsAt: undefined });
       return;
     }
 
     const starNames = scored.roundResult.starIds
       .map((id) => state.players.find((p) => p.id === id)?.name)
       .filter(Boolean);
+    const lash = scored.roundResult.lastLash ? " Last Lash." : "";
     if (starNames.length === 1) {
-      speak(`Round star — ${starNames[0]}!`, roomId);
+      speak(`Round star — ${starNames[0]}.${lash}`, roomId);
     } else if (starNames.length > 1) {
-      speak(`Round stars — ${starNames.join(" and ")}!`, roomId);
+      speak(`Round stars — ${starNames.join(" and ")}.${lash}`, roomId);
     } else {
       speak("Nobody got votes this round.", roomId);
     }
@@ -103,10 +162,11 @@ export function WhoAmongHost({
         phase: "reveal",
         roundResults: [...(wa.roundResults ?? []), scored.roundResult],
         revealEndsAt,
+        pleaEndsAt: undefined,
       },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.paused, wa.phase, wa.voteEndsAt, wa.votes, now]);
+  }, [state.paused, wa.phase, wa.pleaEndsAt, wa.pleas, now]);
 
   // reveal → next round or results
   useEffect(() => {
@@ -123,18 +183,27 @@ export function WhoAmongHost({
       return;
     }
 
-    const prompt = pickCatalogPrompt(wa.usedPromptIds);
+    const nextRound = wa.roundNumber + 1;
+    const lastLash = nextRound >= wa.totalRounds;
+    const prompt = pickCatalogPrompt(wa.usedPromptIds, Math.random(), {
+      actId: state.party?.actId,
+      preferHeat: lastLash ? 3 : undefined,
+    });
     void updateRoomState(roomId, {
       ...state,
       whoamong: {
         ...wa,
         phase: "voting",
-        roundNumber: wa.roundNumber + 1,
+        roundNumber: nextRound,
         promptId: prompt.id,
         prompt: prompt.text,
         usedPromptIds: [...wa.usedPromptIds, prompt.id],
         votes: {},
+        exhibits: {},
+        pleas: {},
+        provisionalStarIds: [],
         voteEndsAt: Date.now() + WHO_AMONG_VOTE_MS,
+        pleaEndsAt: undefined,
         revealEndsAt: undefined,
       },
     });
@@ -143,6 +212,7 @@ export function WhoAmongHost({
 
   const lastResult = wa.roundResults?.[wa.roundResults.length - 1];
   const starRanking = buildStarRanking(state, wa.roundResults ?? []);
+  const lastLashRound = whoAmongIsLastLash(wa);
 
   return (
     <div className="rounded-3xl border border-white/10 bg-card p-6 space-y-4">
@@ -153,6 +223,9 @@ export function WhoAmongHost({
           </div>
           <h2 className="font-display text-3xl mt-1">
             Round {Math.min(wa.roundNumber, wa.totalRounds)} / {wa.totalRounds}
+            {lastLashRound && wa.phase !== "briefing" && wa.phase !== "results" ? (
+              <span className="ml-2 text-lg text-amber-300">Last Lash</span>
+            ) : null}
           </h2>
         </div>
         <PhasePill phase={wa.phase} />
@@ -161,13 +234,14 @@ export function WhoAmongHost({
       {wa.phase === "briefing" && (
         <Panel title="Getting ready">
           <p className="text-muted-foreground">
-            First question coming up. Players secretly vote for whoever fits the description best.
+            First charge coming up. Players secretly vote, file a one-line exhibit, then the accused
+            get a short plea. Last round pays double.
           </p>
         </Panel>
       )}
 
       {wa.phase === "voting" && wa.prompt && (
-        <Panel title="Voting">
+        <Panel title={lastLashRound ? "Last Lash — file a charge" : "File a charge"}>
           <p className="font-display text-2xl sm:text-3xl leading-snug">{wa.prompt}</p>
           {wa.voteEndsAt && (
             <div className="mt-4 font-display text-4xl tabular-nums">
@@ -178,10 +252,23 @@ export function WhoAmongHost({
         </Panel>
       )}
 
+      {wa.phase === "plea" && wa.prompt && (
+        <Panel title="The accused may testify">
+          <p className="font-display text-2xl sm:text-3xl leading-snug">{wa.prompt}</p>
+          <AccusedList state={state} starIds={wa.provisionalStarIds ?? []} pleas={wa.pleas} />
+          {wa.pleaEndsAt && (
+            <div className="mt-4 font-display text-4xl tabular-nums">
+              {formatClock(Math.max(0, wa.pleaEndsAt - now))}
+            </div>
+          )}
+        </Panel>
+      )}
+
       {wa.phase === "reveal" && lastResult && (
-        <Panel title="Round star">
+        <Panel title={lastResult.lastLash ? "Last Lash — the docket" : "The docket"}>
           <p className="text-sm text-muted-foreground">{lastResult.prompt}</p>
           <RevealBars state={state} result={lastResult} />
+          <Docket state={state} result={lastResult} />
         </Panel>
       )}
 
@@ -264,8 +351,9 @@ function buildStarRanking(
 function PhasePill({ phase }: { phase: WhoAmongState["phase"] }) {
   const label = {
     briefing: "Start",
-    voting: "Voting",
-    reveal: "Result",
+    voting: "Charge",
+    plea: "Plea",
+    reveal: "Docket",
     results: "Final",
   }[phase];
   return (
@@ -286,20 +374,45 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
 
 function VoteTally({ state, wa }: { state: RoomState; wa: WhoAmongState }) {
   const voted = Object.keys(wa.votes ?? {}).length;
+  const exhibits = Object.keys(wa.exhibits ?? {}).length;
   return (
     <p className="text-sm text-muted-foreground mt-2">
-      {voted} of {state.players.length} voted
+      {voted} of {state.players.length} voted · {exhibits} exhibit{exhibits === 1 ? "" : "s"} filed
     </p>
   );
 }
 
-function RevealBars({
+function AccusedList({
   state,
-  result,
+  starIds,
+  pleas,
 }: {
   state: RoomState;
-  result: NonNullable<WhoAmongState["roundResults"]>[number];
+  starIds: string[];
+  pleas?: Record<string, string>;
 }) {
+  return (
+    <div className="mt-4 space-y-2">
+      {starIds.map((id) => {
+        const player = state.players.find((p) => p.id === id);
+        const filed = Boolean(pleas?.[id]?.trim());
+        return (
+          <div
+            key={id}
+            className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
+          >
+            <span>{player?.name ?? "Accused"}</span>
+            <span className="text-xs uppercase tracking-widest text-muted-foreground">
+              {filed ? "plea filed" : "silent"}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function RevealBars({ state, result }: { state: RoomState; result: WhoAmongRoundResult }) {
   const ranked = state.players
     .map((player) => ({
       player,
@@ -336,6 +449,61 @@ function RevealBars({
       })}
       {ranked.length === 0 && (
         <p className="text-sm text-muted-foreground">Nobody got votes this round.</p>
+      )}
+    </div>
+  );
+}
+
+function Docket({ state, result }: { state: RoomState; result: WhoAmongRoundResult }) {
+  const votes = result.votes ?? {};
+  const exhibits = Object.entries(result.exhibits ?? {}).filter(([, text]) => text.trim());
+  const pleas = result.starIds
+    .map((id) => ({
+      player: state.players.find((p) => p.id === id),
+      text: result.pleas?.[id]?.trim(),
+    }))
+    .filter((entry) => entry.player);
+
+  if (exhibits.length === 0 && pleas.every((entry) => !entry.text)) {
+    return null;
+  }
+
+  return (
+    <div className="mt-5 space-y-3">
+      {pleas.map(({ player, text }) => (
+        <div
+          key={player!.id}
+          className="rounded-xl border border-amber-200/20 bg-amber-500/10 px-3 py-2"
+        >
+          <div className="text-[10px] uppercase tracking-[0.2em] text-amber-200/80">
+            Plea · {player!.name}
+          </div>
+          <p className="mt-1 text-sm">{text || "The accused declined to testify."}</p>
+        </div>
+      ))}
+      {exhibits.length > 0 && (
+        <div className="space-y-2">
+          <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            Exhibits
+          </div>
+          {exhibits.map(([voterId, text]) => {
+            const voter = state.players.find((p) => p.id === voterId);
+            const target = state.players.find((p) => p.id === votes[voterId]);
+            return (
+              <p key={voterId} className="text-sm text-white/80">
+                <span className="text-white/50">{voter?.name ?? "Someone"}</span>
+                {target ? (
+                  <>
+                    {" "}
+                    on {target.name}: “{text}”
+                  </>
+                ) : (
+                  <>: “{text}”</>
+                )}
+              </p>
+            );
+          })}
+        </div>
       )}
     </div>
   );

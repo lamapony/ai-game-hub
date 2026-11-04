@@ -5,6 +5,7 @@ import { friendlyPlayerActionError } from "@/lib/player-action-errors";
 import { uploadPlayerMedia } from "@/lib/player-upload-client";
 import {
   accuseContrabandClient,
+  corroborateContrabandClient,
   getContrabandAssignmentClient,
   respondContrabandClient,
   submitContrabandAudioClient,
@@ -108,6 +109,25 @@ export function ContrabandBackgroundPlayer({
       setRun(result.run);
     } catch (actionError) {
       setError(friendlyPlayerActionError(actionError, "Contraband response"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function corroborate() {
+    if (!accusation) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await corroborateContrabandClient({
+        roomId,
+        runId: run.runId,
+        playerId: me.id,
+        accusationId: accusation.accusationId,
+      });
+      setRun(result.run);
+    } catch (actionError) {
+      setError(friendlyPlayerActionError(actionError, "Contraband witness"));
     } finally {
       setBusy(false);
     }
@@ -226,15 +246,32 @@ export function ContrabandBackgroundPlayer({
             </div>
           )}
           {(run.status === "review" || (!amAccused && !amAccuser)) && (
-            <p className="mt-2 text-sm text-white/65">
-              {run.status === "review"
-                ? locale === "ru"
-                  ? "Ведущий выносит ручной вердикт."
-                  : "The host is making a manual ruling."
-                : locale === "ru"
-                  ? "Граница временно закрыта: один вызов уже разбирают."
-                  : "The border is briefly closed while one call is heard."}
-            </p>
+            <div className="mt-2">
+              <p className="text-sm text-white/65">
+                {run.status === "review"
+                  ? locale === "ru"
+                    ? "Ведущий выносит ручной вердикт."
+                    : "The host is making a manual ruling."
+                  : locale === "ru"
+                    ? "Граница временно закрыта: один вызов уже разбирают."
+                    : "The border is briefly closed while one call is heard."}
+              </p>
+              {!amAccused && !amAccuser && !(accusation.corroboratorIds ?? []).includes(me.id) && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void corroborate()}
+                  className="mt-3 w-full rounded-xl bg-cyan-200 px-3 py-3 text-sm font-bold text-cyan-950 disabled:opacity-40"
+                >
+                  {locale === "ru" ? "Я тоже это слышал" : "I heard it too"}
+                </button>
+              )}
+              {!amAccused && !amAccuser && (accusation.corroboratorIds ?? []).includes(me.id) && (
+                <p className="mt-2 text-xs text-cyan-100">
+                  {locale === "ru" ? "Показание свидетеля принято." : "Witness note sealed."}
+                </p>
+              )}
+            </div>
           )}
           {amAccuser && (
             <p className="mt-2 text-sm text-white/65">

@@ -146,6 +146,8 @@ export function ToastSyndicateHost({
             submittedCount={current.submittedListenerIds.length}
             caughtCount={caughtCount}
             speakerPoints={current.result?.speakerPoints ?? 0}
+            lastRound={current.roundNumber === current.totalRounds}
+            toastLanded={current.result?.toastLanded}
           />
         </div>
 
@@ -353,6 +355,8 @@ function HostRouteStrip({
   submittedCount,
   caughtCount,
   speakerPoints,
+  lastRound,
+  toastLanded,
 }: {
   phase: ToastSyndicateState["phase"];
   isRussian: boolean;
@@ -361,6 +365,8 @@ function HostRouteStrip({
   submittedCount: number;
   caughtCount: number;
   speakerPoints: number;
+  lastRound?: boolean;
+  toastLanded?: boolean;
 }) {
   const content =
     phase === "briefing"
@@ -397,13 +403,24 @@ function HostRouteStrip({
               }
             : {
                 label: isRussian ? "ИТОГ" : "RESULT",
-                body: caughtCount
-                  ? isRussian
-                    ? `${caughtCount} точных перехватов у зала.`
-                    : `${caughtCount} exact ${caughtCount === 1 ? "interception" : "interceptions"} by the room.`
-                  : isRussian
-                    ? "Ни один использованный груз не пойман."
-                    : "No used cargo was intercepted.",
+                body:
+                  (caughtCount
+                    ? isRussian
+                      ? `${caughtCount} точных перехватов у зала.`
+                      : `${caughtCount} exact ${caughtCount === 1 ? "interception" : "interceptions"} by the room.`
+                    : isRussian
+                      ? "Ни один использованный груз не пойман."
+                      : "No used cargo was intercepted.") +
+                  (toastLanded
+                    ? isRussian
+                      ? " Зал решил: тост зашёл."
+                      : " The room says the toast landed."
+                    : "") +
+                  (lastRound
+                    ? isRussian
+                      ? " Последний раунд — двойная выплата."
+                      : " Last round — double payout."
+                    : ""),
                 value: `+${speakerPoints}`,
               };
 

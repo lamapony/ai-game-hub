@@ -3,7 +3,10 @@ import { friendlyPlayerActionError } from "@/lib/player-action-errors";
 import { postPlayerAction } from "@/lib/player-action-client";
 import { formatClock, teamColorClasses } from "@/lib/team-style";
 import { GameRulesChecklist } from "@/components/game-rules-ui";
+import { eventProfile } from "@/lib/event-profile";
+import { useLocalDraft } from "@/lib/use-local-draft";
 import type { RoomState } from "@/lib/types";
+import { whoAmongIsLastLash } from "./scoring";
 
 export function WhoAmongPlayer({
   roomId,
@@ -17,7 +20,15 @@ export function WhoAmongPlayer({
   const wa = state.whoamong!;
   const [now, setNow] = useState(Date.now());
   const [pendingTargetId, setPendingTargetId] = useState<string | null>(null);
+  const [sendingExhibit, setSendingExhibit] = useState(false);
+  const [sendingPlea, setSendingPlea] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [exhibitDraft, setExhibitDraft, clearExhibit] = useLocalDraft(
+    `${eventProfile.storagePrefix}:draft:${roomId}:${me.id}:whoamong:${wa.roundId}:${wa.roundNumber}:exhibit`,
+  );
+  const [pleaDraft, setPleaDraft, clearPlea] = useLocalDraft(
+    `${eventProfile.storagePrefix}:draft:${roomId}:${me.id}:whoamong:${wa.roundId}:${wa.roundNumber}:plea`,
+  );
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 500);
@@ -25,10 +36,17 @@ export function WhoAmongPlayer({
   }, []);
 
   const myVote = wa.votes?.[me.id];
+  const myExhibit = wa.exhibits?.[me.id];
+  const myPlea = wa.pleas?.[me.id];
   const lastResult = wa.roundResults?.[wa.roundResults.length - 1];
+  const lastLash = whoAmongIsLastLash(wa);
+  const accused = wa.provisionalStarIds ?? [];
+  const iAmAccused = accused.includes(me.id);
 
   useEffect(() => {
     setPendingTargetId(null);
+    setSendingExhibit(false);
+    setSendingPlea(false);
     setActionError(null);
   }, [wa.phase, wa.roundNumber]);
 
@@ -49,14 +67,52 @@ export function WhoAmongPlayer({
     }
   }
 
+  async function submitExhibit() {
+    const text = exhibitDraft.trim();
+    if (!text || sendingExhibit) return;
+    setSendingExhibit(true);
+    setActionError(null);
+    try {
+      await postPlayerAction(roomId, {
+        action: "whoamong-exhibit",
+        playerId: me.id,
+        answer: text,
+      });
+      clearExhibit();
+    } catch (error) {
+      setActionError(friendlyPlayerActionError(error, "exhibit"));
+    } finally {
+      setSendingExhibit(false);
+    }
+  }
+
+  async function submitPlea() {
+    const text = pleaDraft.trim();
+    if (!text || sendingPlea) return;
+    setSendingPlea(true);
+    setActionError(null);
+    try {
+      await postPlayerAction(roomId, {
+        action: "whoamong-plea",
+        playerId: me.id,
+        answer: text,
+      });
+      clearPlea();
+    } catch (error) {
+      setActionError(friendlyPlayerActionError(error, "plea"));
+    } finally {
+      setSendingPlea(false);
+    }
+  }
+
   if (wa.phase === "briefing") {
     return (
       <Card>
         <Pill>Get ready to vote</Pill>
         <H>Who Among Us?</H>
         <P>
-          A spicy question shows on the big screen. Secretly pick the player who fits best —
-          yourself counts too. {wa.totalRounds} rounds: star +3 to team, guessed the star +2.
+          A charge hits the big screen. Secretly pick who fits — yourself counts — and file a
+          one-line exhibit. The accused get a short plea. Last round is Last Lash: double points.
         </P>
         <GameRulesChecklist gameId="whoamong" />
       </Card>
@@ -69,7 +125,7 @@ export function WhoAmongPlayer({
       <div className="space-y-3">
         <Card compact>
           <Pill>
-            Round {wa.roundNumber} · {formatClock(remaining)}
+            {lastLash ? "Last Lash" : `Round ${wa.roundNumber}`} · {formatClock(remaining)}
           </Pill>
           <H className="text-left">{wa.prompt}</H>
           {myVote && (
@@ -109,17 +165,105 @@ export function WhoAmongPlayer({
             );
           })}
         </div>
+        <Card compact>
+          <Pill>Exhibit</Pill>
+          {myExhibit ? (
+            <P className="text-[var(--color-park-bright)]">Filed: “{myExhibit}”</P>
+          ) : (
+            <P>One line. Why them. The host will read it aloud.</P>
+          )}
+          <form
+            className="mt-3 flex flex-col gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void submitExhibit();
+            }}
+          >
+            <input
+              value={exhibitDraft}
+              onChange={(e) => setExhibitDraft(e.target.value)}
+              maxLength={80}
+              placeholder="because they flipped the zucchini like it owed them money"
+              className="w-full rounded-2xl bg-white/10 px-4 py-3 text-white placeholder-white/40 outline-none focus:bg-white/15"
+            />
+            <button
+              type="submit"
+              disabled={sendingExhibit || !exhibitDraft.trim()}
+              className="rounded-2xl bg-[var(--color-park-bright)] px-4 py-3 font-medium text-[oklch(0.16_0.05_160)] disabled:opacity-50"
+            >
+              {sendingExhibit ? "Filing…" : myExhibit ? "Rewrite exhibit" : "File exhibit"}
+            </button>
+          </form>
+        </Card>
         {actionError && <ActionError>{actionError}</ActionError>}
       </div>
+    );
+  }
+
+  if (wa.phase === "plea") {
+    const remaining = Math.max(0, (wa.pleaEndsAt ?? now) - now);
+    if (iAmAccused) {
+      return (
+        <Card compact>
+          <Pill>You are on the docket · {formatClock(remaining)}</Pill>
+          <H className="text-left">{wa.prompt}</H>
+          <P>Confess or deny. Eighteen seconds. The room is watching.</P>
+          {myPlea && <P className="text-[var(--color-park-bright)]">Plea filed: “{myPlea}”</P>}
+          <form
+            className="mt-3 flex flex-col gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void submitPlea();
+            }}
+          >
+            <input
+              value={pleaDraft}
+              onChange={(e) => setPleaDraft(e.target.value)}
+              maxLength={140}
+              placeholder="I accept the tongs. I deny the crime."
+              className="w-full rounded-2xl bg-white/10 px-4 py-3 text-white placeholder-white/40 outline-none focus:bg-white/15"
+            />
+            <button
+              type="submit"
+              disabled={sendingPlea || !pleaDraft.trim()}
+              className="rounded-2xl bg-[var(--color-park-bright)] px-4 py-3 font-medium text-[oklch(0.16_0.05_160)] disabled:opacity-50"
+            >
+              {sendingPlea ? "Sending…" : myPlea ? "Rewrite plea" : "File plea"}
+            </button>
+          </form>
+          {actionError && <ActionError>{actionError}</ActionError>}
+        </Card>
+      );
+    }
+
+    const names = accused
+      .map((id) => state.players.find((p) => p.id === id)?.name)
+      .filter(Boolean)
+      .join(" and ");
+    return (
+      <Card>
+        <Pill>The accused are testifying · {formatClock(remaining)}</Pill>
+        <H className="text-left text-xl">{wa.prompt}</H>
+        <P>
+          {names || "Someone"} must confess or deny. Enjoy the silence. It is doing more work than
+          they are.
+        </P>
+      </Card>
     );
   }
 
   if (wa.phase === "reveal" && lastResult) {
     const isStar = lastResult.starIds.includes(me.id);
     const hitStar = lastResult.correctVoterIds.includes(me.id);
+    const myFiledExhibit = lastResult.exhibits?.[me.id];
+    const filedPlea = lastResult.pleas?.[me.id];
+    const lash = lastResult.lastLash;
     return (
       <Card>
-        <Pill>{isStar ? "👑 Round star" : hitStar ? "Nailed it!" : "Round result"}</Pill>
+        <Pill>
+          {isStar ? "👑 Round star" : hitStar ? "Nailed it!" : "The docket"}
+          {lash ? " · Last Lash" : ""}
+        </Pill>
         <H className="text-left text-xl">{lastResult.prompt}</H>
         <div
           className={`mt-3 rounded-2xl px-4 py-3 text-center ${
@@ -131,13 +275,19 @@ export function WhoAmongPlayer({
           }`}
         >
           {isStar
-            ? "You're the round star! +3 to team"
+            ? lash
+              ? "You're the Last Lash star. +6 to team."
+              : "You're the round star! +3 to team"
             : hitStar
-              ? "+2 to team!"
+              ? lash
+                ? "+4 to team — you read the room."
+                : "+2 to team!"
               : myVote
                 ? "Missed the star — next time!"
                 : "You didn't vote in time"}
         </div>
+        {filedPlea && <P className="mt-3">Your plea: “{filedPlea}”</P>}
+        {myFiledExhibit && <P className="mt-2">Your exhibit: “{myFiledExhibit}”</P>}
       </Card>
     );
   }

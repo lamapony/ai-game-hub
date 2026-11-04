@@ -55,7 +55,9 @@ export function SpectrumCourtHost({
     const teams = activeTeams(state);
     if (teams.length < 2) return;
     const clueTeam = teams[(sc.roundNumber - 1) % teams.length];
-    const prompt = pickSpectrumPrompt(sc.usedSpectrumIds);
+    const prompt = pickSpectrumPrompt(sc.usedSpectrumIds, Math.random(), {
+      actId: state.party?.actId,
+    });
     void update({
       phase: "clue",
       spectrumId: prompt.id,
@@ -180,7 +182,9 @@ export function SpectrumCourtHost({
     }
     const nextRoundNumber = sc.roundNumber + 1;
     const clueTeam = teams[(nextRoundNumber - 1) % teams.length];
-    const prompt = pickSpectrumPrompt(sc.usedSpectrumIds);
+    const prompt = pickSpectrumPrompt(sc.usedSpectrumIds, Math.random(), {
+      actId: state.party?.actId,
+    });
     void update({
       phase: "clue",
       roundNumber: nextRoundNumber,

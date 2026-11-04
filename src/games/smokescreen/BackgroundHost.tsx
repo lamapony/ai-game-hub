@@ -20,6 +20,20 @@ import { friendlyHostActionError } from "@/lib/host-action-errors";
 
 type RevealedMission = SmokeScreenRevealRecord & { recordId: string };
 
+function guessTallyLine(
+  tally: Record<string, number> | undefined,
+  players: RoomState["players"],
+  locale: string,
+) {
+  const parts = Object.entries(tally ?? {})
+    .sort((left, right) => right[1] - left[1])
+    .map(([suspectId, count]) => {
+      const name = players.find((player) => player.id === suspectId)?.name ?? suspectId;
+      return `${name} ${count}`;
+    });
+  return parts.join(" · ") || (locale === "ru" ? "голосов нет" : "no votes");
+}
+
 function parseRecords(records: PartyRecordView[]) {
   const reveals: RevealedMission[] = [];
   let result: SmokeScreenResultRecord | undefined;
@@ -417,6 +431,9 @@ export function SmokeScreenBackgroundHost({ roomId, state }: { roomId: string; s
                         : " / clean"}
                   </em>
                   <i>+{entry.ownerPoints}</i>
+                  <span className="mt-2 block text-[11px] text-white/50">
+                    {guessTallyLine(smoke.guessTally?.[entry.missionId], state.players, locale)}
+                  </span>
                 </li>
               );
             })}

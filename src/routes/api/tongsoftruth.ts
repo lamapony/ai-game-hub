@@ -17,11 +17,12 @@ import {
   skipTongsRound,
   startTongsRecording,
   submitTongsAudio,
+  submitTongsAudienceBet,
   tongsHostCase,
 } from "@/lib/tongsoftruth.server";
 import type { RoomState } from "@/lib/types";
 
-const PLAYER_ACTIONS = ["start", "submit-audio"] as const;
+const PLAYER_ACTIONS = ["start", "submit-audio", "audience-bet"] as const;
 
 export const Route = createFileRoute("/api/tongsoftruth")({
   server: {
@@ -54,7 +55,10 @@ export const Route = createFileRoute("/api/tongsoftruth")({
           let result: unknown;
           let roomId: string;
           if ((PLAYER_ACTIONS as readonly string[]).includes(body.action)) {
-            const playerBody = body as Extract<typeof body, { action: "start" | "submit-audio" }>;
+            const playerBody = body as Extract<
+              typeof body,
+              { action: "start" | "submit-audio" | "audience-bet" }
+            >;
             const { data, error } = await supabaseAdmin
               .from("rooms")
               .select("id, state")
@@ -77,15 +81,23 @@ export const Route = createFileRoute("/api/tongsoftruth")({
                     player,
                     runId: playerBody.runId,
                   })
-                : await submitTongsAudio({
-                    roomId,
-                    state,
-                    player,
-                    runId: playerBody.runId,
-                    roundId: playerBody.roundId,
-                    storagePath: playerBody.storagePath,
-                    durationSeconds: playerBody.durationSeconds,
-                  });
+                : playerBody.action === "audience-bet"
+                  ? await submitTongsAudienceBet({
+                      roomId,
+                      state,
+                      player,
+                      runId: playerBody.runId,
+                      guess: playerBody.guess,
+                    })
+                  : await submitTongsAudio({
+                      roomId,
+                      state,
+                      player,
+                      runId: playerBody.runId,
+                      roundId: playerBody.roundId,
+                      storagePath: playerBody.storagePath,
+                      durationSeconds: playerBody.durationSeconds,
+                    });
           } else {
             const room = await authorizeHostRoom({
               roomId: body.roomId,

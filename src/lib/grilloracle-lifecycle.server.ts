@@ -44,7 +44,7 @@ export function oracleVerdictIdempotencyKey(runId: string, playerId: string) {
 export function oracleScoreIdempotencyKey(
   runId: string,
   playerId: string,
-  role: "oracle" | "skeptic",
+  role: "oracle" | "skeptic" | "guess",
   teamId: string,
 ) {
   return hashedKey("oracle_score", `${runId}:${playerId}:${role}:${teamId}`);
@@ -288,6 +288,23 @@ export function buildOracleScoreEvents(params: {
       }),
     );
   }
+  const guesses = params.state.oracleMemory?.countGuesses ?? {};
+  params.state.players.forEach((player) => {
+    if (player.id === owner.id) return;
+    const guess = guesses[player.id]?.[owner.id];
+    if (guess == null || guess !== score.fulfilledCount) return;
+    events.push({
+      idempotencyKey: oracleScoreIdempotencyKey(params.runId, player.id, "guess", player.teamId),
+      runId: params.runId,
+      gameId: "grilloracle",
+      teamId: player.teamId,
+      playerId: player.id,
+      points: 1,
+      reason: `Guessed ${score.fulfilledCount}/3 Grill Oracle signs`,
+      source: "vote",
+      rubric: { ...rubric, role: "guess", guess },
+    });
+  });
   return events;
 }
 

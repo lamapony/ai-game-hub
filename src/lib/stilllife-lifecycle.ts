@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { StillLifeJudgment } from "@/games/stilllife/model";
+import type { StillLifeRoundResult } from "./types";
 
 const safeIdSchema = z
   .string()
@@ -79,7 +80,7 @@ export function scoreStillLifeRound(params: {
   headline: string;
   judgments: StillLifeScoredJudgment[];
   votes: Array<{ playerId: string; teamId: string }>;
-}) {
+}): StillLifeRoundResult {
   const validTeamIds = new Set(params.judgments.map((entry) => entry.teamId));
   const audienceVotes = Object.fromEntries(params.judgments.map((entry) => [entry.teamId, 0]));
   const seenVoters = new Set<string>();
@@ -110,5 +111,21 @@ export function scoreStillLifeRound(params: {
     .filter((entry) => entry.audienceVotes === bestAudience)
     .map((entry) => entry.teamId);
 
-  return { roundId: params.roundId, headline: params.headline, entries, winningTeamIds };
+  const favoriteVotes = Math.max(0, ...entries.map((entry) => entry.audienceVotes));
+  const favorites = entries.filter(
+    (entry) => favoriteVotes > 0 && entry.audienceVotes === favoriteVotes,
+  );
+  const favoriteTeamId = favorites.length === 1 ? favorites[0]!.teamId : null;
+  const scoredEntries = entries.map((entry) =>
+    entry.teamId === favoriteTeamId
+      ? { ...entry, points: entry.points + 3, crowdFavorite: true }
+      : entry,
+  );
+
+  return {
+    roundId: params.roundId,
+    headline: params.headline,
+    entries: scoredEntries,
+    winningTeamIds,
+  };
 }

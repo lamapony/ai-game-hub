@@ -81,6 +81,18 @@ export const nextTongsRoundClient = (roomId: string, runId: string, roundId: str
 export const startTongsRecordingClient = (roomId: string, runId: string, playerId: string) =>
   postAsPlayer<{ run: TongsOfTruthState }>(roomId, playerId, { action: "start", runId });
 
+export const submitTongsAudienceBetClient = (
+  roomId: string,
+  runId: string,
+  playerId: string,
+  guess: "dodge" | "stand",
+) =>
+  postAsPlayer<{ run: TongsOfTruthState }>(roomId, playerId, {
+    action: "audience-bet",
+    runId,
+    guess,
+  });
+
 export const submitTongsAudioClient = (params: {
   roomId: string;
   runId: string;

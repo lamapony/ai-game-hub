@@ -1,6 +1,8 @@
 // Photo Hunt player view: see task, snap one photo within timer, upload, wait for verdict.
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { postPlayerAction } from "@/lib/player-action-client";
+import { friendlyPlayerActionError } from "@/lib/player-action-errors";
 import { postPlayerArtifact } from "@/lib/player-artifact-client";
 import { uploadPlayerMedia } from "@/lib/player-upload-client";
 import { formatClock } from "@/lib/team-style";
@@ -25,6 +27,7 @@ export function PhotoHuntPlayer({
   const [uploading, setUploading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [voteBusy, setVoteBusy] = useState(false);
   const [myPhotoUrl, setMyPhotoUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -196,6 +199,57 @@ export function PhotoHuntPlayer({
     );
   }
 
+  if (ph.phase === "voting" && ph.results) {
+    const myVote = ph.audienceVotes?.[me.id];
+    const remaining = Math.max(0, (ph.voteEndsAt ?? now) - now);
+    async function vote(targetPlayerId: string) {
+      setVoteBusy(true);
+      setErr(null);
+      try {
+        await postPlayerAction(roomId, {
+          action: "phototunt-vote",
+          playerId: me.id,
+          targetPlayerId,
+        });
+      } catch (error) {
+        setErr(friendlyPlayerActionError(error, "photo vote"));
+      } finally {
+        setVoteBusy(false);
+      }
+    }
+    return (
+      <Card>
+        <Pill>Crowd favorite</Pill>
+        <div className="text-right text-xs text-white/60">{formatClock(remaining)}</div>
+        <H>Vote for someone else&apos;s shot</H>
+        <P>AI already ranked them. Your pick can steal +3 if it wins alone.</P>
+        {myVote ? (
+          <P>
+            Locked: {ph.results.find((entry) => entry.playerId === myVote)?.playerName ?? "a shot"}.
+          </P>
+        ) : (
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {ph.results
+              .filter((entry) => entry.playerId !== me.id)
+              .map((entry) => (
+                <button
+                  key={entry.playerId}
+                  type="button"
+                  disabled={voteBusy}
+                  onClick={() => void vote(entry.playerId)}
+                  className="overflow-hidden rounded-2xl border border-white/10 bg-black/30 text-left disabled:opacity-40"
+                >
+                  <img src={entry.photoUrl} alt="" className="aspect-square w-full object-cover" />
+                  <div className="px-2 py-2 text-xs text-white/80">{entry.playerName}</div>
+                </button>
+              ))}
+          </div>
+        )}
+        {err && <p className="mt-3 text-sm text-red-300">{err}</p>}
+      </Card>
+    );
+  }
+
   if (ph.phase === "results" && ph.results) {
     const mine = ph.results.find((r) => r.playerId === me.id);
     const winner = ph.results.find((r) => r.rank === 1);
@@ -213,7 +267,9 @@ export function PhotoHuntPlayer({
                     ? "🥉"
                     : `#${mine.rank}`}
             </div>
-            <div className="font-display text-2xl mt-1">+{mine.points} to team</div>
+            <div className="font-display text-2xl mt-1">
+              +{mine.points} to team{mine.crowdFavorite ? " · crowd favorite" : ""}
+            </div>
             <p className="text-white mt-3 leading-snug">«{mine.comment}»</p>
             {mine.photoUrl && (
               <div className="mt-3 rounded-2xl overflow-hidden bg-black/30 border border-white/10">

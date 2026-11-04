@@ -42,6 +42,14 @@ export const sommelierRequestSchema = z.discriminatedUnion("action", [
   z
     .object({
       ...baseRequest,
+      ...playerFields,
+      action: z.literal("clap"),
+      entryId: safeIdSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...baseRequest,
       action: z.literal("reveal"),
       entryId: safeIdSchema,
       allowNoVotes: z.boolean().optional(),

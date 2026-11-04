@@ -86,7 +86,7 @@ export function ImpostorPlayer({
         <P>
           A question will appear on screen. Write a funny answer — AI secretly adds its own. Spot
           the machine answer: +3 if you're right; +1 per vote if people mistake your answer for the
-          bot's.
+          bot's. Last round is Final Fibbage — both payouts double.
         </P>
         <GameRulesChecklist gameId="impostor" />
       </Card>
@@ -201,7 +201,9 @@ export function ImpostorPlayer({
           }`}
         >
           {caught
-            ? "You caught the bot! +3 to your team"
+            ? lastResult.finalFibbage
+              ? "You caught the bot on Final Fibbage. +6 to your team."
+              : "You caught the bot! +3 to your team"
             : myVote
               ? "That was a human. The bot slipped away."
               : "You didn't vote"}
@@ -209,7 +211,7 @@ export function ImpostorPlayer({
         {myFoolVotes > 0 && (
           <div className="mt-2 rounded-2xl bg-white/10 px-4 py-3 text-center text-sm text-white/80">
             People mistook your answer for the bot {myFoolVotes} time{myFoolVotes === 1 ? "" : "s"}{" "}
-            — +{myFoolVotes} to your team. Talent.
+            — +{myFoolVotes * (lastResult.finalFibbage ? 2 : 1)} to your team. Talent.
           </div>
         )}
       </Card>

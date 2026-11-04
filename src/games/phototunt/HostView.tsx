@@ -7,6 +7,7 @@ import { updateRoomState, genId, hostPromptAuth } from "@/lib/room";
 import { generatePhotoTask, judgePhotos } from "@/lib/ai/phototunt.functions";
 import { teamColorClasses, formatClock } from "@/lib/team-style";
 import { speechUrl } from "@/lib/speech-client";
+import { applyPhotoHuntVotingResult, PHOTO_HUNT_VOTE_MS } from "./scoring";
 import type { PhotoHuntState, RoomState, Team, PhotoHuntResultEntry } from "@/lib/types";
 
 const HUNT_MS = 60_000;
@@ -42,6 +43,7 @@ export function PhotoHuntHost({
   const [now, setNow] = useState(Date.now());
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const judgedRef = useRef<string | null>(null);
+  const finalizedVoteRef = useRef<string | null>(null);
   const taskSpokenRef = useRef<string | null>(null);
   const generatingRoundRef = useRef<string | null>(null);
 
@@ -214,24 +216,44 @@ export function PhotoHuntHost({
           ),
       });
 
-      // Award points per team
-      const teamDelta = new Map<string, number>();
-      results.forEach((res) => {
-        teamDelta.set(res.teamId, (teamDelta.get(res.teamId) ?? 0) + res.points);
-      });
-      const teams: Team[] = state.teams.map((t) =>
-        teamDelta.has(t.id) ? { ...t, score: t.score + (teamDelta.get(t.id) ?? 0) } : t,
-      );
+      if (results.length < 2) {
+        const teamDelta = new Map<string, number>();
+        results.forEach((res) => {
+          teamDelta.set(res.teamId, (teamDelta.get(res.teamId) ?? 0) + res.points);
+        });
+        const teams: Team[] = state.teams.map((t) =>
+          teamDelta.has(t.id) ? { ...t, score: t.score + (teamDelta.get(t.id) ?? 0) } : t,
+        );
+        const written = await updateRoomState(
+          roomId,
+          {
+            ...state,
+            teams,
+            phototunt: {
+              ...ph,
+              phase: "results",
+              results,
+              aiFallback: ph.aiFallback || r.fallback,
+              pastTasks: [...(ph.pastTasks ?? []), ph.task ?? ""].filter(Boolean),
+            },
+          },
+          { gameId: "phototunt", roundId: ph.roundId },
+        );
+        if (!written) return;
+        speak(r.verdict);
+        return;
+      }
 
       const written = await updateRoomState(
         roomId,
         {
           ...state,
-          teams,
           phototunt: {
             ...ph,
-            phase: "results",
+            phase: "voting",
             results,
+            audienceVotes: {},
+            voteEndsAt: Date.now() + PHOTO_HUNT_VOTE_MS,
             aiFallback: ph.aiFallback || r.fallback,
             pastTasks: [...(ph.pastTasks ?? []), ph.task ?? ""].filter(Boolean),
           },
@@ -266,6 +288,9 @@ export function PhotoHuntHost({
           phase: "briefing",
           roundId: genId("ph"),
           aiFallback: undefined,
+          audienceVotes: {},
+          voteEndsAt: undefined,
+          crowdFavoritePlayerId: undefined,
           pastTasks: [...(ph.pastTasks ?? []), ph.task ?? ""].filter(Boolean),
         },
       },
@@ -277,7 +302,31 @@ export function PhotoHuntHost({
     void onBackToHub();
   }
 
-  const remaining = ph.phase === "hunting" ? Math.max(0, (ph.huntEndsAt ?? now) - now) : 0;
+  useEffect(() => {
+    if (state.paused) return;
+    if (ph.phase !== "voting" || !ph.results) return;
+    if (finalizedVoteRef.current === ph.roundId) return;
+    const eligible = state.players.filter((player) =>
+      ph.results!.some((entry) => entry.playerId !== player.id),
+    );
+    const allVoted =
+      eligible.length === 0 || eligible.every((player) => ph.audienceVotes?.[player.id]);
+    const timeUp = !ph.voteEndsAt || now >= ph.voteEndsAt;
+    if (!allVoted && !timeUp) return;
+    finalizedVoteRef.current = ph.roundId;
+    void updateRoomState(roomId, applyPhotoHuntVotingResult(state), {
+      gameId: "phototunt",
+      roundId: ph.roundId,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.paused, ph.phase, ph.roundId, ph.voteEndsAt, ph.audienceVotes, now]);
+
+  const remaining =
+    ph.phase === "hunting"
+      ? Math.max(0, (ph.huntEndsAt ?? now) - now)
+      : ph.phase === "voting"
+        ? Math.max(0, (ph.voteEndsAt ?? now) - now)
+        : 0;
   const hunterIds = ph.hunterIds ?? state.players.map((player) => player.id);
   const submittedIds = new Set(photos.map((photo) => photo.player_id));
   const submitted = hunterIds.filter((id) => submittedIds.has(id)).length;
@@ -393,6 +442,43 @@ export function PhotoHuntHost({
         </Panel>
       )}
 
+      {ph.phase === "voting" && ph.results && (
+        <Panel>
+          <div className="flex items-baseline justify-between">
+            <div className="font-display text-2xl">Pick the crowd favorite</div>
+            <div className="font-display text-5xl tabular-num text-[var(--color-park-bright)]">
+              {formatClock(remaining)}
+            </div>
+          </div>
+          <p className="mt-3 text-sm text-white/70">
+            AI already ranked the shots. The room now picks one favorite for +3. Ties pay nobody.
+          </p>
+          <ol className="mt-4 space-y-3">
+            {ph.results.map((r) => {
+              const votes = Object.values(ph.audienceVotes ?? {}).filter(
+                (playerId) => playerId === r.playerId,
+              ).length;
+              return (
+                <li key={r.playerId} className="rounded-2xl bg-background/50 border p-3 flex gap-3">
+                  <img
+                    src={r.photoUrl}
+                    alt=""
+                    className="size-24 rounded-xl object-cover bg-black/30 shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="font-display text-xl">{r.playerName}</div>
+                      <div className="text-xs text-white/60">{votes} votes</div>
+                    </div>
+                    <p className="text-sm text-white/85 mt-1 leading-snug">«{r.comment}»</p>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </Panel>
+      )}
+
       {ph.phase === "results" && ph.results && (
         <Panel>
           {ph.aiFallback && <AiFallbackNotice />}
@@ -421,6 +507,7 @@ export function PhotoHuntHost({
                       <div className="flex items-baseline justify-between gap-2">
                         <div className="font-display text-xl">
                           {medal} {r.playerName}
+                          {r.crowdFavorite ? " · crowd favorite" : ""}
                         </div>
                         <div className={`text-xs rounded-full px-2 py-0.5 border ${c?.chip ?? ""}`}>
                           +{r.points} {team?.name}
@@ -451,7 +538,13 @@ export function PhotoHuntHost({
 }
 
 function phaseTitle(p: PhotoHuntState["phase"]) {
-  return { briefing: "Task", hunting: "Hunt", judging: "AI judging", results: "Winners" }[p];
+  return {
+    briefing: "Task",
+    hunting: "Hunt",
+    judging: "AI judging",
+    voting: "Crowd favorite",
+    results: "Winners",
+  }[p];
 }
 
 function Panel({ children }: { children: React.ReactNode }) {

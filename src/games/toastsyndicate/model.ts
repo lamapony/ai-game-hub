@@ -58,6 +58,7 @@ export const toastCatchRecordSchema = z
   .object({
     version: z.literal(1),
     guesses: z.array(z.string().trim().min(1).max(80)).max(3),
+    landed: z.boolean().optional(),
     submittedAt: z.number().int().nonnegative(),
   })
   .strict();
@@ -106,9 +107,12 @@ export const toastResultRecordSchema = z
             }),
           )
           .length(3),
-        speakerPoints: z.number().int().min(0).max(25),
-        listenerPoints: z.record(z.number().int().min(0).max(9)),
+        speakerPoints: z.number().int().min(0).max(60),
+        listenerPoints: z.record(z.number().int().min(0).max(18)),
         comment: z.string().trim().min(1).max(1200),
+        lastRound: z.boolean().optional(),
+        toastLanded: z.boolean().optional(),
+        landedCount: z.number().int().min(0).max(30).optional(),
       })
       .strict(),
     aiFallback: z.boolean(),

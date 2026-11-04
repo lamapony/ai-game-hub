@@ -15,7 +15,8 @@ import {
   verifyOraclePredictionsClient,
 } from "@/lib/oracle-lifecycle-client";
 import type { PartyRecordView } from "@/lib/party-records";
-import type { GrillOracleMemoryStatus, RoomState } from "@/lib/types";
+import type { GrillOracleMemory, GrillOracleMemoryStatus, RoomState } from "@/lib/types";
+import { oracleCrowdGuessTally } from "@/lib/game-state";
 import { friendlyHostActionError } from "@/lib/host-action-errors";
 
 const STATUS_ORDER: Record<GrillOracleMemoryStatus, number> = {
@@ -285,6 +286,7 @@ export function GrillOracleLifecycleHost({ roomId, state }: { roomId: string; st
               key={oracle.playerId}
               oracle={oracle}
               locale={locale}
+              memory={memory}
               results={resultsByPlayer[oracle.playerId] ?? [false, false, false]}
               disabled={busy !== null}
               onToggle={(index) =>
@@ -316,6 +318,7 @@ export function GrillOracleLifecycleHost({ roomId, state }: { roomId: string; st
 function OracleVerificationCard({
   oracle,
   locale,
+  memory,
   results,
   disabled,
   onToggle,
@@ -323,12 +326,14 @@ function OracleVerificationCard({
 }: {
   oracle: RevealedOracle;
   locale: "en" | "ru";
+  memory: GrillOracleMemory;
   results: OraclePredictionResults;
   disabled: boolean;
   onToggle: (index: 0 | 1 | 2) => void;
   onVerify: () => void;
 }) {
   const reading = oracle.prophecy.reading;
+  const tally = oracleCrowdGuessTally(memory, oracle.playerId);
   return (
     <article className="agh-oracle-verification">
       <header>
@@ -336,6 +341,9 @@ function OracleVerificationCard({
         <span>{oracle.verdict ? (locale === "ru" ? "ПРОВЕРЕНО" : "VERIFIED") : "03 CLAIMS"}</span>
       </header>
       <p className="agh-oracle-verification-prophecy">{reading.prophecy}</p>
+      <p className="agh-oracle-guess-tally">
+        {`${locale === "ru" ? "Ставки зала" : "Room guesses"}: 0×${tally[0]} · 1×${tally[1]} · 2×${tally[2]} · 3×${tally[3]}`}
+      </p>
       <div className="agh-oracle-verification-claims">
         {reading.predictions.map((prediction, index) => {
           const fixedIndex = index as 0 | 1 | 2;

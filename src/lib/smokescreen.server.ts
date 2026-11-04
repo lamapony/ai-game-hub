@@ -41,6 +41,7 @@ import { updateRoomStateWithOptimisticRetry } from "./room-state-retry.server";
 import { awardScoreEvents } from "./score-events.server";
 import type { ScoreAwardInput } from "./score-events";
 import {
+  buildSmokeScreenGuessTally,
   sameCompletedMissionIds,
   sameSmokeScreenGuesses,
   scoreSmokeScreen,
@@ -703,6 +704,8 @@ export async function finalizeSmokeScreenRun(params: {
   }
   const resultKey = smokeResultIdempotencyKey(params.runId);
   const existing = await findPartyRecordByIdempotency(params.room.id, resultKey);
+  const guesses = await guessRecords(params.room.id, params.runId);
+  const guessTally = buildSmokeScreenGuessTally(guesses.map(({ record }) => record));
   let resultRecord: { payload: SmokeScreenResultRecord; replayed: boolean };
   if (existing) {
     resultRecord = {
@@ -710,7 +713,6 @@ export async function finalizeSmokeScreenRun(params: {
       replayed: true,
     };
   } else {
-    const guesses = await guessRecords(params.room.id, params.runId);
     const results = scoreSmokeScreen({
       missions,
       guesses,
@@ -760,6 +762,7 @@ export async function finalizeSmokeScreenRun(params: {
       results: resultRecord.payload.results,
       recap: resultRecord.payload.recap,
       aiFallback: resultRecord.payload.aiFallback,
+      guessTally,
       now: resultRecord.payload.completedAt,
     }),
   );

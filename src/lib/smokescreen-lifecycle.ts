@@ -80,6 +80,20 @@ export function validateSmokeScreenGuesses(params: {
   }
 }
 
+export function buildSmokeScreenGuessTally(
+  ballots: Array<{ guesses: Array<{ missionId: string; ownerPlayerId: string }> }>,
+): Record<string, Record<string, number>> {
+  const guessTally: Record<string, Record<string, number>> = {};
+  for (const ballot of ballots) {
+    for (const guess of ballot.guesses) {
+      const bySuspect = guessTally[guess.missionId] ?? {};
+      bySuspect[guess.ownerPlayerId] = (bySuspect[guess.ownerPlayerId] ?? 0) + 1;
+      guessTally[guess.missionId] = bySuspect;
+    }
+  }
+  return guessTally;
+}
+
 export function sameSmokeScreenGuesses(
   left: SmokeScreenGuessRecord["guesses"],
   right: SmokeScreenGuessRecord["guesses"],

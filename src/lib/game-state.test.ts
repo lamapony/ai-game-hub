@@ -12,6 +12,8 @@ import {
   launchWhoAmongState,
   markGrillOracleVerifiedState,
   markGrillOracleSubmittedState,
+  markGrillOracleGuessState,
+  oracleCrowdGuessTally,
   markSmokeScreenAssignedState,
   markSmokeScreenVotedState,
   finalizeSmokeScreenState,
@@ -212,6 +214,27 @@ describe("game state launch helpers", () => {
     expect(markGrillOracleVerifiedState(sealed, "oracle_1", "p1")).toBeNull();
   });
 
+  test("Grill Oracle crowd guesses lock once and only during reveal", () => {
+    const launched = launchGrillOracleState(roomState(), "oracle_1", 1_000)!;
+    const captured = markGrillOracleSubmittedState(
+      markGrillOracleSubmittedState(launched, "oracle_1", "p1")!,
+      "oracle_1",
+      "p2",
+    )!;
+    const revealed = transitionGrillOracleMemoryState(captured, {
+      runId: "oracle_1",
+      status: "revealed",
+    })!;
+
+    const guessed = markGrillOracleGuessState(revealed, "p2", "p1", 2)!;
+    const replay = markGrillOracleGuessState(guessed, "p2", "p1", 0);
+    expect(guessed.oracleMemory?.countGuesses).toEqual({ p2: { p1: 2 } });
+    expect(replay).toBe(guessed);
+    expect(oracleCrowdGuessTally(guessed.oracleMemory, "p1")).toEqual([0, 0, 1, 0]);
+    expect(markGrillOracleGuessState(revealed, "p1", "p1", 2)).toBeNull();
+    expect(markGrillOracleGuessState(captured, "p2", "p1", 2)).toBeNull();
+  });
+
   test("Smoke Screen starts beside a foreground game and keeps only public progress", () => {
     const foreground = launchChallengeState(
       roomState({
@@ -255,10 +278,22 @@ describe("game state launch helpers", () => {
       status: "revealed",
       now: 2_000,
     })!;
+    const leakedTally = markSmokeScreenVotedState(
+      {
+        ...revealed,
+        smokescreen: {
+          ...revealed.smokescreen!,
+          guessTally: { m1: { p2: 1 } },
+        },
+      },
+      "smoke_1",
+      "p1",
+    )!;
     const voted = markSmokeScreenVotedState(revealed, "smoke_1", "p1")!;
     const replay = markSmokeScreenVotedState(voted, "smoke_1", "p1");
     const finished = finalizeSmokeScreenState(voted, {
       runId: "smoke_1",
+      guessTally: { m1: { p3: 1 } },
       results: [
         {
           missionId: "m1",
@@ -278,9 +313,13 @@ describe("game state launch helpers", () => {
     expect(active.smokescreen?.status).toBe("active");
     expect(sealed.smokescreen?.status).toBe("sealed");
     expect(revealed.smokescreen?.revealedAt).toBe(2_000);
+    expect(leakedTally.smokescreen?.submittedVoterIds).toEqual(["p1"]);
+    expect(leakedTally.smokescreen?.guessTally).toBeUndefined();
     expect(voted.smokescreen?.submittedVoterIds).toEqual(["p1"]);
+    expect(voted.smokescreen?.guessTally).toBeUndefined();
     expect(replay).toBe(voted);
     expect(finished.smokescreen?.status).toBe("results");
+    expect(finished.smokescreen?.guessTally).toEqual({ m1: { p3: 1 } });
     expect(finished.smokescreen?.completedAt).toBe(3_000);
     expect(finished.finale?.evidence.at(-1)?.gameId).toBe("smokescreen");
     expect(finished.party?.storyEvidence?.at(-1)?.gameId).toBe("smokescreen");

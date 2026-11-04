@@ -30,6 +30,7 @@ export function ToastSyndicatePlayer({
   const isSpeaker = toast.speakerPlayerId === me.id;
   const [assignment, setAssignment] = useState<ToastAssignmentRecord | null>(null);
   const [guesses, setGuesses] = useState(["", "", ""]);
+  const [landed, setLanded] = useState(false);
   const [submitted, setSubmitted] = useState(toast.submittedListenerIds.includes(me.id));
   const [cargoOpen, setCargoOpen] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +40,7 @@ export function ToastSyndicatePlayer({
   useEffect(() => {
     setAssignment(null);
     setGuesses(["", "", ""]);
+    setLanded(false);
     setSubmitted(false);
     setCargoOpen(true);
     setError(null);
@@ -95,6 +97,7 @@ export function ToastSyndicatePlayer({
         roundId: toast.roundId,
         playerId: me.id,
         guesses: guesses.map((guess) => guess.trim()).filter(Boolean),
+        landed,
       });
       setSubmitted(true);
     } catch (catchError) {
@@ -447,6 +450,14 @@ export function ToastSyndicatePlayer({
                   <span>WORD</span>
                 </label>
               ))}
+              <label className="mt-3 flex items-center gap-2 text-xs text-white/70">
+                <input
+                  type="checkbox"
+                  checked={landed}
+                  onChange={(event) => setLanded(event.target.checked)}
+                />
+                {isRussian ? "Этот тост зашёл" : "That toast landed"}
+              </label>
               <p>
                 {isRussian
                   ? "Ничего не заметил? Оставь строки пустыми и всё равно сдай декларацию."

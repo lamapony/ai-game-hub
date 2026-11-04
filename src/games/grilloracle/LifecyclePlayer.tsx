@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { listOracleRecordsForPlayer } from "@/lib/oracle-client";
-import type { StoredPlayer } from "@/lib/player-action-client";
-import type { RoomState } from "@/lib/types";
+import { postPlayerAction, type StoredPlayer } from "@/lib/player-action-client";
+import { friendlyPlayerActionError } from "@/lib/player-action-errors";
+import type { GrillOracleMemory, RoomState } from "@/lib/types";
 import {
   ORACLE_RECORD_KIND,
   ORACLE_VERDICT_RECORD_KIND,
@@ -25,6 +26,8 @@ export function GrillOracleLifecyclePlayer({
   const [prophecy, setProphecy] = useState<OracleRecordPayload | null>(null);
   const [verdict, setVerdict] = useState<OracleVerdictRecordPayload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [guessError, setGuessError] = useState<string | null>(null);
+  const [guessBusy, setGuessBusy] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,14 +61,53 @@ export function GrillOracleLifecyclePlayer({
     };
   }, [me.id, memory.runId, memory.status, roomId]);
 
+  const otherOwners = memory.submittedPlayerIds.filter((playerId) => playerId !== me.id);
+  const showGuesses =
+    (memory.status === "revealed" || memory.status === "verified") && otherOwners.length > 0;
+
+  async function guessCount(ownerPlayerId: string, count: number) {
+    setGuessBusy(`${ownerPlayerId}:${count}`);
+    setGuessError(null);
+    try {
+      await postPlayerAction(roomId, {
+        action: "oracle-guess",
+        playerId: me.id,
+        targetPlayerId: ownerPlayerId,
+        value: count,
+      });
+    } catch (error) {
+      setGuessError(friendlyPlayerActionError(error, "oracle guess"));
+    } finally {
+      setGuessBusy(null);
+    }
+  }
+
+  const guessBoard = showGuesses ? (
+    <OracleCountGuessBoard
+      memory={memory}
+      locale={locale}
+      meId={me.id}
+      owners={otherOwners.map((playerId) => ({
+        playerId,
+        playerName: state.players.find((player) => player.id === playerId)?.name ?? playerId,
+      }))}
+      busy={guessBusy}
+      error={guessError}
+      onGuess={guessCount}
+    />
+  ) : null;
+
   if (!memory.submittedPlayerIds.includes(me.id)) {
     return (
-      <MemoryCard>
-        <MemoryLabel>{locale === "ru" ? "Архив Оракула" : "Oracle archive"}</MemoryLabel>
-        <MemoryHeading>
-          {locale === "ru" ? "Твоего пророчества в архиве нет" : "No prophecy was filed for you"}
-        </MemoryHeading>
-      </MemoryCard>
+      <>
+        <MemoryCard>
+          <MemoryLabel>{locale === "ru" ? "Архив Оракула" : "Oracle archive"}</MemoryLabel>
+          <MemoryHeading>
+            {locale === "ru" ? "Твоего пророчества в архиве нет" : "No prophecy was filed for you"}
+          </MemoryHeading>
+        </MemoryCard>
+        {guessBoard}
+      </>
     );
   }
 
@@ -90,54 +132,126 @@ export function GrillOracleLifecyclePlayer({
 
   if (loading || !prophecy) {
     return (
-      <MemoryCard>
-        <MemoryLabel>{locale === "ru" ? "Архив Оракула" : "Oracle archive"}</MemoryLabel>
-        <MemoryHeading>
-          {locale === "ru"
-            ? "Поднимаем показания из пепла..."
-            : "Recovering testimony from the ash..."}
-        </MemoryHeading>
-      </MemoryCard>
+      <>
+        <MemoryCard>
+          <MemoryLabel>{locale === "ru" ? "Архив Оракула" : "Oracle archive"}</MemoryLabel>
+          <MemoryHeading>
+            {locale === "ru"
+              ? "Поднимаем показания из пепла..."
+              : "Recovering testimony from the ash..."}
+          </MemoryHeading>
+        </MemoryCard>
+        {guessBoard}
+      </>
     );
   }
 
   const reading = prophecy.reading;
   return (
-    <MemoryCard state={verdict ? "verified" : "revealed"}>
-      <MemoryLabel>
-        {memory.status === "collecting" || memory.status === "ready"
-          ? locale === "ru"
-            ? "Последний взгляд до печати"
-            : "Last look before sealing"
-          : locale === "ru"
-            ? "Печать сломана"
-            : "Seal broken"}
-      </MemoryLabel>
-      <MemoryHeading>{reading.item_guess}</MemoryHeading>
-      <p className="agh-oracle-memory-prophecy">{reading.prophecy}</p>
-      <ol className="agh-oracle-memory-predictions">
-        {reading.predictions.map((prediction, index) => {
-          const result = verdict?.results[index];
-          return (
-            <li key={prediction} data-result={result === undefined ? "pending" : String(result)}>
-              <span>{result === true ? "YES" : result === false ? "NO" : `0${index + 1}`}</span>
-              <strong>{prediction}</strong>
-            </li>
-          );
-        })}
-      </ol>
-      {verdict && (
-        <div className="agh-oracle-memory-verdict">
-          <span>{locale === "ru" ? "Вердикт зала" : "Room verdict"}</span>
-          <p>{verdict.decision.verdict}</p>
-          <b>
-            +{verdict.decision.oracle_points} {locale === "ru" ? "Оракулу" : "Oracle"} / +
-            {verdict.decision.skeptic_points} {locale === "ru" ? "скептикам" : "skeptics"}
-          </b>
-        </div>
-      )}
+    <>
+      <MemoryCard state={verdict ? "verified" : "revealed"}>
+        <MemoryLabel>
+          {memory.status === "collecting" || memory.status === "ready"
+            ? locale === "ru"
+              ? "Последний взгляд до печати"
+              : "Last look before sealing"
+            : locale === "ru"
+              ? "Печать сломана"
+              : "Seal broken"}
+        </MemoryLabel>
+        <MemoryHeading>{reading.item_guess}</MemoryHeading>
+        <p className="agh-oracle-memory-prophecy">{reading.prophecy}</p>
+        <ol className="agh-oracle-memory-predictions">
+          {reading.predictions.map((prediction, index) => {
+            const result = verdict?.results[index];
+            return (
+              <li key={prediction} data-result={result === undefined ? "pending" : String(result)}>
+                <span>{result === true ? "YES" : result === false ? "NO" : `0${index + 1}`}</span>
+                <strong>{prediction}</strong>
+              </li>
+            );
+          })}
+        </ol>
+        {verdict && (
+          <div className="agh-oracle-memory-verdict">
+            <span>{locale === "ru" ? "Вердикт зала" : "Room verdict"}</span>
+            <p>{verdict.decision.verdict}</p>
+            <b>
+              +{verdict.decision.oracle_points} {locale === "ru" ? "Оракулу" : "Oracle"} / +
+              {verdict.decision.skeptic_points} {locale === "ru" ? "скептикам" : "skeptics"}
+            </b>
+          </div>
+        )}
+      </MemoryCard>
+      {guessBoard}
+    </>
+  );
+}
+
+function OracleCountGuessBoard({
+  memory,
+  locale,
+  meId,
+  owners,
+  busy,
+  error,
+  onGuess,
+}: {
+  memory: GrillOracleMemory;
+  locale: "en" | "ru";
+  meId: string;
+  owners: Array<{ playerId: string; playerName: string }>;
+  busy: string | null;
+  error: string | null;
+  onGuess: (ownerPlayerId: string, count: number) => Promise<void>;
+}) {
+  return (
+    <MemoryCard state="revealed">
+      <MemoryLabel>{locale === "ru" ? "Ставка зала" : "Room count"}</MemoryLabel>
+      <MemoryHeading>
+        {locale === "ru" ? "Сколько знаков сбудется?" : "How many signs land?"}
+      </MemoryHeading>
+      <p className="agh-oracle-memory-note">
+        {locale === "ru"
+          ? "Ведущий читает три знака вслух. Угадай 0–3 — совпадение с вердиктом даёт +1."
+          : "The host reads the three signs aloud. Guess 0–3. A match with the lock pays +1."}
+      </p>
+      {owners.map((owner) => {
+        const myGuess = memory.countGuesses?.[meId]?.[owner.playerId];
+        const verified = memory.verifiedPlayerIds.includes(owner.playerId);
+        return (
+          <div key={owner.playerId} className="agh-oracle-guess-owner">
+            <strong>{owner.playerName}</strong>
+            {myGuess != null || verified ? (
+              <p className="agh-oracle-guess-locked">
+                {guessStatusLabel(locale, myGuess, verified)}
+              </p>
+            ) : (
+              <div className="agh-oracle-guess-counts">
+                {[0, 1, 2, 3].map((count) => (
+                  <button
+                    key={count}
+                    type="button"
+                    disabled={busy !== null}
+                    onClick={() => void onGuess(owner.playerId, count)}
+                  >
+                    {count}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {error && <p className="agh-oracle-error">{error}</p>}
     </MemoryCard>
   );
+}
+
+function guessStatusLabel(locale: "en" | "ru", myGuess: number | undefined, verified: boolean) {
+  if (myGuess == null) return locale === "ru" ? "Ставки закрыты" : "Guessing closed";
+  if (verified) return locale === "ru" ? `Ты ставил ${myGuess}` : `You guessed ${myGuess}`;
+  return locale === "ru" ? `Ставка принята: ${myGuess}` : `Guess locked: ${myGuess}`;
 }
 
 function MemoryCard({
